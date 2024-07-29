@@ -104,12 +104,9 @@ pub fn run() -> std::io::Result<()> {
     let color_set = color::ColorSet::default();
     let image_protocol = args.protocol.into();
 
-    let repository = git::Repository::load(Path::new("."));
+    let repository = git::Repository::load(Path::new("."), args.order.into());
 
-    let graph_options = graph::CalcGraphOptions {
-        sort: args.order.into(),
-    };
-    let graph = graph::calc_graph(&repository, graph_options);
+    let graph = graph::calc_graph(&repository);
 
     let graph_image_options = graph::GraphImageOptions::new(color_set.clone(), args.no_cache);
     let graph_image = graph::build_graph_image(&graph, graph_image_options);

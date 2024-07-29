@@ -1,9 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use crate::{
-    git::{Commit, CommitHash, Repository},
-    graph::queue::PriorityQueue,
-};
+use crate::git::{Commit, CommitHash, Repository};
 
 type CommitPosMap<'a> = HashMap<&'a CommitHash, (u8, usize)>;
 
@@ -57,13 +54,8 @@ pub enum SortCommit {
     Topological,
 }
 
-pub fn calc_graph(repository: &Repository, options: CalcGraphOptions) -> Graph<'_> {
+pub fn calc_graph(repository: &Repository) -> Graph<'_> {
     let commits = repository.all_commits();
-    // commits.sort_by_key(|commit| commit.committer_date_sort_key());
-    // commits = match options.sort {
-    //     SortCommit::Chronological => bfs_topological_sort(commits, repository),
-    //     SortCommit::Topological => dfs_topological_sort(commits, repository),
-    // };
 
     let commit_pos_map = calc_commit_positions(commits, repository);
     let (graph_edges, max_pos_x) = calc_edges(&commit_pos_map, commits, repository);
@@ -74,80 +66,6 @@ pub fn calc_graph(repository: &Repository, options: CalcGraphOptions) -> Graph<'
         edges: graph_edges,
         max_pos_x,
     }
-}
-
-fn bfs_topological_sort<'a>(
-    commits: Vec<&'a Commit>,
-    repository: &'a Repository,
-) -> Vec<&'a Commit> {
-    let mut sorted: Vec<&Commit> = Vec::with_capacity(commits.len());
-    let mut visited: HashSet<&CommitHash> = HashSet::with_capacity(commits.len());
-    let mut queue = PriorityQueue::new();
-
-    for commit in commits {
-        bfs(commit, &mut visited, &mut sorted, &mut queue, repository);
-    }
-
-    sorted
-}
-
-fn bfs<'a>(
-    commit: &'a Commit,
-    visited: &mut HashSet<&'a CommitHash>,
-    sorted: &mut Vec<&'a Commit>,
-    queue: &mut PriorityQueue<'a>,
-    repository: &'a Repository,
-) {
-    if visited.contains(&commit.commit_hash) {
-        return;
-    }
-    visited.insert(&commit.commit_hash);
-
-    let children_hash = repository.children_hash(&commit.commit_hash);
-    for child_hash in children_hash {
-        let child = repository.commit(child_hash).unwrap();
-        queue.enqueue(child);
-    }
-
-    while let Some(commit) = queue.dequeue() {
-        bfs(commit, visited, sorted, queue, repository);
-    }
-
-    sorted.push(commit);
-}
-
-fn dfs_topological_sort<'a>(
-    commits: Vec<&'a Commit>,
-    repository: &'a Repository,
-) -> Vec<&'a Commit> {
-    let mut sorted: Vec<&Commit> = Vec::with_capacity(commits.len());
-    let mut visited: HashSet<&CommitHash> = HashSet::with_capacity(commits.len());
-
-    for commit in commits {
-        dfs(commit, &mut visited, &mut sorted, repository);
-    }
-
-    sorted
-}
-
-fn dfs<'a>(
-    commit: &'a Commit,
-    visited: &mut HashSet<&'a CommitHash>,
-    sorted: &mut Vec<&'a Commit>,
-    repository: &'a Repository,
-) {
-    if visited.contains(&commit.commit_hash) {
-        return;
-    }
-    visited.insert(&commit.commit_hash);
-
-    let children_hash = repository.children_hash(&commit.commit_hash);
-    for child_hash in children_hash {
-        let child = repository.commit(child_hash).unwrap();
-        dfs(child, visited, sorted, repository);
-    }
-
-    sorted.push(commit);
 }
 
 fn calc_commit_positions<'a>(

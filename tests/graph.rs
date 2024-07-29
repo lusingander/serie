@@ -1037,9 +1037,8 @@ fn generate_and_output_graph_images(repo_path: &Path, options: &[GenerateGraphOp
 fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGraphOption) {
     // Build graphs in the same way as application
     let color_set = color::ColorSet::default();
-    let repository = git::Repository::load(path.as_ref());
-    let graph_options = graph::CalcGraphOptions { sort: option.sort };
-    let graph = graph::calc_graph(&repository, graph_options);
+    let repository = git::Repository::load(path.as_ref(), option.sort);
+    let graph = graph::calc_graph(&repository);
     let graph_image =
         graph::build_graph_image(&graph, graph::GraphImageOptions::new(color_set, true));
 
