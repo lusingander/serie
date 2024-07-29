@@ -958,7 +958,7 @@ impl GitRepository<'_> {
 
     fn merge(&self, branch_names: &[&str], date: &str) {
         let datetime_str = parse_date(date).to_rfc3339();
-        let mut args = vec!["merge", "--no-ff"];
+        let mut args = vec!["merge", "--no-ff", "--no-log"];
         args.extend_from_slice(branch_names);
         Command::new("git")
             .args(args)
@@ -1014,7 +1014,7 @@ fn parse_date(date: &str) -> DateTime<Utc> {
         .unwrap()
         .and_hms_opt(1, 2, 3)
         .unwrap();
-    Utc.from_local_datetime(&dt).unwrap()
+    Utc.from_utc_datetime(&dt)
 }
 
 struct GenerateGraphOption<'a> {
@@ -1037,9 +1037,8 @@ fn generate_and_output_graph_images(repo_path: &Path, options: &[GenerateGraphOp
 fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGraphOption) {
     // Build graphs in the same way as application
     let color_set = color::ColorSet::default();
-    let repository = git::Repository::load(path.as_ref());
-    let graph_options = graph::CalcGraphOptions { sort: option.sort };
-    let graph = graph::calc_graph(&repository, graph_options);
+    let repository = git::Repository::load(path.as_ref(), option.sort);
+    let graph = graph::calc_graph(&repository);
     let graph_image =
         graph::build_graph_image(&graph, graph::GraphImageOptions::new(color_set, true));
 
@@ -1066,7 +1065,7 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
         let text = format!(
             "{} / {}",
             &commit.commit_hash.as_short_hash(),
-            commit.committer_date.format("%Y-%m-%d")
+            commit.committer_date.naive_utc().format("%Y-%m-%d")
         );
         let text_png = text_renderer
             .render_text_to_png_data(text, height / 4, 0x888888)
