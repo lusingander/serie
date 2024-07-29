@@ -82,7 +82,6 @@ fn calc_commit_positions<'a>(
             add_commit_line(commit, &mut commit_line_state, pos_x);
             commit_pos_map.insert(&commit.commit_hash, (pos_x, pos_y));
         } else {
-            dbg!(&commit, &commit_line_state, &filtered_children_hash);
             let pos_x = update_commit_line(commit, &mut commit_line_state, &filtered_children_hash);
             commit_pos_map.insert(&commit.commit_hash, (pos_x, pos_y));
         }
