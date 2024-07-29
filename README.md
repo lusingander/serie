@@ -42,6 +42,12 @@ Personally, I found the output from `git log --graph` difficult to read, even wi
 $ cargo install --locked serie
 ```
 
+### AUR (Arch Linux)
+
+```
+$ paru -S serie
+```
+
 ### Homebrew (macOS)
 
 ```
