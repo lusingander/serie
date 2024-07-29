@@ -49,6 +49,7 @@ pub struct Commit {
     pub committer_date: DateTime<Local>,
     pub subject: String,
     pub body: String,
+    // to preserve order of the original commits from `git log`, we store the commit hashes
     pub parent_commit_hashes: Vec<CommitHash>,
     pub commit_type: CommitType,
 }
