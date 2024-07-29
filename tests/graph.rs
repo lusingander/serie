@@ -1014,7 +1014,7 @@ fn parse_date(date: &str) -> DateTime<Utc> {
         .unwrap()
         .and_hms_opt(1, 2, 3)
         .unwrap();
-    Utc.from_local_datetime(&dt).unwrap()
+    Utc.from_utc_datetime(&dt)
 }
 
 struct GenerateGraphOption<'a> {
