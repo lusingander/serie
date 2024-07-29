@@ -958,7 +958,7 @@ impl GitRepository<'_> {
 
     fn merge(&self, branch_names: &[&str], date: &str) {
         let datetime_str = parse_date(date).to_rfc3339();
-        let mut args = vec!["merge", "--no-ff"];
+        let mut args = vec!["merge", "--no-ff", "--no-log"];
         args.extend_from_slice(branch_names);
         Command::new("git")
             .args(args)
