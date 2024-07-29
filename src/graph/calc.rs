@@ -2,25 +2,25 @@ use std::collections::HashMap;
 
 use crate::git::{Commit, CommitHash, Repository};
 
-type CommitPosMap<'a> = HashMap<&'a CommitHash, (u8, usize)>;
+type CommitPosMap<'a> = HashMap<&'a CommitHash, (usize, usize)>;
 
 #[derive(Debug)]
 pub struct Graph<'a> {
     pub commits: Vec<&'a Commit>,
     pub commit_pos_map: CommitPosMap<'a>,
     pub edges: Vec<Vec<Edge>>,
-    pub max_pos_x: u8,
+    pub max_pos_x: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Edge {
     pub edge_type: EdgeType,
-    pub pos_x: u8,
-    pub associated_line_pos_x: u8,
+    pub pos_x: usize,
+    pub associated_line_pos_x: usize,
 }
 
 impl Edge {
-    fn new(edge_type: EdgeType, pos_x: u8, line_pos_x: u8) -> Self {
+    fn new(edge_type: EdgeType, pos_x: usize, line_pos_x: usize) -> Self {
         Self {
             edge_type,
             pos_x,
@@ -104,17 +104,17 @@ fn filtered_children_hash<'a>(
         .collect()
 }
 
-fn get_first_vacant_line(commit_line_state: &[Option<&CommitHash>]) -> u8 {
+fn get_first_vacant_line(commit_line_state: &[Option<&CommitHash>]) -> usize {
     commit_line_state
         .iter()
         .position(|c| c.is_none())
-        .unwrap_or(commit_line_state.len()) as u8
+        .unwrap_or(commit_line_state.len()) as usize
 }
 
 fn add_commit_line<'a>(
     commit: &'a Commit,
     commit_line_state: &mut Vec<Option<&'a CommitHash>>,
-    pos_x: u8,
+    pos_x: usize,
 ) {
     if commit_line_state.len() <= pos_x as usize {
         commit_line_state.push(Some(&commit.commit_hash));
@@ -127,7 +127,7 @@ fn update_commit_line<'a>(
     commit: &'a Commit,
     commit_line_state: &mut [Option<&'a CommitHash>],
     target_commit_hashes: &[&CommitHash],
-) -> u8 {
+) -> usize {
     if commit_line_state.is_empty() {
         return 0;
     }
@@ -146,7 +146,7 @@ fn update_commit_line<'a>(
         }
     }
     commit_line_state[min_pos_x] = Some(&commit.commit_hash);
-    min_pos_x as u8
+    min_pos_x
 }
 
 #[derive(Debug, Clone)]
@@ -158,8 +158,8 @@ struct WrappedEdge<'a> {
 impl<'a> WrappedEdge<'a> {
     fn new(
         edge_type: EdgeType,
-        pos_x: u8,
-        line_pos_x: u8,
+        pos_x: usize,
+        line_pos_x: usize,
         edge_parent_hash: &'a CommitHash,
     ) -> Self {
         Self {
@@ -173,7 +173,7 @@ fn calc_edges(
     commit_pos_map: &CommitPosMap,
     commits: &[&Commit],
     repository: &Repository,
-) -> (Vec<Vec<Edge>>, u8) {
+) -> (Vec<Vec<Edge>>, usize) {
     let mut max_pos_x = 0;
     let mut edges: Vec<Vec<WrappedEdge>> = vec![vec![]; commits.len()];
 
