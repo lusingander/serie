@@ -52,13 +52,7 @@ impl ImageCacheFileKey {
             cell_count,
             edges: edges
                 .iter()
-                .map(|e| {
-                    [
-                        e.edge_type as u8 as usize,
-                        e.pos_x as usize,
-                        e.associated_line_pos_x as usize,
-                    ]
-                })
+                .map(|e| [e.edge_type as u8 as usize, e.pos_x, e.associated_line_pos_x])
                 .collect(),
         }
     }
@@ -80,7 +74,7 @@ impl ImageCache {
             let bytes = std::fs::read(cache_file_path).unwrap();
             let image = GraphRowImage {
                 bytes,
-                cell_count: key.cell_count as usize,
+                cell_count: key.cell_count,
             };
             Some(image)
         } else {

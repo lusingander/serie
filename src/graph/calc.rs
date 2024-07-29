@@ -108,7 +108,7 @@ fn get_first_vacant_line(commit_line_state: &[Option<&CommitHash>]) -> usize {
     commit_line_state
         .iter()
         .position(|c| c.is_none())
-        .unwrap_or(commit_line_state.len()) as usize
+        .unwrap_or(commit_line_state.len())
 }
 
 fn add_commit_line<'a>(
@@ -116,10 +116,10 @@ fn add_commit_line<'a>(
     commit_line_state: &mut Vec<Option<&'a CommitHash>>,
     pos_x: usize,
 ) {
-    if commit_line_state.len() <= pos_x as usize {
+    if commit_line_state.len() <= pos_x {
         commit_line_state.push(Some(&commit.commit_hash));
     } else {
-        commit_line_state[pos_x as usize] = Some(&commit.commit_hash);
+        commit_line_state[pos_x] = Some(&commit.commit_hash);
     }
 }
 
@@ -128,10 +128,7 @@ fn update_commit_line<'a>(
     commit_line_state: &mut [Option<&'a CommitHash>],
     target_commit_hashes: &[&CommitHash],
 ) -> usize {
-    if commit_line_state.is_empty() {
-        return 0;
-    }
-    let mut min_pos_x = commit_line_state.len().saturating_sub(1);
+    let mut min_pos_x = commit_line_state.len();
     for target_hash in target_commit_hashes {
         for (pos_x, commit_hash) in commit_line_state.iter().enumerate() {
             if let Some(hash) = commit_hash {

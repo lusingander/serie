@@ -471,8 +471,8 @@ fn draw_edge(
         EdgeType::LeftBottom => &drawing_pixels.left_bottom_edge,
     };
 
-    let x_offset = (edge.pos_x as usize * image_params.width as usize) as i32;
-    let color = image_params.edge_color(edge.associated_line_pos_x as usize);
+    let x_offset = (edge.pos_x * image_params.width as usize) as i32;
+    let color = image_params.edge_color(edge.associated_line_pos_x);
 
     for (x, y) in pixels {
         let x = (*x + x_offset) as u32;
