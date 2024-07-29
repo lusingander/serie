@@ -131,7 +131,7 @@ pub struct Repository {
 
     ref_map: RefMap,
     head: Head,
-    commits: Vec<Commit>,
+    commit_hashes: Vec<CommitHash>,
 }
 
 impl Repository {
@@ -147,6 +147,8 @@ impl Repository {
         let stash_ref_map = load_stashes_as_refs(path);
         merge_ref_maps(&mut ref_map, stash_ref_map);
 
+        let commit_hashes = commits.iter().map(|c| c.commit_hash.clone()).collect();
+
         Self::new(
             path.to_path_buf(),
             commit_map,
@@ -154,7 +156,7 @@ impl Repository {
             children_map,
             ref_map,
             head,
-            commits,
+            commit_hashes,
         )
     }
 
@@ -165,7 +167,7 @@ impl Repository {
         children_map: CommitsMap,
         ref_map: RefMap,
         head: Head,
-        commits: Vec<Commit>,
+        commit_hashes: Vec<CommitHash>,
     ) -> Self {
         Self {
             path,
@@ -174,7 +176,7 @@ impl Repository {
             children_map,
             ref_map,
             head,
-            commits,
+            commit_hashes,
         }
     }
 
@@ -182,8 +184,11 @@ impl Repository {
         self.commit_map.get(commit_hash)
     }
 
-    pub fn all_commits(&self) -> &[Commit] {
-        &self.commits
+    pub fn all_commits(&self) -> Vec<&Commit> {
+        self.commit_hashes
+            .iter()
+            .filter_map(|hash| self.commit(hash))
+            .collect()
     }
 
     pub fn parents_hash(&self, commit_hash: &CommitHash) -> Vec<&CommitHash> {

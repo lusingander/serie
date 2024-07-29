@@ -6,7 +6,7 @@ type CommitPosMap<'a> = HashMap<&'a CommitHash, (u8, usize)>;
 
 #[derive(Debug)]
 pub struct Graph<'a> {
-    pub commits: &'a [Commit],
+    pub commits: Vec<&'a Commit>,
     pub commit_pos_map: CommitPosMap<'a>,
     pub edges: Vec<Vec<Edge>>,
     pub max_pos_x: u8,
@@ -57,8 +57,8 @@ pub enum SortCommit {
 pub fn calc_graph(repository: &Repository) -> Graph<'_> {
     let commits = repository.all_commits();
 
-    let commit_pos_map = calc_commit_positions(commits, repository);
-    let (graph_edges, max_pos_x) = calc_edges(&commit_pos_map, commits, repository);
+    let commit_pos_map = calc_commit_positions(&commits, repository);
+    let (graph_edges, max_pos_x) = calc_edges(&commit_pos_map, &commits, repository);
 
     Graph {
         commits,
@@ -69,7 +69,7 @@ pub fn calc_graph(repository: &Repository) -> Graph<'_> {
 }
 
 fn calc_commit_positions<'a>(
-    commits: &'a [Commit],
+    commits: &[&'a Commit],
     repository: &'a Repository,
 ) -> CommitPosMap<'a> {
     let mut commit_pos_map: CommitPosMap = HashMap::new();
@@ -171,7 +171,7 @@ impl<'a> WrappedEdge<'a> {
 
 fn calc_edges(
     commit_pos_map: &CommitPosMap,
-    commits: &[Commit],
+    commits: &[&Commit],
     repository: &Repository,
 ) -> (Vec<Vec<Edge>>, u8) {
     let mut max_pos_x = 0;
