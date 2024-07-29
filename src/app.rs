@@ -76,7 +76,7 @@ impl<'a> App<'a> {
                     ref_name_to_commit_index_map.insert(r.name(), i);
                 }
                 let (pos_x, _) = graph.commit_pos_map[&commit.commit_hash];
-                let graph_color = color_set.get(pos_x as usize).to_ratatui_color();
+                let graph_color = color_set.get(pos_x).to_ratatui_color();
                 CommitInfo::new(commit, image, refs, graph_color)
             })
             .collect();

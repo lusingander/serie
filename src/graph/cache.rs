@@ -40,19 +40,19 @@ impl ImageCacheDirKey {
 
 #[derive(Debug, Serialize)]
 pub struct ImageCacheFileKey {
-    pos_x: u8,
-    cell_count: u8,
-    edges: Vec<[u8; 3]>,
+    pos_x: usize,
+    cell_count: usize,
+    edges: Vec<[usize; 3]>,
 }
 
 impl ImageCacheFileKey {
-    pub fn new(pos_x: u8, cell_count: u8, edges: Vec<Edge>) -> Self {
+    pub fn new(pos_x: usize, cell_count: usize, edges: Vec<Edge>) -> Self {
         Self {
             pos_x,
             cell_count,
             edges: edges
                 .iter()
-                .map(|e| [e.edge_type as u8, e.pos_x, e.associated_line_pos_x])
+                .map(|e| [e.edge_type as u8 as usize, e.pos_x, e.associated_line_pos_x])
                 .collect(),
         }
     }
@@ -74,7 +74,7 @@ impl ImageCache {
             let bytes = std::fs::read(cache_file_path).unwrap();
             let image = GraphRowImage {
                 bytes,
-                cell_count: key.cell_count as usize,
+                cell_count: key.cell_count,
             };
             Some(image)
         } else {

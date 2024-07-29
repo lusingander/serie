@@ -91,7 +91,7 @@ pub fn build_graph_image(graph: &Graph<'_>, options: GraphImageOptions) -> Graph
 
     let drawing_pixels = DrawingPixels::new(&image_params);
 
-    let graph_row_sources: HashSet<(u8, &Vec<Edge>)> = graph
+    let graph_row_sources: HashSet<(usize, &Vec<Edge>)> = graph
         .commits
         .iter()
         .map(|commit| {
@@ -101,7 +101,7 @@ pub fn build_graph_image(graph: &Graph<'_>, options: GraphImageOptions) -> Graph
         })
         .collect();
 
-    let cell_count: u8 = graph.max_pos_x + 1;
+    let cell_count = graph.max_pos_x + 1;
 
     let images = graph_row_sources
         .into_par_iter()
@@ -412,13 +412,12 @@ fn calc_corner_edge_drawing_pixels(
 }
 
 fn build_graph_row_image(
-    commit_pos_x: u8,
-    cell_count: u8,
+    commit_pos_x: usize,
+    cell_count: usize,
     edges: &[Edge],
     image_params: &ImageParams,
     drawing_pixels: &DrawingPixels,
 ) -> GraphRowImage {
-    let cell_count = cell_count as usize;
     let image_width = (image_params.width as usize * cell_count) as u32;
     let image_height = image_params.height as u32;
 
@@ -437,12 +436,12 @@ fn build_graph_row_image(
 
 fn draw_commit_circle(
     img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-    circle_pos_x: u8,
+    circle_pos_x: usize,
     image_params: &ImageParams,
     drawing_pixels: &DrawingPixels,
 ) {
-    let x_offset = (circle_pos_x as usize * image_params.width as usize) as i32;
-    let color = image_params.edge_color(circle_pos_x as usize);
+    let x_offset = (circle_pos_x * image_params.width as usize) as i32;
+    let color = image_params.edge_color(circle_pos_x);
 
     for (x, y) in &drawing_pixels.circle {
         let x = (*x + x_offset) as u32;
@@ -472,8 +471,8 @@ fn draw_edge(
         EdgeType::LeftBottom => &drawing_pixels.left_bottom_edge,
     };
 
-    let x_offset = (edge.pos_x as usize * image_params.width as usize) as i32;
-    let color = image_params.edge_color(edge.associated_line_pos_x as usize);
+    let x_offset = (edge.pos_x * image_params.width as usize) as i32;
+    let color = image_params.edge_color(edge.associated_line_pos_x);
 
     for (x, y) in pixels {
         let x = (*x + x_offset) as u32;
