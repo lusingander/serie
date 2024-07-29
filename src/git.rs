@@ -139,6 +139,10 @@ impl Repository {
     pub fn load(path: &Path, sort: SortCommit) -> Self {
         check_git_repository(path);
 
+        // this currently passes `--all` to `git log`
+        // this makes the graph for stashes similar to how `git log --oneline` does
+        // stashes can be better presented as a single commit
+        // TODO: handle stashs better in the future
         let commits = load_all_commits(path, sort);
         let commit_hashes = commits.iter().map(|c| c.commit_hash.clone()).collect();
 
