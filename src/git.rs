@@ -139,15 +139,14 @@ impl Repository {
         check_git_repository(path);
 
         let commits = load_all_commits(path, sort);
+        let commit_hashes = commits.iter().map(|c| c.commit_hash.clone()).collect();
 
         let (parents_map, children_map) = build_commits_maps(&commits);
-        let commit_map = to_commit_map(&commits);
+        let commit_map = to_commit_map(commits);
 
         let (mut ref_map, head) = load_refs(path);
         let stash_ref_map = load_stashes_as_refs(path);
         merge_ref_maps(&mut ref_map, stash_ref_map);
-
-        let commit_hashes = commits.iter().map(|c| c.commit_hash.clone()).collect();
 
         Self::new(
             path.to_path_buf(),
@@ -336,10 +335,10 @@ fn build_commits_maps(commits: &Vec<Commit>) -> (CommitsMap, CommitsMap) {
     (parents_map, children_map)
 }
 
-fn to_commit_map(commits: &[Commit]) -> CommitMap {
+fn to_commit_map(commits: Vec<Commit>) -> CommitMap {
     commits
-        .iter()
-        .map(|commit| (commit.commit_hash.clone(), commit.clone()))
+        .into_iter()
+        .map(|commit| (commit.commit_hash.clone(), commit))
         .collect()
 }
 
