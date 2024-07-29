@@ -97,6 +97,7 @@ fn initialize_panic_handler() {
 }
 
 pub fn run() -> std::io::Result<()> {
+    color_eyre::install().unwrap();
     let args = Args::parse();
     let config = config::Config::load();
 

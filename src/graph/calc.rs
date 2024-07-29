@@ -9,7 +9,7 @@ type CommitPosMap<'a> = HashMap<&'a CommitHash, (u8, usize)>;
 
 #[derive(Debug)]
 pub struct Graph<'a> {
-    pub commits: Vec<&'a Commit>,
+    pub commits: &'a [Commit],
     pub commit_pos_map: CommitPosMap<'a>,
     pub edges: Vec<Vec<Edge>>,
     pub max_pos_x: u8,
@@ -58,16 +58,15 @@ pub enum SortCommit {
 }
 
 pub fn calc_graph(repository: &Repository, options: CalcGraphOptions) -> Graph<'_> {
-    let mut commits = repository.all_commits();
-    commits.sort_by_key(|commit| commit.committer_date_sort_key());
+    let commits = repository.all_commits();
+    // commits.sort_by_key(|commit| commit.committer_date_sort_key());
+    // commits = match options.sort {
+    //     SortCommit::Chronological => bfs_topological_sort(commits, repository),
+    //     SortCommit::Topological => dfs_topological_sort(commits, repository),
+    // };
 
-    commits = match options.sort {
-        SortCommit::Chronological => bfs_topological_sort(commits, repository),
-        SortCommit::Topological => dfs_topological_sort(commits, repository),
-    };
-
-    let commit_pos_map = calc_commit_positions(&commits, repository);
-    let (graph_edges, max_pos_x) = calc_edges(&commit_pos_map, &commits, repository);
+    let commit_pos_map = calc_commit_positions(commits, repository);
+    let (graph_edges, max_pos_x) = calc_edges(&commit_pos_map, commits, repository);
 
     Graph {
         commits,
@@ -152,7 +151,7 @@ fn dfs<'a>(
 }
 
 fn calc_commit_positions<'a>(
-    commits: &[&'a Commit],
+    commits: &'a [Commit],
     repository: &'a Repository,
 ) -> CommitPosMap<'a> {
     let mut commit_pos_map: CommitPosMap = HashMap::new();
@@ -165,6 +164,7 @@ fn calc_commit_positions<'a>(
             add_commit_line(commit, &mut commit_line_state, pos_x);
             commit_pos_map.insert(&commit.commit_hash, (pos_x, pos_y));
         } else {
+            dbg!(&commit, &commit_line_state, &filtered_children_hash);
             let pos_x = update_commit_line(commit, &mut commit_line_state, &filtered_children_hash);
             commit_pos_map.insert(&commit.commit_hash, (pos_x, pos_y));
         }
@@ -211,7 +211,10 @@ fn update_commit_line<'a>(
     commit_line_state: &mut [Option<&'a CommitHash>],
     target_commit_hashes: &[&CommitHash],
 ) -> u8 {
-    let mut min_pos_x = commit_line_state.len();
+    if commit_line_state.is_empty() {
+        return 0;
+    }
+    let mut min_pos_x = commit_line_state.len().saturating_sub(1);
     for target_hash in target_commit_hashes {
         for (pos_x, commit_hash) in commit_line_state.iter().enumerate() {
             if let Some(hash) = commit_hash {
@@ -251,7 +254,7 @@ impl<'a> WrappedEdge<'a> {
 
 fn calc_edges(
     commit_pos_map: &CommitPosMap,
-    commits: &[&Commit],
+    commits: &[Commit],
     repository: &Repository,
 ) -> (Vec<Vec<Edge>>, u8) {
     let mut max_pos_x = 0;

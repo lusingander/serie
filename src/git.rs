@@ -129,19 +129,20 @@ pub struct Repository {
 
     ref_map: RefMap,
     head: Head,
+    commits: Vec<Commit>,
 }
 
 impl Repository {
     pub fn load(path: &Path) -> Self {
         check_git_repository(path);
 
-        let mut commits = load_all_commits(path);
-        let stashes = load_all_stashes(path, to_commit_ref_map(&commits));
+        let commits = load_all_commits(path);
+        // let stashes = load_all_stashes(path, to_commit_ref_map(&commits));
 
-        commits.extend(stashes);
+        // commits.extend(stashes);
 
         let (parents_map, children_map) = build_commits_maps(&commits);
-        let commit_map = to_commit_map(commits);
+        let commit_map = to_commit_map(&commits);
 
         let (mut ref_map, head) = load_refs(path);
         let stash_ref_map = load_stashes_as_refs(path);
@@ -154,6 +155,7 @@ impl Repository {
             children_map,
             ref_map,
             head,
+            commits,
         )
     }
 
@@ -164,6 +166,7 @@ impl Repository {
         children_map: CommitsMap,
         ref_map: RefMap,
         head: Head,
+        commits: Vec<Commit>,
     ) -> Self {
         Self {
             path,
@@ -172,6 +175,7 @@ impl Repository {
             children_map,
             ref_map,
             head,
+            commits,
         }
     }
 
@@ -179,8 +183,8 @@ impl Repository {
         self.commit_map.get(commit_hash)
     }
 
-    pub fn all_commits(&self) -> Vec<&Commit> {
-        self.commit_map.values().collect()
+    pub fn all_commits(&self) -> &[Commit] {
+        &self.commits
     }
 
     pub fn parents_hash(&self, commit_hash: &CommitHash) -> Vec<&CommitHash> {
@@ -242,6 +246,7 @@ fn load_all_commits(path: &Path) -> Vec<Commit> {
         .arg("--branches")
         .arg("--remotes")
         .arg("--tags")
+        .arg("--topo-order") // hard code for testing
         .arg(format!("--pretty={}", load_commits_format()))
         .arg("--date=iso-strict")
         .arg("-z") // use NUL as a delimiter
@@ -391,10 +396,10 @@ fn to_commit_ref_map(commits: &[Commit]) -> HashMap<&CommitHash, &Commit> {
         .collect()
 }
 
-fn to_commit_map(commits: Vec<Commit>) -> CommitMap {
+fn to_commit_map(commits: &[Commit]) -> CommitMap {
     commits
         .into_iter()
-        .map(|commit| (commit.commit_hash.clone(), commit))
+        .map(|commit| (commit.commit_hash.clone(), commit.clone()))
         .collect()
 }
 
