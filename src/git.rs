@@ -6,7 +6,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use chrono::{DateTime, Local, TimeDelta};
+use chrono::{DateTime, Local};
 
 use crate::graph::SortCommit;
 
@@ -33,9 +33,7 @@ impl From<&str> for CommitHash {
 pub enum CommitType {
     #[default]
     Commit,
-    Stash {
-        parent_commit_committer_date: DateTime<Local>,
-    },
+    Stash,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -51,22 +49,6 @@ pub struct Commit {
     pub body: String,
     pub parent_commit_hashes: Vec<CommitHash>,
     pub commit_type: CommitType,
-}
-
-impl Commit {
-    pub fn committer_date_sort_key(&self) -> DateTime<Local> {
-        match self.commit_type {
-            CommitType::Commit => self.committer_date,
-            CommitType::Stash {
-                parent_commit_committer_date,
-            } => {
-                // The unit of committer_date is seconds, so add 1 nanosecond to make sure the stash commit appears after the parent commit
-                parent_commit_committer_date
-                    .checked_add_signed(TimeDelta::nanoseconds(1))
-                    .unwrap()
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -140,7 +122,7 @@ impl Repository {
         check_git_repository(path);
 
         let commits = load_all_commits(path, sort);
-        let stashes = load_all_stashes(path, to_commit_ref_map(&commits));
+        let stashes = load_all_stashes(path);
 
         let commits = merge_stashes_to_commits(commits, stashes);
         let commit_hashes = commits.iter().map(|c| c.commit_hash.clone()).collect();
@@ -302,7 +284,7 @@ fn load_all_commits(path: &Path, sort: SortCommit) -> Vec<Commit> {
     commits
 }
 
-fn load_all_stashes(path: &Path, commit_map: HashMap<&CommitHash, &Commit>) -> Vec<Commit> {
+fn load_all_stashes(path: &Path) -> Vec<Commit> {
     let mut cmd = Command::new("git")
         .arg("stash")
         .arg("list")
@@ -329,29 +311,21 @@ fn load_all_stashes(path: &Path, commit_map: HashMap<&CommitHash, &Commit>) -> V
             panic!("unexpected number of parts: {} [{}]", parts.len(), s);
         }
 
-        let parent_commit_hashes = parse_parent_commit_hashes(parts[9]);
+        let commit = Commit {
+            commit_hash: parts[0].into(),
+            author_name: parts[1].into(),
+            author_email: parts[2].into(),
+            author_date: parse_iso_date(parts[3]),
+            committer_name: parts[4].into(),
+            committer_email: parts[5].into(),
+            committer_date: parse_iso_date(parts[6]),
+            subject: parts[7].into(),
+            body: parts[8].into(),
+            parent_commit_hashes: parse_parent_commit_hashes(parts[9]),
+            commit_type: CommitType::Stash,
+        };
 
-        // Stash commit has multiple parent commits, but the first parent commit is the commit that the stash was created from.
-        // If the first parent commit is not found, the stash commit is ignored.
-        if let Some(first_parnet_commit) = commit_map.get(&parent_commit_hashes[0]) {
-            let commit = Commit {
-                commit_hash: parts[0].into(),
-                author_name: parts[1].into(),
-                author_email: parts[2].into(),
-                author_date: parse_iso_date(parts[3]),
-                committer_name: parts[4].into(),
-                committer_email: parts[5].into(),
-                committer_date: parse_iso_date(parts[6]),
-                subject: parts[7].into(),
-                body: parts[8].into(),
-                parent_commit_hashes,
-                commit_type: CommitType::Stash {
-                    parent_commit_committer_date: first_parnet_commit.committer_date,
-                },
-            };
-
-            commits.push(commit);
-        }
+        commits.push(commit);
     }
 
     cmd.wait().unwrap();
@@ -399,13 +373,6 @@ fn build_commits_maps(commits: &Vec<Commit>) -> (CommitsMap, CommitsMap) {
     (parents_map, children_map)
 }
 
-fn to_commit_ref_map(commits: &[Commit]) -> HashMap<&CommitHash, &Commit> {
-    commits
-        .iter()
-        .map(|commit| (&commit.commit_hash, commit))
-        .collect()
-}
-
 fn to_commit_map(commits: Vec<Commit>) -> CommitMap {
     commits
         .into_iter()
@@ -414,6 +381,8 @@ fn to_commit_map(commits: Vec<Commit>) -> CommitMap {
 }
 
 fn merge_stashes_to_commits(commits: Vec<Commit>, stashes: Vec<Commit>) -> Vec<Commit> {
+    // Stash commit has multiple parent commits, but the first parent commit is the commit that the stash was created from.
+    // If the first parent commit is not found, the stash commit is ignored.
     let mut ret = Vec::new();
     let mut statsh_map: HashMap<CommitHash, Commit> = stashes
         .into_iter()
