@@ -232,13 +232,18 @@ The terminals on which each has been confirmed to work are listed below.
 
 Please share your experience with other terminal emulators on the [Discussions](https://github.com/lusingander/serie/discussions).
 
+## Contributing
+
+Contributions are welcome.
+Please check out [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+
 ## Screenshots
 
-<img src="./img/list.png" width=500>
-<img src="./img/detail.png" width=500>
-<img src="./img/refs.png" width=500>
-<img src="./img/searching.png" width=500>
-<img src="./img/applied.png" width=500>
+<img src="./img/list.png" width=600>
+<img src="./img/detail.png" width=600>
+<img src="./img/refs.png" width=600>
+<img src="./img/searching.png" width=600>
+<img src="./img/applied.png" width=600>
 
 The following repositories are used as these examples:
 
