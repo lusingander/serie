@@ -654,6 +654,7 @@ fn merge_005() -> TestResult {
 
 #[test]
 fn stash_001() -> TestResult {
+    // Test case for multiple stashes, the most recent commit is normal commit
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
 
@@ -699,6 +700,7 @@ fn stash_001() -> TestResult {
 
 #[test]
 fn stash_002() -> TestResult {
+    // Test case for multiple stashes, the most recent commit is stash
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
 
@@ -741,6 +743,7 @@ fn stash_002() -> TestResult {
 
 #[test]
 fn stash_003() -> TestResult {
+    // Test case for unreachable stash
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
 

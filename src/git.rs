@@ -6,7 +6,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use chrono::{DateTime, Local, TimeDelta};
+use chrono::{DateTime, Local};
 
 use crate::graph::SortCommit;
 
@@ -33,9 +33,7 @@ impl From<&str> for CommitHash {
 pub enum CommitType {
     #[default]
     Commit,
-    Stash {
-        parent_commit_committer_date: DateTime<Local>,
-    },
+    Stash,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -49,25 +47,8 @@ pub struct Commit {
     pub committer_date: DateTime<Local>,
     pub subject: String,
     pub body: String,
-    // to preserve order of the original commits from `git log`, we store the commit hashes
     pub parent_commit_hashes: Vec<CommitHash>,
     pub commit_type: CommitType,
-}
-
-impl Commit {
-    pub fn committer_date_sort_key(&self) -> DateTime<Local> {
-        match self.commit_type {
-            CommitType::Commit => self.committer_date,
-            CommitType::Stash {
-                parent_commit_committer_date,
-            } => {
-                // The unit of committer_date is seconds, so add 1 nanosecond to make sure the stash commit appears after the parent commit
-                parent_commit_committer_date
-                    .checked_add_signed(TimeDelta::nanoseconds(1))
-                    .unwrap()
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -132,6 +113,7 @@ pub struct Repository {
 
     ref_map: RefMap,
     head: Head,
+    // to preserve order of the original commits from `git log`, we store the commit hashes
     commit_hashes: Vec<CommitHash>,
 }
 
@@ -139,11 +121,10 @@ impl Repository {
     pub fn load(path: &Path, sort: SortCommit) -> Self {
         check_git_repository(path);
 
-        // this currently passes `--all` to `git log`
-        // this makes the graph for stashes similar to how `git log --oneline` does
-        // stashes can be better presented as a single commit
-        // TODO: handle stashs better in the future
         let commits = load_all_commits(path, sort);
+        let stashes = load_all_stashes(path);
+
+        let commits = merge_stashes_to_commits(commits, stashes);
         let commit_hashes = commits.iter().map(|c| c.commit_hash.clone()).collect();
 
         let (parents_map, children_map) = build_commits_maps(&commits);
@@ -250,7 +231,10 @@ fn check_git_repository(path: &Path) {
 fn load_all_commits(path: &Path, sort: SortCommit) -> Vec<Commit> {
     let mut cmd = Command::new("git")
         .arg("log")
-        .arg("--all")
+        // exclude stashes and other refs
+        .arg("--branches")
+        .arg("--remotes")
+        .arg("--tags")
         .arg(match sort {
             SortCommit::Chronological => "--date-order",
             SortCommit::Topological => "--topo-order",
@@ -290,6 +274,55 @@ fn load_all_commits(path: &Path, sort: SortCommit) -> Vec<Commit> {
             body: parts[8].into(),
             parent_commit_hashes: parse_parent_commit_hashes(parts[9]),
             commit_type: CommitType::Commit,
+        };
+
+        commits.push(commit);
+    }
+
+    cmd.wait().unwrap();
+
+    commits
+}
+
+fn load_all_stashes(path: &Path) -> Vec<Commit> {
+    let mut cmd = Command::new("git")
+        .arg("stash")
+        .arg("list")
+        .arg(format!("--pretty={}", load_commits_format()))
+        .arg("--date=iso-strict")
+        .arg("-z") // use NUL as a delimiter
+        .current_dir(path)
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    let stdout = cmd.stdout.take().expect("failed to open stdout");
+
+    let reader = BufReader::new(stdout);
+
+    let mut commits = Vec::new();
+
+    for bytes in reader.split(b'\0') {
+        let bytes = bytes.unwrap();
+        let s = String::from_utf8_lossy(&bytes);
+
+        let parts: Vec<&str> = s.split('\x1f').collect();
+        if parts.len() != 10 {
+            panic!("unexpected number of parts: {} [{}]", parts.len(), s);
+        }
+
+        let commit = Commit {
+            commit_hash: parts[0].into(),
+            author_name: parts[1].into(),
+            author_email: parts[2].into(),
+            author_date: parse_iso_date(parts[3]),
+            committer_name: parts[4].into(),
+            committer_email: parts[5].into(),
+            committer_date: parse_iso_date(parts[6]),
+            subject: parts[7].into(),
+            body: parts[8].into(),
+            parent_commit_hashes: parse_parent_commit_hashes(parts[9]),
+            commit_type: CommitType::Stash,
         };
 
         commits.push(commit);
@@ -345,6 +378,23 @@ fn to_commit_map(commits: Vec<Commit>) -> CommitMap {
         .into_iter()
         .map(|commit| (commit.commit_hash.clone(), commit))
         .collect()
+}
+
+fn merge_stashes_to_commits(commits: Vec<Commit>, stashes: Vec<Commit>) -> Vec<Commit> {
+    // Stash commit has multiple parent commits, but the first parent commit is the commit that the stash was created from.
+    // If the first parent commit is not found, the stash commit is ignored.
+    let mut ret = Vec::new();
+    let mut statsh_map: HashMap<CommitHash, Commit> = stashes
+        .into_iter()
+        .map(|commit| (commit.parent_commit_hashes[0].clone(), commit))
+        .collect();
+    for commit in commits {
+        if let Some(stash) = statsh_map.remove(&commit.commit_hash) {
+            ret.push(stash);
+        }
+        ret.push(commit);
+    }
+    ret
 }
 
 fn load_refs(path: &Path) -> (RefMap, Head) {
