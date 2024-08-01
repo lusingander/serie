@@ -12,11 +12,11 @@ use ratatui::{
 use crate::{
     color::ColorSet,
     config::Config,
-    event::{AppEvent, Receiver, Sender},
+    event::{AppEvent, Receiver, Sender, UserEvent},
     external::copy_to_clipboard,
     git::Repository,
     graph::{Graph, GraphImage},
-    key_code_char,
+    keybind::KeyBind,
     protocol::ImageProtocol,
     view::View,
     widget::commit_list::{CommitInfo, CommitListState},
@@ -46,16 +46,20 @@ pub struct App<'a> {
     view: View<'a>,
     status_line: StatusLine,
 
+    keybind: &'a KeyBind,
     config: &'a Config,
     image_protocol: ImageProtocol,
+    insert_mode: bool,
     tx: Sender,
 }
 
 impl<'a> App<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         repository: &'a Repository,
         graph: &'a Graph,
         graph_image: &'a GraphImage,
+        keybind: &'a KeyBind,
         config: &'a Config,
         color_set: &'a ColorSet,
         image_protocol: ImageProtocol,
@@ -94,8 +98,10 @@ impl<'a> App<'a> {
             repository,
             status_line: StatusLine::None,
             view,
+            keybind,
             config,
             image_protocol,
+            insert_mode: false,
             tx,
         }
     }
@@ -111,31 +117,47 @@ impl App<'_> {
             terminal.draw(|f| self.render(f))?;
 
             match rx.recv() {
-                AppEvent::Key(key) => match key {
-                    key_code_char!('c', Ctrl) => {
-                        return Ok(());
-                    }
-                    _ => {
-                        match self.status_line {
-                            StatusLine::None | StatusLine::Input(_, _) => {
-                                // do nothing
+                AppEvent::Key(key) => {
+                    match self.keybind.get(&key) {
+                        Some(UserEvent::Quit) => {
+                            self.tx.send(AppEvent::Quit);
+                        }
+                        Some(UserEvent::CloseOrCancel) => {
+                            if self.insert_mode {
+                                self.insert_mode = false;
                             }
-                            StatusLine::NotificationInfo(_)
-                            | StatusLine::NotificationSuccess(_)
-                            | StatusLine::NotificationWarn(_) => {
-                                // Clear message and pass key input as is
-                                self.clear_status_line();
+                            self.view.handle_user_event(&UserEvent::CloseOrCancel);
+                        }
+                        Some(ue) => {
+                            match self.status_line {
+                                StatusLine::None | StatusLine::Input(_, _) => {
+                                    // do nothing
+                                }
+                                StatusLine::NotificationInfo(_)
+                                | StatusLine::NotificationSuccess(_)
+                                | StatusLine::NotificationWarn(_) => {
+                                    // Clear message and pass key input as is
+                                    self.clear_status_line();
+                                }
+                                StatusLine::NotificationError(_) => {
+                                    // Clear message and cancel key input
+                                    self.clear_status_line();
+                                    continue;
+                                }
                             }
-                            StatusLine::NotificationError(_) => {
-                                // Clear message and cancel key input
-                                self.clear_status_line();
-                                continue;
+                            if self.insert_mode {
+                                self.view.insert_key(key);
+                            } else {
+                                self.view.handle_user_event(ue);
                             }
                         }
-
-                        self.view.handle_key(key);
+                        None => {
+                            if self.insert_mode {
+                                self.view.insert_key(key);
+                            }
+                        }
                     }
-                },
+                }
                 AppEvent::Resize(w, h) => {
                     let _ = (w, h);
                 }
@@ -186,6 +208,9 @@ impl App<'_> {
                 }
                 AppEvent::NotifyError(msg) => {
                     self.error_notification(msg);
+                }
+                AppEvent::Insert => {
+                    self.insert_mode = true;
                 }
             }
         }

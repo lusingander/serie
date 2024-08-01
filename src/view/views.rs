@@ -2,7 +2,7 @@ use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
 use crate::{
     config::Config,
-    event::Sender,
+    event::{Sender, UserEvent},
     git::{Commit, FileChange, Ref},
     protocol::ImageProtocol,
     view::{detail::DetailView, help::HelpView, list::ListView, refs::RefsView},
@@ -20,13 +20,19 @@ pub enum View<'a> {
 }
 
 impl<'a> View<'a> {
-    pub fn handle_key(&mut self, key: KeyEvent) {
+    pub fn insert_key(&mut self, key: KeyEvent) {
+        if let View::List(view) = self {
+            view.insert_key(key)
+        }
+    }
+
+    pub fn handle_user_event(&mut self, event: &UserEvent) {
         match self {
             View::Default => {}
-            View::List(view) => view.handle_key(key),
-            View::Detail(view) => view.handle_key(key),
-            View::Refs(view) => view.handle_key(key),
-            View::Help(view) => view.handle_key(key),
+            View::List(view) => view.handle_user_event(event),
+            View::Detail(view) => view.handle_user_event(event),
+            View::Refs(view) => view.handle_user_event(event),
+            View::Help(view) => view.handle_user_event(event),
         }
     }
 

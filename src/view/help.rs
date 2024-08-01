@@ -1,5 +1,4 @@
 use ratatui::{
-    crossterm::event::{KeyCode, KeyEvent},
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Stylize},
     text::{Line, Span},
@@ -8,8 +7,7 @@ use ratatui::{
 };
 
 use crate::{
-    event::{AppEvent, Sender},
-    key_code, key_code_char,
+    event::{AppEvent, Sender, UserEvent},
     protocol::ImageProtocol,
     view::View,
 };
@@ -45,19 +43,16 @@ impl HelpView<'_> {
         }
     }
 
-    pub fn handle_key(&mut self, key: KeyEvent) {
-        match key {
-            key_code_char!('q') => {
-                self.tx.send(AppEvent::Quit);
-            }
-            key_code_char!('?') | key_code!(KeyCode::Esc) | key_code!(KeyCode::Backspace) => {
+    pub fn handle_user_event(&mut self, event: &UserEvent) {
+        match event {
+            UserEvent::HelpToggle | UserEvent::CloseOrCancel => {
                 self.tx.send(AppEvent::ClearHelp); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseHelp);
             }
-            key_code_char!('j') | key_code!(KeyCode::Down) => {
+            UserEvent::NavigateDown => {
                 self.scroll_down();
             }
-            key_code_char!('k') | key_code!(KeyCode::Up) => {
+            UserEvent::NavigateUp => {
                 self.scroll_up();
             }
             _ => {}

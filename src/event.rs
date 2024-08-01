@@ -5,6 +5,7 @@ use std::{
 };
 
 use ratatui::crossterm::event::KeyEvent;
+use serde::Deserialize;
 
 pub enum AppEvent {
     Key(KeyEvent),
@@ -25,6 +26,7 @@ pub enum AppEvent {
     NotifySuccess(String),
     NotifyWarn(String),
     NotifyError(String),
+    Insert,
 }
 
 #[derive(Clone)]
@@ -78,4 +80,34 @@ pub fn init() -> (Sender, Receiver) {
     });
 
     (tx, rx)
+}
+
+/// The event triggered by user's key input
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq)]
+pub enum UserEvent {
+    NavigateUp,
+    NavigateDown,
+    NavigateRight,
+    NavigateLeft,
+    Quit,
+    CloseOrCancel,
+    HelpToggle,
+    GoToTop,
+    GoToBottom,
+    GoToNext,
+    GoToPrevious,
+    ScrollUp,
+    ScrollDown,
+    PageUp,
+    PageDown,
+    HalfPageUp,
+    HalfPageDown,
+    SelectTop,
+    SelectMiddle,
+    SelectBottom,
+    ShowDetails,
+    Search,
+    ShortCopy,
+    FullCopy,
+    RefListToggle,
 }

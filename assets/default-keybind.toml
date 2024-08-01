@@ -1,0 +1,28 @@
+Quit = ["q", "ctrl-c"]
+NavigateUp = ["k", "up"]
+NavigateDown = ["j", "down"]
+NavigateRight = ["l", "right"]
+NavigateLeft = ["h", "left"]
+
+# close widget or cancel progress but not quit app
+CloseOrCancel = ["esc"]
+HelpToggle = ["?"]
+GoToTop = ["g"]
+GoToBottom = ["shift-g"]
+ScrollDown = ["ctrl-e"]
+ScrollUp = ["ctrl-y"]
+PageUp = ["ctrl-b"]
+PageDown = ["ctrl-f"]
+HalfPageUp = ["ctrl-u"]
+HalfPageDown = ["ctrl-d"]
+SelectTop = ["shift-h"]
+SelectMiddle = ["shift-m"]
+SelectBottom = ["shift-l"]
+ShowDetails = ["enter"]
+Search = ["/"]
+
+# copy part of information, ex: copy the short commit hash not all
+ShortCopy = ["c"]
+FullCopy = ["shift-c"]
+
+RefListToggle = ["tab"]

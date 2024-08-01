@@ -1,14 +1,12 @@
 use ratatui::{
-    crossterm::event::{KeyCode, KeyEvent},
     layout::{Constraint, Layout, Rect},
     Frame,
 };
 
 use crate::{
     config::Config,
-    event::{AppEvent, Sender},
+    event::{AppEvent, Sender, UserEvent},
     git::Ref,
-    key_code, key_code_char,
     widget::{
         commit_list::{CommitList, CommitListState},
         ref_list::{RefList, RefListState},
@@ -42,42 +40,39 @@ impl<'a> RefsView<'a> {
         }
     }
 
-    pub fn handle_key(&mut self, key: KeyEvent) {
-        match key {
-            key_code_char!('q') => {
-                self.tx.send(AppEvent::Quit);
-            }
-            key_code!(KeyCode::Esc) | key_code!(KeyCode::Backspace) | key_code!(KeyCode::Tab) => {
+    pub fn handle_user_event(&mut self, event: &UserEvent) {
+        match event {
+            UserEvent::CloseOrCancel | UserEvent::RefListToggle => {
                 self.tx.send(AppEvent::CloseRefs);
             }
-            key_code_char!('j') | key_code!(KeyCode::Down) => {
+            UserEvent::NavigateDown => {
                 self.ref_list_state.select_next();
                 self.update_commit_list_selected();
             }
-            key_code_char!('k') | key_code!(KeyCode::Up) => {
+            UserEvent::NavigateUp => {
                 self.ref_list_state.select_prev();
                 self.update_commit_list_selected();
             }
-            key_code_char!('g') => {
+            UserEvent::GoToTop => {
                 self.ref_list_state.select_first();
                 self.update_commit_list_selected();
             }
-            key_code_char!('G') => {
+            UserEvent::GoToBottom => {
                 self.ref_list_state.select_last();
                 self.update_commit_list_selected();
             }
-            key_code_char!('l') | key_code!(KeyCode::Right) => {
+            UserEvent::NavigateRight => {
                 self.ref_list_state.open_node();
                 self.update_commit_list_selected();
             }
-            key_code_char!('h') | key_code!(KeyCode::Left) => {
+            UserEvent::NavigateLeft => {
                 self.ref_list_state.close_node();
                 self.update_commit_list_selected();
             }
-            key_code_char!('c') => {
+            UserEvent::ShortCopy | UserEvent::FullCopy => {
                 self.copy_ref_name();
             }
-            key_code_char!('?') => {
+            UserEvent::HelpToggle => {
                 self.tx.send(AppEvent::OpenHelp);
             }
             _ => {}
