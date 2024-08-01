@@ -913,75 +913,35 @@ impl GitRepository<'_> {
     }
 
     fn init(&self) {
-        Command::new("git")
-            .args(["init", "-b", "master"])
-            .current_dir(self.path)
-            .output()
-            .expect("failed to execute git init");
+        self.run(&["init", "-b", "master"], "");
     }
 
     fn commit(&self, message: &str, date: &str) {
         let datetime_str = parse_date(date).to_rfc3339();
-        Command::new("git")
-            .args(["commit", "--allow-empty", "-m", message])
-            .current_dir(self.path)
-            .env("GIT_AUTHOR_NAME", "Author Name")
-            .env("GIT_AUTHOR_EMAIL", "author@example.com")
-            .env("GIT_AUTHOR_DATE", &datetime_str)
-            .env("GIT_COMMITTER_NAME", "Committer Name")
-            .env("GIT_COMMITTER_EMAIL", "committer@example.com")
-            .env("GIT_COMMITTER_DATE", &datetime_str)
-            .output()
-            .expect("failed to execute git commit");
+        self.run(&["commit", "--allow-empty", "-m", message], &datetime_str);
     }
 
     fn checkout(&self, branch_name: &str) {
-        Command::new("git")
-            .args(["checkout", branch_name])
-            .current_dir(self.path)
-            .output()
-            .expect("failed to execute git checkout");
+        self.run(&["checkout", branch_name], "");
     }
 
     fn checkout_b(&self, branch_name: &str) {
-        Command::new("git")
-            .args(["checkout", "-b", branch_name])
-            .current_dir(self.path)
-            .output()
-            .expect("failed to execute git checkout -b");
+        self.run(&["checkout", "-b", branch_name], "");
     }
 
     fn checkout_orphan(&self, branch_name: &str) {
-        Command::new("git")
-            .args(["checkout", "--orphan", branch_name])
-            .current_dir(self.path)
-            .output()
-            .expect("failed to execute git checkout --orphan");
+        self.run(&["checkout", "--orphan", branch_name], "");
     }
 
     fn merge(&self, branch_names: &[&str], date: &str) {
         let datetime_str = parse_date(date).to_rfc3339();
         let mut args = vec!["merge", "--no-ff", "--no-log"];
         args.extend_from_slice(branch_names);
-        Command::new("git")
-            .args(args)
-            .current_dir(self.path)
-            .env("GIT_AUTHOR_NAME", "Author Name")
-            .env("GIT_AUTHOR_EMAIL", "author@example.com")
-            .env("GIT_AUTHOR_DATE", &datetime_str)
-            .env("GIT_COMMITTER_NAME", "Committer Name")
-            .env("GIT_COMMITTER_EMAIL", "committer@example.com")
-            .env("GIT_COMMITTER_DATE", &datetime_str)
-            .output()
-            .expect("failed to execute git merge");
+        self.run(&args, &datetime_str);
     }
 
     fn branch_d(&self, branch_name: &str) {
-        Command::new("git")
-            .args(["branch", "-D", branch_name])
-            .current_dir(self.path)
-            .output()
-            .expect("failed to execute git branch -D");
+        self.run(&["branch", "-D", branch_name], "");
     }
 
     fn stash(&self, date: &str) {
@@ -989,26 +949,28 @@ impl GitRepository<'_> {
         std::fs::File::create(dummy_file_path).unwrap();
 
         let datetime_str = parse_date(date).to_rfc3339();
-        Command::new("git")
-            .args(["stash", "--include-untracked"])
-            .current_dir(self.path)
-            .env("GIT_AUTHOR_NAME", "Author Name")
-            .env("GIT_AUTHOR_EMAIL", "author@example.com")
-            .env("GIT_AUTHOR_DATE", &datetime_str)
-            .env("GIT_COMMITTER_NAME", "Committer Name")
-            .env("GIT_COMMITTER_EMAIL", "committer@example.com")
-            .env("GIT_COMMITTER_DATE", &datetime_str)
-            .output()
-            .expect("failed to execute git stash");
+        self.run(&["stash", "--include-untracked"], &datetime_str);
     }
 
     fn log(&self) {
-        let output = Command::new("git")
-            .args(["log", "--pretty=format:%h %s", "--graph", "--all"])
-            .current_dir(self.path)
-            .output()
-            .expect("failed to execute git log");
+        let output = self.run(&["log", "--pretty=format:%h %s", "--graph", "--all"], "");
         println!("{}", String::from_utf8(output.stdout).unwrap())
+    }
+
+    fn run(&self, args: &[&str], datetime_str: &str) -> std::process::Output {
+        Command::new("git")
+            .args(args)
+            .current_dir(self.path)
+            .env("GIT_AUTHOR_NAME", "Author Name")
+            .env("GIT_AUTHOR_EMAIL", "author@example.com")
+            .env("GIT_AUTHOR_DATE", datetime_str)
+            .env("GIT_COMMITTER_NAME", "Committer Name")
+            .env("GIT_COMMITTER_EMAIL", "committer@example.com")
+            .env("GIT_COMMITTER_DATE", datetime_str)
+            .env("GIT_CONFIG_NOSYSTEM", "true")
+            .env("HOME", "/dev/null")
+            .output()
+            .unwrap_or_else(|_| panic!("failed to execute git {}", args.join(" ")))
     }
 }
 
