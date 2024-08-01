@@ -128,7 +128,10 @@ fn update_commit_line<'a>(
     commit_line_state: &mut [Option<&'a CommitHash>],
     target_commit_hashes: &[&CommitHash],
 ) -> usize {
-    let mut min_pos_x = commit_line_state.len();
+    if commit_line_state.is_empty() {
+        return 0;
+    }
+    let mut min_pos_x = commit_line_state.len().saturating_sub(1);
     for target_hash in target_commit_hashes {
         for (pos_x, commit_hash) in commit_line_state.iter().enumerate() {
             if let Some(hash) = commit_hash {
