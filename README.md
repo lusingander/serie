@@ -91,7 +91,7 @@ Serie - A rich git commit graph in your terminal, like magic 📚
 Usage: serie [OPTIONS]
 
 Options:
-  -p, --protocol <TYPE>  Image protocol to render graph [default: iterm] [possible values: iterm, kitty]
+  -p, --protocol <TYPE>  Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty]
   -o, --order <TYPE>     Commit ordering algorithm [default: chrono] [possible values: chrono, topo]
       --no-cache         Do not use graph image cache
   -h, --help             Print help
@@ -101,6 +101,8 @@ Options:
 #### -p, --protocol \<TYPE\>
 
 A protocol type for rendering images of commit graphs.
+By default `auto` will guess the best supported protocal for the current terminal.
+Kitty terminals are detected as `kitty` via an environment variable, and all others are assumed to support `iterm`.
 
 Refer to [Compatibility](#compatibility) for details.
 

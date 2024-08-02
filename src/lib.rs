@@ -12,6 +12,7 @@ mod view;
 mod widget;
 
 use std::{
+    env,
     io::{stdout, Stdout},
     panic,
     path::Path,
@@ -33,7 +34,7 @@ use ratatui::{
 #[command(version)]
 struct Args {
     /// Image protocol to render graph
-    #[arg(short, long, value_name = "TYPE", default_value = "iterm")]
+    #[arg(short, long, value_name = "TYPE", default_value = "auto")]
     protocol: ImageProtocolType,
 
     /// Commit ordering algorithm
@@ -47,6 +48,7 @@ struct Args {
 
 #[derive(Debug, Clone, ValueEnum)]
 enum ImageProtocolType {
+    Auto,
     Iterm,
     Kitty,
 }
@@ -54,6 +56,7 @@ enum ImageProtocolType {
 impl From<ImageProtocolType> for protocol::ImageProtocol {
     fn from(protocol: ImageProtocolType) -> Self {
         match protocol {
+            ImageProtocolType::Auto => auto_detect_best_protocol(),
             ImageProtocolType::Iterm => protocol::ImageProtocol::Iterm2,
             ImageProtocolType::Kitty => protocol::ImageProtocol::Kitty,
         }
@@ -94,6 +97,16 @@ fn initialize_panic_handler() {
         shutdown().unwrap();
         original_hook(panic_info);
     }));
+}
+
+// By default assume the Iterm2 is the best protocol to use for all terminals *unless* an env
+// variable is set that suggests the terminal is probably Kitty.
+fn auto_detect_best_protocol() -> protocol::ImageProtocol {
+    if env::var("KITTY_WINDOW_ID").is_ok() {
+        protocol::ImageProtocol::Kitty
+    } else {
+        protocol::ImageProtocol::Iterm2
+    }
 }
 
 pub fn run() -> std::io::Result<()> {
