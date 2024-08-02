@@ -6,7 +6,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use chrono::{DateTime, Local};
+use chrono::{DateTime, FixedOffset};
 
 use crate::graph::SortCommit;
 
@@ -41,10 +41,10 @@ pub struct Commit {
     pub commit_hash: CommitHash,
     pub author_name: String,
     pub author_email: String,
-    pub author_date: DateTime<Local>,
+    pub author_date: DateTime<FixedOffset>,
     pub committer_name: String,
     pub committer_email: String,
-    pub committer_date: DateTime<Local>,
+    pub committer_date: DateTime<FixedOffset>,
     pub subject: String,
     pub body: String,
     pub parent_commit_hashes: Vec<CommitHash>,
@@ -340,10 +340,8 @@ fn load_commits_format() -> String {
     .join("%x1f") // use Unit Separator as a delimiter
 }
 
-fn parse_iso_date(s: &str) -> DateTime<Local> {
-    DateTime::parse_from_rfc3339(s)
-        .unwrap()
-        .with_timezone(&Local)
+fn parse_iso_date(s: &str) -> DateTime<FixedOffset> {
+    DateTime::parse_from_rfc3339(s).unwrap()
 }
 
 fn parse_parent_commit_hashes(s: &str) -> Vec<CommitHash> {

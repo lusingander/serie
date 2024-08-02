@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local};
+use chrono::{DateTime, FixedOffset};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -164,8 +164,14 @@ impl CommitDetail<'_> {
         &'a self,
         name: &'a str,
         email: &'a str,
-        date: &'a DateTime<Local>,
+        date: &'a DateTime<FixedOffset>,
     ) -> Vec<Line<'a>> {
+        let date_str = if self.config.date_local {
+            let local = date.with_timezone(&chrono::Local);
+            local.format(&self.config.date_format).to_string()
+        } else {
+            date.format(&self.config.date_format).to_string()
+        };
         vec![
             Line::from(vec![
                 name.into(),
@@ -173,7 +179,7 @@ impl CommitDetail<'_> {
                 email.fg(EMAIL_TEXT_COLOR),
                 "> ".into(),
             ]),
-            Line::raw(date.format(&self.config.date_format).to_string()),
+            Line::raw(date_str),
         ]
     }
 

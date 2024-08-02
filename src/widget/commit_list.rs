@@ -702,11 +702,14 @@ impl CommitList<'_> {
         let items: Vec<ListItem> = self
             .rendering_commit_iter(state)
             .map(|(i, commit)| {
-                let date = commit
-                    .author_date
-                    .format(&self.config.date_format)
-                    .to_string();
-                self.to_commit_list_item(i, vec![date.fg(DATE_COLOR)], state)
+                let date = &commit.author_date;
+                let date_str = if self.config.date_local {
+                    let local = date.with_timezone(&chrono::Local);
+                    local.format(&self.config.date_format).to_string()
+                } else {
+                    date.format(&self.config.date_format).to_string()
+                };
+                self.to_commit_list_item(i, vec![date_str.fg(DATE_COLOR)], state)
             })
             .collect();
         Widget::render(List::new(items), area, buf);

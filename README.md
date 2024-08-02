@@ -203,6 +203,9 @@ date_format = "%Y-%m-%d"
 # The width of a author date in the commit list.
 # type: u16
 date_width = 10
+# Whether to show a author date in the commit list in local timezone.
+# type: boolean
+date_local = true
 # The width of a author name in the commit list.
 # type: u16
 name_width = 20
@@ -213,6 +216,9 @@ name_width = 20
 # https://docs.rs/chrono/latest/chrono/format/strftime/index.html
 # type: string
 date_format = "%Y-%m-%d %H:%M:%S %z"
+# Whether to show a author/committer date in the commit list in local timezone.
+# type: boolean
+date_local = true
 ```
 
 ## Compatibility
