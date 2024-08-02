@@ -102,7 +102,9 @@ fn initialize_panic_handler() {
 // By default assume the Iterm2 is the best protocol to use for all terminals *unless* an env
 // variable is set that suggests the terminal is probably Kitty.
 fn auto_detect_best_protocol() -> protocol::ImageProtocol {
-    if env::var("KITTY_WINDOW_ID").is_ok() || env::var("TERM_PROGRAM").is_ok_and(|t| t == "ghostty")
+    if env::var("KITTY_WINDOW_ID").is_ok()
+        || env::var("TERM_PROGRAM").is_ok_and(|t| t == "ghostty")
+        || env::var("KONSOLE_VERSION").is_ok()
     {
         protocol::ImageProtocol::Kitty
     } else {
