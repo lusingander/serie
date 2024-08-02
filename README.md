@@ -249,6 +249,7 @@ The terminals on which each has been confirmed to work are listed below.
 | Terminal emulator                         | Support | Note |
 | ----------------------------------------- | ------- | ---- |
 | [kitty](https://sw.kovidgoyal.net/kitty/) | ○       |      |
+| [Ghostty](https://github.com/ghostty-org) | ○       |      |
 
 ### Reporting Compatibility
 
