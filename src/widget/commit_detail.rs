@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local};
+use chrono::{DateTime, FixedOffset};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -164,7 +164,7 @@ impl CommitDetail<'_> {
         &'a self,
         name: &'a str,
         email: &'a str,
-        date: &'a DateTime<Local>,
+        date: &'a DateTime<FixedOffset>,
     ) -> Vec<Line<'a>> {
         vec![
             Line::from(vec![
