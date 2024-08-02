@@ -102,7 +102,7 @@ Options:
 
 A protocol type for rendering images of commit graphs.
 By default `auto` will guess the best supported protocal for the current terminal.
-Kitty terminals are detected as `kitty` via an environment variable, and all others are assumed to support `iterm`.
+Kitty, Ghostty, and Konsole terminals are detected as `kitty` via environment variables, and all others are assumed to support `iterm`.
 
 Refer to [Compatibility](#compatibility) for details.
 
