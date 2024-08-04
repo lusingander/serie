@@ -1,0 +1,39 @@
+{
+  inputs.nixpkgs = {
+    type = "github";
+    owner = "NixOS";
+    repo = "nixpkgs";
+    ref = "nixos-unstable";
+  };
+
+  outputs =
+    { nixpkgs, self, ... }:
+    let
+      supportedSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+    in
+    {
+      packages = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          serie = pkgs.rustPlatform.buildRustPackage {
+            pname = (pkgs.lib.importTOML (./Cargo.toml)).package.name;
+            version = (pkgs.lib.importTOML (./Cargo.toml)).package.version;
+            src = ./.;
+            cargoLock.lockFile = ./Cargo.lock;
+            meta.mainProgram = "serie";
+            nativeBuildInputs = [ pkgs.git ];
+          };
+          default = self.packages.${system}.serie;
+        }
+      );
+    };
+}
