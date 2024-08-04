@@ -1,15 +1,13 @@
 use crate::event::UserEvent;
 use serde::{de::Deserializer, Deserialize};
 use std::collections::HashMap;
-use std::fs;
 use std::ops::{Deref, DerefMut};
-use std::path::PathBuf;
 
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 const DEFAULT_KEY_BIND: &str = include_str!("../assets/default-keybind.toml");
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct KeyBind(pub HashMap<KeyEvent, UserEvent>);
 
 impl Deref for KeyBind {
@@ -27,16 +25,12 @@ impl DerefMut for KeyBind {
 }
 
 impl KeyBind {
-    pub fn new(custom_keybind_path: Option<PathBuf>) -> Result<Self, ()> {
+    pub fn new(custom_keybind_patch: Option<KeyBind>) -> Result<Self, ()> {
         let mut keybind: KeyBind =
             toml::from_str(DEFAULT_KEY_BIND).expect("default key bind should be correct");
 
-        if let Some(custom_keybind_path) = custom_keybind_path {
-            let custom_keybind_content: String =
-                fs::read_to_string(custom_keybind_path).expect("custom keybind not found");
-            let mut custom_keybind: KeyBind =
-                toml::from_str(&custom_keybind_content).expect("custom key bind should be correct");
-            for (key_event, user_event) in custom_keybind.drain() {
+        if let Some(mut custom_keybind_patch) = custom_keybind_patch {
+            for (key_event, user_event) in custom_keybind_patch.drain() {
                 if let Some(_old_user_event) = keybind.insert(key_event, user_event) {
                     // log!("{key_event}: {_old_user_event} -> {user_event}")
                 }

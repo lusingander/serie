@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-
 use serde::Deserialize;
+
+use crate::keybind::KeyBind;
 
 const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
@@ -17,7 +17,7 @@ const DEFAULT_DETAIL_DATE_LOCAL: bool = true;
 pub struct Config {
     #[serde(default)]
     pub ui: UiConfig,
-    pub custom_keybind_path: Option<PathBuf>,
+    pub custom_keybind_patch: Option<KeyBind>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
@@ -134,6 +134,7 @@ mod tests {
                     date_local: true,
                 },
             },
+            custom_keybind_patch: None,
         };
         assert_eq!(actual, expected);
     }
@@ -166,6 +167,7 @@ mod tests {
                     date_local: false,
                 },
             },
+            custom_keybind_patch: None,
         };
         assert_eq!(actual, expected);
     }
@@ -191,6 +193,7 @@ mod tests {
                     date_local: true,
                 },
             },
+            custom_keybind_patch: None,
         };
         assert_eq!(actual, expected);
     }
