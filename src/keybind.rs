@@ -31,6 +31,14 @@ impl KeyBind {
         // TODO: let user patch key bind here
         Ok(keybind)
     }
+
+    pub fn keys_for_event(&self, user_event: &UserEvent) -> Vec<String> {
+        self.0
+            .iter()
+            .filter(|(_, ue)| *ue == user_event)
+            .map(|(ke, _)| key_event_to_string(ke))
+            .collect()
+    }
 }
 
 impl<'de> Deserialize<'de> for KeyBind {
@@ -139,4 +147,67 @@ fn parse_key_code_with_modifiers(
         _ => return Err(format!("Unable to parse {raw}")),
     };
     Ok(KeyEvent::new(c, modifiers))
+}
+
+pub fn key_event_to_string(key_event: &KeyEvent) -> String {
+    let char;
+    let key_code = match key_event.code {
+        KeyCode::Backspace => "backspace",
+        KeyCode::Enter => "enter",
+        KeyCode::Left => "left",
+        KeyCode::Right => "right",
+        KeyCode::Up => "up",
+        KeyCode::Down => "down",
+        KeyCode::Home => "home",
+        KeyCode::End => "end",
+        KeyCode::PageUp => "pageup",
+        KeyCode::PageDown => "pagedown",
+        KeyCode::Tab => "tab",
+        KeyCode::BackTab => "backtab",
+        KeyCode::Delete => "delete",
+        KeyCode::Insert => "insert",
+        KeyCode::F(c) => {
+            char = format!("f({c})");
+            &char
+        }
+        KeyCode::Char(' ') => "space",
+        KeyCode::Char(c) => {
+            char = c.to_string();
+            &char
+        }
+        KeyCode::Esc => "esc",
+        KeyCode::Null => "",
+        KeyCode::CapsLock => "",
+        KeyCode::Menu => "",
+        KeyCode::ScrollLock => "",
+        KeyCode::Media(_) => "",
+        KeyCode::NumLock => "",
+        KeyCode::PrintScreen => "",
+        KeyCode::Pause => "",
+        KeyCode::KeypadBegin => "",
+        KeyCode::Modifier(_) => "",
+    };
+
+    let mut modifiers = Vec::with_capacity(3);
+
+    if key_event.modifiers.intersects(KeyModifiers::CONTROL) {
+        modifiers.push("ctrl");
+    }
+
+    if key_event.modifiers.intersects(KeyModifiers::SHIFT) {
+        modifiers.push("shift");
+    }
+
+    if key_event.modifiers.intersects(KeyModifiers::ALT) {
+        modifiers.push("alt");
+    }
+
+    let mut key = modifiers.join("-");
+
+    if !key.is_empty() {
+        key.push('-');
+    }
+    key.push_str(key_code);
+
+    format!("<{key}>")
 }

@@ -311,7 +311,12 @@ impl App<'_> {
 
     fn open_help(&mut self) {
         let before_view = std::mem::take(&mut self.view);
-        self.view = View::of_help(before_view, self.image_protocol, self.tx.clone());
+        self.view = View::of_help(
+            before_view,
+            self.image_protocol,
+            self.tx.clone(),
+            self.keybind,
+        );
     }
 
     fn close_help(&mut self) {

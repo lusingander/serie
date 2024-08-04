@@ -4,6 +4,7 @@ use crate::{
     config::Config,
     event::{Sender, UserEvent},
     git::{Commit, FileChange, Ref},
+    keybind::KeyBind,
     protocol::ImageProtocol,
     view::{detail::DetailView, help::HelpView, list::ListView, refs::RefsView},
     widget::commit_list::CommitListState,
@@ -79,7 +80,12 @@ impl<'a> View<'a> {
         View::Refs(Box::new(RefsView::new(commit_list_state, refs, config, tx)))
     }
 
-    pub fn of_help(before: View<'a>, image_protocol: ImageProtocol, tx: Sender) -> Self {
-        View::Help(Box::new(HelpView::new(before, image_protocol, tx)))
+    pub fn of_help(
+        before: View<'a>,
+        image_protocol: ImageProtocol,
+        tx: Sender,
+        keybind: &'a KeyBind,
+    ) -> Self {
+        View::Help(Box::new(HelpView::new(before, image_protocol, tx, keybind)))
     }
 }
