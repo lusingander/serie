@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use serde::Deserialize;
 
 const APP_DIR_NAME: &str = "serie";
@@ -15,6 +17,7 @@ const DEFAULT_DETAIL_DATE_LOCAL: bool = true;
 pub struct Config {
     #[serde(default)]
     pub ui: UiConfig,
+    pub custom_keybind_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
