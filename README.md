@@ -101,7 +101,7 @@ Options:
 #### -p, --protocol \<TYPE\>
 
 A protocol type for rendering images of commit graphs.
-By default `auto` will guess the best supported protocal for the current terminal.
+By default `auto` will guess the best supported protocol for the current terminal.
 Kitty terminals are detected as `kitty` via an environment variable, and all others are assumed to support `iterm`.
 
 Refer to [Compatibility](#compatibility) for details.
@@ -252,12 +252,13 @@ The terminals on which each has been confirmed to work are listed below.
 
 ### Reporting Compatibility
 
-Please share your experience with other terminal emulators on the [Discussions](https://github.com/lusingander/serie/discussions).
+Please share your experience with other terminal emulators on the [Discussions](https://github.com/lusingander/serie/discussions/29).
 
 ## Contributing
 
 Contributions are welcome.
-Please check out [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+To get started with contributing, please review [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions that do not follow these guidelines may not be accepted.
 
 ## Screenshots
 
