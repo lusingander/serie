@@ -101,7 +101,7 @@ Options:
 #### -p, --protocol \<TYPE\>
 
 A protocol type for rendering images of commit graphs.
-By default `auto` will guess the best supported protocal for the current terminal.
+By default `auto` will guess the best supported protocol for the current terminal.
 Kitty, Ghostty, and Konsole terminals are detected as `kitty` via environment variables, and all others are assumed to support `iterm`.
 
 Refer to [Compatibility](#compatibility) for details.
