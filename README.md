@@ -183,7 +183,7 @@ You can see the keybindings by pressing the `?` key.
 ### Config
 
 If `$XDG_CONFIG_HOME/serie/config.toml` exists, it will be read and used.
-If `$XDG_CONFIG_HOME` is not set, `~/.cache/` will be used instead.
+If `$XDG_CONFIG_HOME` is not set, `~/.config/` will be used instead.
 
 If the config file does not exist, the default values will be used for all items.
 If the config file exists but some items are not set, the default values will be used for those unset items.
@@ -236,13 +236,13 @@ The terminals on which each has been confirmed to work are listed below.
 
 #### Inline Images Protocol
 
-| Terminal emulator                                                                | Support | Note                                                                                                  |
-| -------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------- |
-| [iTerm2](https://iterm2.com)                                                     | ○       | But slower than other terminals                                                                       |
-| [WezTerm](https://wezfurlong.org/wezterm/index.html)                             | ○       |                                                                                                       |
-| [VSCode integrated terminal](https://code.visualstudio.com/docs/terminal/basics) | ○       |                                                                                                       |
-| [Hyper](https://hyper.is)                                                        | △       | >=[v4.0.0](https://github.com/vercel/hyper/releases/tag/v4.0.0-canary.4), not yet officially released |
-| [Tabby](https://tabby.sh)                                                        | △       | The graph background is not transparent                                                               |
+| Terminal emulator                                                                | Support | Note                                                                                                                                         |
+| -------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| [iTerm2](https://iterm2.com)                                                     | ○       | But slower than other terminals                                                                                                              |
+| [WezTerm](https://wezfurlong.org/wezterm/index.html)                             | ○       |                                                                                                                                              |
+| [VSCode integrated terminal](https://code.visualstudio.com/docs/terminal/basics) | ○       | Requires the [`terminal.integrated.enableImages` setting](https://code.visualstudio.com/docs/terminal/advanced#_image-support) to be enabled |
+| [Hyper](https://hyper.is)                                                        | △       | >=[v4.0.0](https://github.com/vercel/hyper/releases/tag/v4.0.0-canary.4), not yet officially released                                        |
+| [Tabby](https://tabby.sh)                                                        | △       | The graph background is not transparent                                                                                                      |
 
 #### Terminal graphics protocol
 
@@ -254,12 +254,13 @@ The terminals on which each has been confirmed to work are listed below.
 
 ### Reporting Compatibility
 
-Please share your experience with other terminal emulators on the [Discussions](https://github.com/lusingander/serie/discussions).
+Please share your experience with other terminal emulators on the [Discussions](https://github.com/lusingander/serie/discussions/29).
 
 ## Contributing
 
 Contributions are welcome.
-Please check out [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+To get started with contributing, please review [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions that do not follow these guidelines may not be accepted.
 
 ## Screenshots
 
