@@ -117,7 +117,7 @@ impl App<'_> {
             match rx.recv() {
                 AppEvent::Key(key) => {
                     match self.keybind.get(&key) {
-                        Some(UserEvent::Quit) => {
+                        Some(UserEvent::ForceQuit) => {
                             self.tx.send(AppEvent::Quit);
                         }
                         Some(ue) => {

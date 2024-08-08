@@ -21,12 +21,6 @@ pub enum View<'a> {
 }
 
 impl<'a> View<'a> {
-    pub fn insert_key(&mut self, key: KeyEvent) {
-        if let View::List(view) = self {
-            view.insert_key(key)
-        }
-    }
-
     pub fn handle_event(&mut self, user_event: &UserEvent, key_event: KeyEvent) {
         match self {
             View::Default => {}

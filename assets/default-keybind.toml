@@ -1,4 +1,5 @@
-Quit = ["q", "ctrl-c"]
+ForceQuit = ["ctrl-c"]
+Quit = ["q"]
 NavigateUp = ["k", "up"]
 NavigateDown = ["j", "down"]
 NavigateRight = ["l", "right"]

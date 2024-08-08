@@ -94,6 +94,8 @@ pub enum UserEvent {
     NavigateRight,
     /// Navigate left
     NavigateLeft,
+    /// Force Quit serie without passing input into widges or views
+    ForceQuit,
     /// Quit serie
     Quit,
     /// Close widget or cancel current progress

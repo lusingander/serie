@@ -54,6 +54,9 @@ impl HelpView<'_> {
 
     pub fn handle_event(&mut self, event: &UserEvent, _: KeyEvent) {
         match event {
+            UserEvent::Quit => {
+                self.tx.send(AppEvent::Quit);
+            }
             UserEvent::HelpToggle | UserEvent::CloseOrCancel => {
                 self.tx.send(AppEvent::ClearHelp); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseHelp);

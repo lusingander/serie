@@ -27,11 +27,6 @@ impl<'a> ListView<'a> {
         }
     }
 
-    pub fn insert_key(&mut self, key: KeyEvent) {
-        self.as_mut_list_state().handle_search_input(key);
-        self.update_search_query();
-    }
-
     pub fn handle_event(&mut self, event: &UserEvent, key: KeyEvent) {
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
             match event {
@@ -49,6 +44,75 @@ impl<'a> ListView<'a> {
                 }
             }
             return;
+        } else {
+            match event {
+                UserEvent::Quit => {
+                    self.tx.send(AppEvent::Quit);
+                }
+                UserEvent::NavigateDown => {
+                    self.as_mut_list_state().select_next();
+                }
+                UserEvent::NavigateUp => {
+                    self.as_mut_list_state().select_prev();
+                }
+                UserEvent::GoToTop => {
+                    self.as_mut_list_state().select_first();
+                }
+                UserEvent::GoToBottom => {
+                    self.as_mut_list_state().select_last();
+                }
+                UserEvent::ScrollDown => {
+                    self.as_mut_list_state().scroll_down();
+                }
+                UserEvent::ScrollUp => {
+                    self.as_mut_list_state().scroll_up();
+                }
+                UserEvent::PageDown => {
+                    self.as_mut_list_state().scroll_down_page();
+                }
+                UserEvent::PageUp => {
+                    self.as_mut_list_state().scroll_up_page();
+                }
+                UserEvent::HalfPageDown => {
+                    self.as_mut_list_state().scroll_down_half();
+                }
+                UserEvent::HalfPageUp => {
+                    self.as_mut_list_state().scroll_up_half();
+                }
+                UserEvent::SelectTop => {
+                    self.as_mut_list_state().select_high();
+                }
+                UserEvent::SelectMiddle => {
+                    self.as_mut_list_state().select_middle();
+                }
+                UserEvent::SelectBottom => {
+                    self.as_mut_list_state().select_low();
+                }
+                UserEvent::ShortCopy => {
+                    self.copy_commit_short_hash();
+                }
+                UserEvent::FullCopy => {
+                    self.copy_commit_hash();
+                }
+                UserEvent::Search => {
+                    self.as_mut_list_state().start_search();
+                    self.update_search_query();
+                }
+                UserEvent::HelpToggle => {
+                    self.tx.send(AppEvent::OpenHelp);
+                }
+                UserEvent::CloseOrCancel => {
+                    self.as_mut_list_state().cancel_search();
+                    self.clear_search_query();
+                }
+                UserEvent::ShowDetails => {
+                    self.tx.send(AppEvent::OpenDetail);
+                }
+                UserEvent::RefListToggle => {
+                    self.tx.send(AppEvent::OpenRefs);
+                }
+                _ => {}
+            }
         }
 
         if let SearchState::Applied { .. } = self.as_list_state().search_state() {
@@ -64,72 +128,6 @@ impl<'a> ListView<'a> {
                 _ => {}
             }
             // Do not return here
-        }
-
-        match event {
-            UserEvent::NavigateDown => {
-                self.as_mut_list_state().select_next();
-            }
-            UserEvent::NavigateUp => {
-                self.as_mut_list_state().select_prev();
-            }
-            UserEvent::GoToTop => {
-                self.as_mut_list_state().select_first();
-            }
-            UserEvent::GoToBottom => {
-                self.as_mut_list_state().select_last();
-            }
-            UserEvent::ScrollDown => {
-                self.as_mut_list_state().scroll_down();
-            }
-            UserEvent::ScrollUp => {
-                self.as_mut_list_state().scroll_up();
-            }
-            UserEvent::PageDown => {
-                self.as_mut_list_state().scroll_down_page();
-            }
-            UserEvent::PageUp => {
-                self.as_mut_list_state().scroll_up_page();
-            }
-            UserEvent::HalfPageDown => {
-                self.as_mut_list_state().scroll_down_half();
-            }
-            UserEvent::HalfPageUp => {
-                self.as_mut_list_state().scroll_up_half();
-            }
-            UserEvent::SelectTop => {
-                self.as_mut_list_state().select_high();
-            }
-            UserEvent::SelectMiddle => {
-                self.as_mut_list_state().select_middle();
-            }
-            UserEvent::SelectBottom => {
-                self.as_mut_list_state().select_low();
-            }
-            UserEvent::ShortCopy => {
-                self.copy_commit_short_hash();
-            }
-            UserEvent::FullCopy => {
-                self.copy_commit_hash();
-            }
-            UserEvent::Search => {
-                self.as_mut_list_state().start_search();
-                self.update_search_query();
-            }
-            UserEvent::HelpToggle => {
-                self.tx.send(AppEvent::OpenHelp);
-            }
-            UserEvent::CloseOrCancel => {
-                self.as_mut_list_state().cancel_search();
-                self.clear_search_query();
-            }
-            UserEvent::ShowDetails => {
-                self.tx.send(AppEvent::OpenDetail);
-            }
-            UserEvent::RefListToggle => {
-                self.tx.send(AppEvent::OpenRefs);
-            }
-            _ => {}
         }
     }
 
