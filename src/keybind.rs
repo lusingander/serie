@@ -65,7 +65,10 @@ impl<'de> Deserialize<'de> for KeyBind {
                     }
                 };
                 if let Some(conflict_user_event) = key_map.insert(key_event, user_event.clone()) {
-                    panic!("{:?} map to multiple events: {:?}, {:?}", key_event, user_event, conflict_user_event);
+                    panic!(
+                        "{:?} map to multiple events: {:?}, {:?}",
+                        key_event, user_event, conflict_user_event
+                    );
                 }
             }
         }

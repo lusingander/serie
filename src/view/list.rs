@@ -30,7 +30,7 @@ impl<'a> ListView<'a> {
     pub fn handle_event(&mut self, event: &UserEvent, key: KeyEvent) {
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
             match event {
-                UserEvent::ShowDetails => {
+                UserEvent::Confirm => {
                     self.as_mut_list_state().apply_search();
                     self.update_matched_message();
                 }
@@ -105,7 +105,7 @@ impl<'a> ListView<'a> {
                     self.as_mut_list_state().cancel_search();
                     self.clear_search_query();
                 }
-                UserEvent::ShowDetails => {
+                UserEvent::Confirm => {
                     self.tx.send(AppEvent::OpenDetail);
                 }
                 UserEvent::RefListToggle => {

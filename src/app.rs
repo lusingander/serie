@@ -131,19 +131,17 @@ impl App<'_> {
             }
 
             match rx.recv() {
-                AppEvent::Key(key) => {
-                    match self.keybind.get(&key) {
-                        Some(UserEvent::ForceQuit) => {
-                            self.tx.send(AppEvent::Quit);
-                        }
-                        Some(ue) => {
-                            self.view.handle_event(ue, key);
-                        }
-                        None => {
-                            self.view.handle_event(&UserEvent::Unknown, key);
-                        }
+                AppEvent::Key(key) => match self.keybind.get(&key) {
+                    Some(UserEvent::ForceQuit) => {
+                        self.tx.send(AppEvent::Quit);
                     }
-                }
+                    Some(ue) => {
+                        self.view.handle_event(ue, key);
+                    }
+                    None => {
+                        self.view.handle_event(&UserEvent::Unknown, key);
+                    }
+                },
                 AppEvent::Resize(w, h) => {
                     let _ = (w, h);
                 }

@@ -21,7 +21,7 @@ HalfPageDown = ["ctrl-d"]
 SelectTop = ["shift-h"]
 SelectMiddle = ["shift-m"]
 SelectBottom = ["shift-l"]
-ShowDetails = ["enter"]
+Confirm = ["enter"]
 Search = ["/"]
 
 # copy part of information, ex: copy the short commit hash not all

@@ -128,8 +128,8 @@ pub enum UserEvent {
     SelectMiddle,
     /// Select bottom part
     SelectBottom,
-    /// Show details
-    ShowDetails,
+    /// Confirm
+    Confirm,
     /// Search
     Search,
     /// Copy part of content
