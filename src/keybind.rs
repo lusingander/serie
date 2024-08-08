@@ -61,13 +61,11 @@ impl<'de> Deserialize<'de> for KeyBind {
                 let key_event = match parse_key_event(key_event_str) {
                     Ok(e) => e,
                     Err(s) => {
-                        eprintln!("{s:?} is not a valid key event");
-                        panic!("key event incorrect!");
+                        panic!("{:?} is not a valid key event", s);
                     }
                 };
                 if let Some(conflict_user_event) = key_map.insert(key_event, user_event.clone()) {
-                    eprintln!("{key_event:?} map to multiple events: {user_event:?}, {conflict_user_event:?}");
-                    panic!("key conflict!");
+                    panic!("{:?} map to multiple events: {:?}, {:?}", key_event, user_event, conflict_user_event);
                 }
             }
         }
