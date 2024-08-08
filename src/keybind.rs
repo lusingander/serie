@@ -25,7 +25,7 @@ impl DerefMut for KeyBind {
 }
 
 impl KeyBind {
-    pub fn new(custom_keybind_patch: Option<KeyBind>) -> Result<Self, ()> {
+    pub fn new(custom_keybind_patch: Option<KeyBind>) -> Self {
         let mut keybind: KeyBind =
             toml::from_str(DEFAULT_KEY_BIND).expect("default key bind should be correct");
 
@@ -37,7 +37,7 @@ impl KeyBind {
             }
         }
 
-        Ok(keybind)
+        keybind
     }
 
     pub fn keys_for_event(&self, user_event: &UserEvent) -> Vec<String> {
