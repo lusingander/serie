@@ -113,6 +113,22 @@ impl App<'_> {
     ) -> std::io::Result<()> {
         loop {
             terminal.draw(|f| self.render(f))?;
+            match self.status_line {
+                StatusLine::None | StatusLine::Input(_, _) => {
+                    // do nothing
+                }
+                StatusLine::NotificationInfo(_)
+                | StatusLine::NotificationSuccess(_)
+                | StatusLine::NotificationWarn(_) => {
+                    // Clear message and pass key input as is
+                    self.clear_status_line();
+                }
+                StatusLine::NotificationError(_) => {
+                    // Clear message and cancel key input
+                    self.clear_status_line();
+                    continue;
+                }
+            }
 
             match rx.recv() {
                 AppEvent::Key(key) => {
@@ -121,22 +137,6 @@ impl App<'_> {
                             self.tx.send(AppEvent::Quit);
                         }
                         Some(ue) => {
-                            match self.status_line {
-                                StatusLine::None | StatusLine::Input(_, _) => {
-                                    // do nothing
-                                }
-                                StatusLine::NotificationInfo(_)
-                                | StatusLine::NotificationSuccess(_)
-                                | StatusLine::NotificationWarn(_) => {
-                                    // Clear message and pass key input as is
-                                    self.clear_status_line();
-                                }
-                                StatusLine::NotificationError(_) => {
-                                    // Clear message and cancel key input
-                                    self.clear_status_line();
-                                    continue;
-                                }
-                            }
                             self.view.handle_event(ue, key);
                         }
                         None => {
