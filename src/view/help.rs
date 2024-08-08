@@ -1,4 +1,5 @@
 use ratatui::{
+    crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Stylize},
     text::{Line, Span},
@@ -51,7 +52,7 @@ impl HelpView<'_> {
         }
     }
 
-    pub fn handle_user_event(&mut self, event: &UserEvent) {
+    pub fn handle_event(&mut self, event: &UserEvent, _: KeyEvent) {
         match event {
             UserEvent::HelpToggle | UserEvent::CloseOrCancel => {
                 self.tx.send(AppEvent::ClearHelp); // hack: reset the rendering of the image area

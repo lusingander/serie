@@ -32,7 +32,7 @@ impl<'a> ListView<'a> {
         self.update_search_query();
     }
 
-    pub fn handle_user_event(&mut self, event: &UserEvent) {
+    pub fn handle_event(&mut self, event: &UserEvent, key: KeyEvent) {
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
             match event {
                 UserEvent::ShowDetails => {
@@ -43,7 +43,10 @@ impl<'a> ListView<'a> {
                     self.as_mut_list_state().cancel_search();
                     self.clear_search_query();
                 }
-                _ => (),
+                _ => {
+                    self.as_mut_list_state().handle_search_input(key);
+                    self.update_search_query();
+                }
             }
             return;
         }
@@ -111,7 +114,6 @@ impl<'a> ListView<'a> {
             }
             UserEvent::Search => {
                 self.as_mut_list_state().start_search();
-                self.tx.send(AppEvent::Insert);
                 self.update_search_query();
             }
             UserEvent::HelpToggle => {

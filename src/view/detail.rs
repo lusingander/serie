@@ -1,4 +1,5 @@
 use ratatui::{
+    crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
     widgets::Clear,
     Frame,
@@ -53,7 +54,7 @@ impl<'a> DetailView<'a> {
         }
     }
 
-    pub fn handle_user_event(&mut self, event: &UserEvent) {
+    pub fn handle_event(&mut self, event: &UserEvent, _: KeyEvent) {
         match event {
             UserEvent::NavigateDown => {
                 self.commit_detail_state.scroll_down();

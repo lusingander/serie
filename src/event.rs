@@ -27,7 +27,6 @@ pub enum AppEvent {
     NotifySuccess(String),
     NotifyWarn(String),
     NotifyError(String),
-    Insert,
 }
 
 #[derive(Clone)]
@@ -137,4 +136,5 @@ pub enum UserEvent {
     FullCopy,
     /// Toggle for Reference List
     RefListToggle,
+    Unknown,
 }

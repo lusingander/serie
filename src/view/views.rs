@@ -27,13 +27,13 @@ impl<'a> View<'a> {
         }
     }
 
-    pub fn handle_user_event(&mut self, event: &UserEvent) {
+    pub fn handle_event(&mut self, user_event: &UserEvent, key_event: KeyEvent) {
         match self {
             View::Default => {}
-            View::List(view) => view.handle_user_event(event),
-            View::Detail(view) => view.handle_user_event(event),
-            View::Refs(view) => view.handle_user_event(event),
-            View::Help(view) => view.handle_user_event(event),
+            View::List(view) => view.handle_event(user_event, key_event),
+            View::Detail(view) => view.handle_event(user_event, key_event),
+            View::Refs(view) => view.handle_event(user_event, key_event),
+            View::Help(view) => view.handle_event(user_event, key_event),
         }
     }
 

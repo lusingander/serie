@@ -49,7 +49,6 @@ pub struct App<'a> {
     keybind: &'a KeyBind,
     config: &'a Config,
     image_protocol: ImageProtocol,
-    insert_mode: bool,
     tx: Sender,
 }
 
@@ -101,7 +100,6 @@ impl<'a> App<'a> {
             keybind,
             config,
             image_protocol,
-            insert_mode: false,
             tx,
         }
     }
@@ -122,12 +120,6 @@ impl App<'_> {
                         Some(UserEvent::Quit) => {
                             self.tx.send(AppEvent::Quit);
                         }
-                        Some(UserEvent::CloseOrCancel) => {
-                            if self.insert_mode {
-                                self.insert_mode = false;
-                            }
-                            self.view.handle_user_event(&UserEvent::CloseOrCancel);
-                        }
                         Some(ue) => {
                             match self.status_line {
                                 StatusLine::None | StatusLine::Input(_, _) => {
@@ -145,16 +137,10 @@ impl App<'_> {
                                     continue;
                                 }
                             }
-                            if self.insert_mode {
-                                self.view.insert_key(key);
-                            } else {
-                                self.view.handle_user_event(ue);
-                            }
+                            self.view.handle_event(ue, key);
                         }
                         None => {
-                            if self.insert_mode {
-                                self.view.insert_key(key);
-                            }
+                            self.view.handle_event(&UserEvent::Unknown, key);
                         }
                     }
                 }
@@ -208,9 +194,6 @@ impl App<'_> {
                 }
                 AppEvent::NotifyError(msg) => {
                     self.error_notification(msg);
-                }
-                AppEvent::Insert => {
-                    self.insert_mode = true;
                 }
             }
         }

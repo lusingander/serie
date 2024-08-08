@@ -1,4 +1,5 @@
 use ratatui::{
+    crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
     Frame,
 };
@@ -40,7 +41,7 @@ impl<'a> RefsView<'a> {
         }
     }
 
-    pub fn handle_user_event(&mut self, event: &UserEvent) {
+    pub fn handle_event(&mut self, event: &UserEvent, _: KeyEvent) {
         match event {
             UserEvent::CloseOrCancel | UserEvent::RefListToggle => {
                 self.tx.send(AppEvent::CloseRefs);
