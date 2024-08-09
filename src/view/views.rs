@@ -2,8 +2,9 @@ use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
 use crate::{
     config::Config,
-    event::Sender,
+    event::{Sender, UserEvent},
     git::{Commit, FileChange, Ref},
+    keybind::KeyBind,
     protocol::ImageProtocol,
     view::{detail::DetailView, help::HelpView, list::ListView, refs::RefsView},
     widget::commit_list::CommitListState,
@@ -20,13 +21,13 @@ pub enum View<'a> {
 }
 
 impl<'a> View<'a> {
-    pub fn handle_key(&mut self, key: KeyEvent) {
+    pub fn handle_event(&mut self, user_event: &UserEvent, key_event: KeyEvent) {
         match self {
             View::Default => {}
-            View::List(view) => view.handle_key(key),
-            View::Detail(view) => view.handle_key(key),
-            View::Refs(view) => view.handle_key(key),
-            View::Help(view) => view.handle_key(key),
+            View::List(view) => view.handle_event(user_event, key_event),
+            View::Detail(view) => view.handle_event(user_event, key_event),
+            View::Refs(view) => view.handle_event(user_event, key_event),
+            View::Help(view) => view.handle_event(user_event, key_event),
         }
     }
 
@@ -73,7 +74,12 @@ impl<'a> View<'a> {
         View::Refs(Box::new(RefsView::new(commit_list_state, refs, config, tx)))
     }
 
-    pub fn of_help(before: View<'a>, image_protocol: ImageProtocol, tx: Sender) -> Self {
-        View::Help(Box::new(HelpView::new(before, image_protocol, tx)))
+    pub fn of_help(
+        before: View<'a>,
+        image_protocol: ImageProtocol,
+        tx: Sender,
+        keybind: &'a KeyBind,
+    ) -> Self {
+        View::Help(Box::new(HelpView::new(before, image_protocol, tx, keybind)))
     }
 }

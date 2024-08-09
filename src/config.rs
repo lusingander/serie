@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::keybind::KeyBind;
+
 const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
 
@@ -15,6 +17,8 @@ const DEFAULT_DETAIL_DATE_LOCAL: bool = true;
 pub struct Config {
     #[serde(default)]
     pub ui: UiConfig,
+    /// The user customed keybinds, please ref `assets/default-keybind.toml`
+    pub keybind: Option<KeyBind>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
@@ -131,6 +135,7 @@ mod tests {
                     date_local: true,
                 },
             },
+            keybind: None,
         };
         assert_eq!(actual, expected);
     }
@@ -163,6 +168,7 @@ mod tests {
                     date_local: false,
                 },
             },
+            keybind: None,
         };
         assert_eq!(actual, expected);
     }
@@ -188,6 +194,7 @@ mod tests {
                     date_local: true,
                 },
             },
+            keybind: None,
         };
         assert_eq!(actual, expected);
     }

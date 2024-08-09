@@ -7,6 +7,7 @@ mod app;
 mod config;
 mod event;
 mod external;
+mod keybind;
 mod macros;
 mod view;
 mod widget;
@@ -112,7 +113,8 @@ fn auto_detect_best_protocol() -> protocol::ImageProtocol {
 pub fn run() -> std::io::Result<()> {
     color_eyre::install().unwrap();
     let args = Args::parse();
-    let config = config::Config::load();
+    let mut config = config::Config::load();
+    let key_bind = keybind::KeyBind::new(config.keybind.take());
 
     let color_set = color::ColorSet::default();
     let image_protocol = args.protocol.into();
@@ -133,6 +135,7 @@ pub fn run() -> std::io::Result<()> {
         &repository,
         &graph,
         &graph_image,
+        &key_bind,
         &config,
         &color_set,
         image_protocol,

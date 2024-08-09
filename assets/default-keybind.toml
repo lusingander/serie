@@ -1,0 +1,31 @@
+force_quit = ["ctrl-c"]
+quit = ["q"]
+navigate_up = ["k", "up"]
+navigate_down = ["j", "down"]
+navigate_right = ["l", "right"]
+navigate_left = ["h", "left"]
+
+# close widget or cancel progress but not quit app
+close_or_cancel = ["esc"]
+help_toggle = ["?"]
+go_to_top = ["g"]
+go_to_bottom = ["shift-G"]
+go_to_next = ["n"]
+go_to_previous = ["shift-N"]
+scroll_down = ["ctrl-e"]
+scroll_up = ["ctrl-y"]
+page_up = ["ctrl-b"]
+page_down = ["ctrl-f"]
+half_page_up = ["ctrl-u"]
+half_page_down = ["ctrl-d"]
+select_top = ["shift-H"]
+select_middle = ["shift-M"]
+select_bottom = ["shift-L"]
+confirm = ["enter"]
+search = ["/"]
+
+# copy part of information, ex: copy the short commit hash not all
+short_copy = ["c"]
+full_copy = ["shift-C"]
+
+ref_list_toggle = ["tab"]

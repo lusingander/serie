@@ -5,6 +5,8 @@ use std::{
 };
 
 use ratatui::crossterm::event::KeyEvent;
+use serde::Deserialize;
+use strum::{EnumIter, EnumMessage};
 
 pub enum AppEvent {
     Key(KeyEvent),
@@ -78,4 +80,64 @@ pub fn init() -> (Sender, Receiver) {
     });
 
     (tx, rx)
+}
+
+/// The event triggered by user's key input
+#[derive(Clone, Debug, strum::Display, Deserialize, EnumIter, Eq, EnumMessage, Hash, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum UserEvent {
+    // NOTE User Event should have document, else the enum item will be hidden in the help page
+    /// Navigate up
+    NavigateUp,
+    /// Navigate down
+    NavigateDown,
+    /// Navigate right
+    NavigateRight,
+    /// Navigate left
+    NavigateLeft,
+    /// Force Quit serie without passing input into widges or views
+    ForceQuit,
+    /// Quit serie
+    Quit,
+    /// Close widget or cancel current progress
+    CloseOrCancel,
+    /// Toggle Help page
+    HelpToggle,
+    /// Go to top
+    GoToTop,
+    /// Go to bottom
+    GoToBottom,
+    /// Go to next item
+    GoToNext,
+    /// Go to previous item
+    GoToPrevious,
+    /// Scroll one line up
+    ScrollUp,
+    /// Scroll one line down
+    ScrollDown,
+    /// Scroll one page up
+    PageUp,
+    /// Scroll one page down
+    PageDown,
+    /// Scroll half page up
+    HalfPageUp,
+    /// Scroll half page down
+    HalfPageDown,
+    /// Select top part
+    SelectTop,
+    /// Select middle part
+    SelectMiddle,
+    /// Select bottom part
+    SelectBottom,
+    /// Confirm
+    Confirm,
+    /// Search
+    Search,
+    /// Copy part of content
+    ShortCopy,
+    /// Copy
+    FullCopy,
+    /// Toggle for Reference List
+    RefListToggle,
+    Unknown,
 }

@@ -12,11 +12,11 @@ use ratatui::{
 use crate::{
     color::ColorSet,
     config::Config,
-    event::{AppEvent, Receiver, Sender},
+    event::{AppEvent, Receiver, Sender, UserEvent},
     external::copy_to_clipboard,
     git::Repository,
     graph::{Graph, GraphImage},
-    key_code_char,
+    keybind::KeyBind,
     protocol::ImageProtocol,
     view::View,
     widget::commit_list::{CommitInfo, CommitListState},
@@ -46,16 +46,19 @@ pub struct App<'a> {
     view: View<'a>,
     status_line: StatusLine,
 
+    keybind: &'a KeyBind,
     config: &'a Config,
     image_protocol: ImageProtocol,
     tx: Sender,
 }
 
 impl<'a> App<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         repository: &'a Repository,
         graph: &'a Graph,
         graph_image: &'a GraphImage,
+        keybind: &'a KeyBind,
         config: &'a Config,
         color_set: &'a ColorSet,
         image_protocol: ImageProtocol,
@@ -94,6 +97,7 @@ impl<'a> App<'a> {
             repository,
             status_line: StatusLine::None,
             view,
+            keybind,
             config,
             image_protocol,
             tx,
@@ -109,33 +113,37 @@ impl App<'_> {
     ) -> std::io::Result<()> {
         loop {
             terminal.draw(|f| self.render(f))?;
-
             match rx.recv() {
-                AppEvent::Key(key) => match key {
-                    key_code_char!('c', Ctrl) => {
-                        return Ok(());
-                    }
-                    _ => {
-                        match self.status_line {
-                            StatusLine::None | StatusLine::Input(_, _) => {
-                                // do nothing
-                            }
-                            StatusLine::NotificationInfo(_)
-                            | StatusLine::NotificationSuccess(_)
-                            | StatusLine::NotificationWarn(_) => {
-                                // Clear message and pass key input as is
-                                self.clear_status_line();
-                            }
-                            StatusLine::NotificationError(_) => {
-                                // Clear message and cancel key input
-                                self.clear_status_line();
-                                continue;
-                            }
+                AppEvent::Key(key) => {
+                    match self.status_line {
+                        StatusLine::None | StatusLine::Input(_, _) => {
+                            // do nothing
                         }
-
-                        self.view.handle_key(key);
+                        StatusLine::NotificationInfo(_)
+                        | StatusLine::NotificationSuccess(_)
+                        | StatusLine::NotificationWarn(_) => {
+                            // Clear message and pass key input as is
+                            self.clear_status_line();
+                        }
+                        StatusLine::NotificationError(_) => {
+                            // Clear message and cancel key input
+                            self.clear_status_line();
+                            continue;
+                        }
                     }
-                },
+
+                    match self.keybind.get(&key) {
+                        Some(UserEvent::ForceQuit) => {
+                            self.tx.send(AppEvent::Quit);
+                        }
+                        Some(ue) => {
+                            self.view.handle_event(ue, key);
+                        }
+                        None => {
+                            self.view.handle_event(&UserEvent::Unknown, key);
+                        }
+                    }
+                }
                 AppEvent::Resize(w, h) => {
                     let _ = (w, h);
                 }
@@ -286,7 +294,12 @@ impl App<'_> {
 
     fn open_help(&mut self) {
         let before_view = std::mem::take(&mut self.view);
-        self.view = View::of_help(before_view, self.image_protocol, self.tx.clone());
+        self.view = View::of_help(
+            before_view,
+            self.image_protocol,
+            self.tx.clone(),
+            self.keybind,
+        );
     }
 
     fn close_help(&mut self) {

@@ -1786,6 +1786,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha1",
+ "strum",
  "tempfile",
  "text-to-png",
  "toml",

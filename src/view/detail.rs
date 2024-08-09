@@ -1,5 +1,5 @@
 use ratatui::{
-    crossterm::event::{KeyCode, KeyEvent},
+    crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
     widgets::Clear,
     Frame,
@@ -7,9 +7,8 @@ use ratatui::{
 
 use crate::{
     config::Config,
-    event::{AppEvent, Sender},
+    event::{AppEvent, Sender, UserEvent},
     git::{Commit, FileChange, Ref},
-    key_code, key_code_char,
     protocol::ImageProtocol,
     widget::{
         commit_detail::{CommitDetail, CommitDetailState},
@@ -55,27 +54,24 @@ impl<'a> DetailView<'a> {
         }
     }
 
-    pub fn handle_key(&mut self, key: KeyEvent) {
-        match key {
-            key_code_char!('q') => {
-                self.tx.send(AppEvent::Quit);
-            }
-            key_code_char!('j') | key_code!(KeyCode::Down) => {
+    pub fn handle_event(&mut self, event: &UserEvent, _: KeyEvent) {
+        match event {
+            UserEvent::NavigateDown => {
                 self.commit_detail_state.scroll_down();
             }
-            key_code_char!('k') | key_code!(KeyCode::Up) => {
+            UserEvent::NavigateUp => {
                 self.commit_detail_state.scroll_up();
             }
-            key_code_char!('c') => {
+            UserEvent::ShortCopy => {
                 self.copy_commit_short_hash();
             }
-            key_code_char!('C') => {
+            UserEvent::FullCopy => {
                 self.copy_commit_hash();
             }
-            key_code_char!('?') => {
+            UserEvent::HelpToggle => {
                 self.tx.send(AppEvent::OpenHelp);
             }
-            key_code!(KeyCode::Esc) | key_code!(KeyCode::Backspace) => {
+            UserEvent::CloseOrCancel => {
                 self.tx.send(AppEvent::ClearDetail); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseDetail);
             }
