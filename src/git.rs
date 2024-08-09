@@ -382,13 +382,17 @@ fn merge_stashes_to_commits(commits: Vec<Commit>, stashes: Vec<Commit>) -> Vec<C
     // Stash commit has multiple parent commits, but the first parent commit is the commit that the stash was created from.
     // If the first parent commit is not found, the stash commit is ignored.
     let mut ret = Vec::new();
-    let mut statsh_map: HashMap<CommitHash, Commit> = stashes
-        .into_iter()
-        .map(|commit| (commit.parent_commit_hashes[0].clone(), commit))
-        .collect();
+    let mut statsh_map: HashMap<CommitHash, Vec<Commit>> =
+        stashes.into_iter().fold(HashMap::new(), |mut acc, commit| {
+            let parent = commit.parent_commit_hashes[0].clone();
+            acc.entry(parent).or_default().push(commit);
+            acc
+        });
     for commit in commits {
-        if let Some(stash) = statsh_map.remove(&commit.commit_hash) {
-            ret.push(stash);
+        if let Some(stashes) = statsh_map.remove(&commit.commit_hash) {
+            for stash in stashes {
+                ret.push(stash);
+            }
         }
         ret.push(commit);
     }
