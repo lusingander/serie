@@ -17,7 +17,8 @@ const DEFAULT_DETAIL_DATE_LOCAL: bool = true;
 pub struct Config {
     #[serde(default)]
     pub ui: UiConfig,
-    pub custom_keybind_patch: Option<KeyBind>,
+    /// The user customed keybinds, please ref `assets/default-keybind.toml`
+    pub keybind: Option<KeyBind>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
@@ -134,7 +135,7 @@ mod tests {
                     date_local: true,
                 },
             },
-            custom_keybind_patch: None,
+            keybind: None,
         };
         assert_eq!(actual, expected);
     }
@@ -167,7 +168,7 @@ mod tests {
                     date_local: false,
                 },
             },
-            custom_keybind_patch: None,
+            keybind: None,
         };
         assert_eq!(actual, expected);
     }
@@ -193,7 +194,7 @@ mod tests {
                     date_local: true,
                 },
             },
-            custom_keybind_patch: None,
+            keybind: None,
         };
         assert_eq!(actual, expected);
     }

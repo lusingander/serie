@@ -114,7 +114,7 @@ pub fn run() -> std::io::Result<()> {
     color_eyre::install().unwrap();
     let args = Args::parse();
     let mut config = config::Config::load();
-    let key_bind = keybind::KeyBind::new(config.custom_keybind_patch.take());
+    let key_bind = keybind::KeyBind::new(config.keybind.take());
 
     let color_set = color::ColorSet::default();
     let image_protocol = args.protocol.into();

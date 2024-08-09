@@ -84,6 +84,7 @@ pub fn init() -> (Sender, Receiver) {
 
 /// The event triggered by user's key input
 #[derive(Clone, Debug, strum::Display, Deserialize, EnumIter, Eq, EnumMessage, Hash, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum UserEvent {
     // NOTE User Event should have document, else the enum item will be hidden in the help page
     /// Navigate up
