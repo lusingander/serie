@@ -778,6 +778,38 @@ fn stash_003() -> TestResult {
 }
 
 #[test]
+fn stash_004() -> TestResult {
+    // Test case for multiple stashes for the same commit
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+
+    git.commit("001", "2024-01-01");
+    git.commit("002", "2024-01-02");
+
+    git.stash("2024-02-01");
+    git.stash("2024-02-02");
+    git.stash("2024-02-03");
+
+    git.commit("003", "2024-03-01");
+
+    let options = &[
+        GenerateGraphOption::new("stash_004_chrono", graph::SortCommit::Chronological),
+        GenerateGraphOption::new("stash_004_topo", graph::SortCommit::Topological),
+    ];
+
+    copy_git_dir(repo_path, "stash_004");
+
+    generate_and_output_graph_images(repo_path, options);
+    assert_graph_images(options);
+
+    Ok(())
+}
+
+#[test]
 fn orphan_001() -> TestResult {
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
