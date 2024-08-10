@@ -87,6 +87,14 @@ pub fn init() -> (Sender, Receiver) {
 #[serde(rename_all = "snake_case")]
 pub enum UserEvent {
     // NOTE User Event should have document, else the enum item will be hidden in the help page
+    /// Force Quit app without passing input into widges or views
+    ForceQuit,
+    /// Quit app
+    Quit,
+    /// Toggle Help page
+    HelpToggle,
+    /// Close widget or cancel current progress
+    CloseOrCancel,
     /// Navigate up
     NavigateUp,
     /// Navigate down
@@ -95,22 +103,10 @@ pub enum UserEvent {
     NavigateRight,
     /// Navigate left
     NavigateLeft,
-    /// Force Quit serie without passing input into widges or views
-    ForceQuit,
-    /// Quit serie
-    Quit,
-    /// Close widget or cancel current progress
-    CloseOrCancel,
-    /// Toggle Help page
-    HelpToggle,
     /// Go to top
     GoToTop,
     /// Go to bottom
     GoToBottom,
-    /// Go to next item
-    GoToNext,
-    /// Go to previous item
-    GoToPrevious,
     /// Scroll one line up
     ScrollUp,
     /// Scroll one line down
@@ -129,15 +125,19 @@ pub enum UserEvent {
     SelectMiddle,
     /// Select bottom part
     SelectBottom,
+    /// Go to next item
+    GoToNext,
+    /// Go to previous item
+    GoToPrevious,
     /// Confirm
     Confirm,
+    /// Toggle for Reference List
+    RefListToggle,
     /// Search
     Search,
     /// Copy part of content
     ShortCopy,
     /// Copy
     FullCopy,
-    /// Toggle for Reference List
-    RefListToggle,
     Unknown,
 }
