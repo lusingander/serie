@@ -8,7 +8,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 const DEFAULT_KEY_BIND: &str = include_str!("../assets/default-keybind.toml");
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct KeyBind(pub HashMap<KeyEvent, UserEvent>);
+pub struct KeyBind(HashMap<KeyEvent, UserEvent>);
 
 impl Deref for KeyBind {
     type Target = HashMap<KeyEvent, UserEvent>;
@@ -31,9 +31,7 @@ impl KeyBind {
 
         if let Some(mut custom_keybind_patch) = custom_keybind_patch {
             for (key_event, user_event) in custom_keybind_patch.drain() {
-                if let Some(_old_user_event) = keybind.insert(key_event, user_event) {
-                    // log!("{key_event}: {_old_user_event} -> {user_event}")
-                }
+                keybind.insert(key_event, user_event);
             }
         }
 
@@ -41,10 +39,16 @@ impl KeyBind {
     }
 
     pub fn keys_for_event(&self, user_event: &UserEvent) -> Vec<String> {
-        self.0
+        let mut key_events: Vec<&KeyEvent> = self
+            .0
             .iter()
             .filter(|(_, ue)| *ue == user_event)
-            .map(|(ke, _)| key_event_to_string(ke))
+            .map(|(ke, _)| ke)
+            .collect();
+        key_events.sort_by(|a, b| a.partial_cmp(b).unwrap()); // At least when used for key bindings, it doesn't seem to be a problem...
+        key_events
+            .iter()
+            .map(|ke| key_event_to_string(ke))
             .collect()
     }
 }
@@ -54,11 +58,11 @@ impl<'de> Deserialize<'de> for KeyBind {
     where
         D: Deserializer<'de>,
     {
-        let mut parsed_map = HashMap::<UserEvent, Vec<String>>::deserialize(deserializer)?;
+        let parsed_map = HashMap::<UserEvent, Vec<String>>::deserialize(deserializer)?;
         let mut key_map = HashMap::<KeyEvent, UserEvent>::new();
-        for (user_event, key_events) in parsed_map.iter_mut() {
-            for key_event_str in key_events.iter_mut() {
-                let key_event = match parse_key_event(key_event_str) {
+        for (user_event, key_events) in parsed_map {
+            for key_event_str in key_events {
+                let key_event = match parse_key_event(&key_event_str) {
                     Ok(e) => e,
                     Err(s) => {
                         panic!("{key_event_str:?} is not a valid key event: {s:}");
@@ -158,33 +162,39 @@ fn parse_key_code_with_modifiers(
     Ok(KeyEvent::new(c, modifiers))
 }
 
-pub fn key_event_to_string(key_event: &KeyEvent) -> String {
+fn key_event_to_string(key_event: &KeyEvent) -> String {
+    if let KeyCode::Char(c) = key_event.code {
+        if key_event.modifiers == KeyModifiers::SHIFT {
+            return format!("<{}>", c.to_ascii_uppercase());
+        }
+    }
+
     let char;
     let key_code = match key_event.code {
-        KeyCode::Backspace => "backspace",
-        KeyCode::Enter => "enter",
-        KeyCode::Left => "left",
-        KeyCode::Right => "right",
-        KeyCode::Up => "up",
-        KeyCode::Down => "down",
-        KeyCode::Home => "home",
-        KeyCode::End => "end",
-        KeyCode::PageUp => "pageup",
-        KeyCode::PageDown => "pagedown",
-        KeyCode::Tab => "tab",
-        KeyCode::BackTab => "backtab",
-        KeyCode::Delete => "delete",
-        KeyCode::Insert => "insert",
-        KeyCode::F(c) => {
-            char = format!("f({c})");
+        KeyCode::Backspace => "Backspace",
+        KeyCode::Enter => "Enter",
+        KeyCode::Left => "Left",
+        KeyCode::Right => "Right",
+        KeyCode::Up => "Up",
+        KeyCode::Down => "Down",
+        KeyCode::Home => "Home",
+        KeyCode::End => "End",
+        KeyCode::PageUp => "PageUp",
+        KeyCode::PageDown => "PageDown",
+        KeyCode::Tab => "Tab",
+        KeyCode::BackTab => "BackTab",
+        KeyCode::Delete => "Delete",
+        KeyCode::Insert => "Insert",
+        KeyCode::F(n) => {
+            char = format!("F{n}");
             &char
         }
-        KeyCode::Char(' ') => "space",
+        KeyCode::Char(' ') => "Space",
         KeyCode::Char(c) => {
             char = c.to_string();
             &char
         }
-        KeyCode::Esc => "esc",
+        KeyCode::Esc => "Esc",
         KeyCode::Null => "",
         KeyCode::CapsLock => "",
         KeyCode::Menu => "",
@@ -200,15 +210,15 @@ pub fn key_event_to_string(key_event: &KeyEvent) -> String {
     let mut modifiers = Vec::with_capacity(3);
 
     if key_event.modifiers.intersects(KeyModifiers::CONTROL) {
-        modifiers.push("ctrl");
+        modifiers.push("Ctrl");
     }
 
     if key_event.modifiers.intersects(KeyModifiers::SHIFT) {
-        modifiers.push("shift");
+        modifiers.push("Shift");
     }
 
     if key_event.modifiers.intersects(KeyModifiers::ALT) {
-        modifiers.push("alt");
+        modifiers.push("Alt");
     }
 
     let mut key = modifiers.join("-");
@@ -219,4 +229,112 @@ pub fn key_event_to_string(key_event: &KeyEvent) -> String {
     key.push_str(key_code);
 
     format!("<{key}>")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[rustfmt::skip]
+    #[test]
+    fn test_deserialize_keybind() {
+        let toml = r#"
+            navigate_up = ["k"]
+            navigate_down = ["j", "down"]
+            navigate_left = ["ctrl-h", "shift-h", "alt-h"]
+            navigate_right = ["ctrl-shift-l", "alt-shift-ctrl-l"]
+            quit = ["esc", "f12"]
+        "#;
+
+        let expected = KeyBind(
+            [
+                (
+                    KeyEvent::new(KeyCode::Char('k'), KeyModifiers::empty()),
+                    UserEvent::NavigateUp,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('j'), KeyModifiers::empty()),
+                    UserEvent::NavigateDown,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Down, KeyModifiers::empty()),
+                    UserEvent::NavigateDown,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('h'), KeyModifiers::CONTROL),
+                    UserEvent::NavigateLeft,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('h'), KeyModifiers::SHIFT),
+                    UserEvent::NavigateLeft,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('h'), KeyModifiers::ALT),
+                    UserEvent::NavigateLeft,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT),
+                    UserEvent::NavigateRight,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT | KeyModifiers::ALT),
+                    UserEvent::NavigateRight,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()),
+                    UserEvent::Quit,
+                ),
+                (
+                    KeyEvent::new(KeyCode::F(12), KeyModifiers::empty()),
+                    UserEvent::Quit,
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+
+        let actual: KeyBind = toml::from_str(toml).unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[rustfmt::skip]
+    #[test]
+    fn test_key_event_to_string() {
+        let key_event = KeyEvent::new(KeyCode::Char('k'), KeyModifiers::empty());
+        assert_eq!(key_event_to_string(&key_event), "<k>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::empty());
+        assert_eq!(key_event_to_string(&key_event), "<j>");
+
+        let key_event = KeyEvent::new(KeyCode::Down, KeyModifiers::empty());
+        assert_eq!(key_event_to_string(&key_event), "<Down>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::CONTROL);
+        assert_eq!(key_event_to_string(&key_event), "<Ctrl-h>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::SHIFT);
+        assert_eq!(key_event_to_string(&key_event), "<H>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('H'), KeyModifiers::SHIFT);
+        assert_eq!(key_event_to_string(&key_event), "<H>");
+
+        let key_event = KeyEvent::new(KeyCode::Left, KeyModifiers::SHIFT);
+        assert_eq!(key_event_to_string(&key_event), "<Shift-Left>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::ALT);
+        assert_eq!(key_event_to_string(&key_event), "<Alt-h>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT);
+        assert_eq!(key_event_to_string(&key_event), "<Ctrl-Shift-l>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT | KeyModifiers::ALT);
+        assert_eq!(key_event_to_string(&key_event), "<Ctrl-Shift-Alt-l>");
+
+        let key_event = KeyEvent::new(KeyCode::Esc, KeyModifiers::empty());
+        assert_eq!(key_event_to_string(&key_event), "<Esc>");
+
+        let key_event = KeyEvent::new(KeyCode::F(12), KeyModifiers::empty());
+        assert_eq!(key_event_to_string(&key_event), "<F12>");
+    }
 }

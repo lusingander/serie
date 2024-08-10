@@ -1,7 +1,7 @@
 use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
 use crate::{
-    config::Config,
+    config::UiConfig,
     event::{Sender, UserEvent},
     git::{Commit, FileChange, Ref},
     keybind::KeyBind,
@@ -41,8 +41,12 @@ impl<'a> View<'a> {
         }
     }
 
-    pub fn of_list(commit_list_state: CommitListState<'a>, config: &'a Config, tx: Sender) -> Self {
-        View::List(Box::new(ListView::new(commit_list_state, config, tx)))
+    pub fn of_list(
+        commit_list_state: CommitListState<'a>,
+        ui_config: &'a UiConfig,
+        tx: Sender,
+    ) -> Self {
+        View::List(Box::new(ListView::new(commit_list_state, ui_config, tx)))
     }
 
     pub fn of_detail(
@@ -50,7 +54,7 @@ impl<'a> View<'a> {
         commit: Commit,
         changes: Vec<FileChange>,
         refs: Vec<Ref>,
-        config: &'a Config,
+        ui_config: &'a UiConfig,
         image_protocol: ImageProtocol,
         tx: Sender,
     ) -> Self {
@@ -59,7 +63,7 @@ impl<'a> View<'a> {
             commit,
             changes,
             refs,
-            config,
+            ui_config,
             image_protocol,
             tx,
         )))
@@ -68,10 +72,15 @@ impl<'a> View<'a> {
     pub fn of_refs(
         commit_list_state: CommitListState<'a>,
         refs: Vec<Ref>,
-        config: &'a Config,
+        ui_config: &'a UiConfig,
         tx: Sender,
     ) -> Self {
-        View::Refs(Box::new(RefsView::new(commit_list_state, refs, config, tx)))
+        View::Refs(Box::new(RefsView::new(
+            commit_list_state,
+            refs,
+            ui_config,
+            tx,
+        )))
     }
 
     pub fn of_help(

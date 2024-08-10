@@ -113,8 +113,8 @@ fn auto_detect_best_protocol() -> protocol::ImageProtocol {
 pub fn run() -> std::io::Result<()> {
     color_eyre::install().unwrap();
     let args = Args::parse();
-    let mut config = config::Config::load();
-    let key_bind = keybind::KeyBind::new(config.keybind.take());
+    let (ui_config, key_bind_patch) = config::load();
+    let key_bind = keybind::KeyBind::new(key_bind_patch);
 
     let color_set = color::ColorSet::default();
     let image_protocol = args.protocol.into();
@@ -136,7 +136,7 @@ pub fn run() -> std::io::Result<()> {
         &graph,
         &graph_image,
         &key_bind,
-        &config,
+        &ui_config,
         &color_set,
         image_protocol,
         tx,
