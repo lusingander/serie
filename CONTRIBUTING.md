@@ -31,9 +31,13 @@ Please share your experience with other terminals on the [Discussions](https://g
 
 ## Pull Requests
 
-When creating a pull request, please ensure you follow the same guidelines as [mentioned for issues](#reporting-issues).
+We welcome pull requests, but please note that they are not guaranteed to be accepted. Following this guideline will increase the likelihood of your pull request being approved.
 
-Creating a pull request does not necessarily require an issue. For complex problems, creating an issue beforehand might make the process smoother.
+### Creating pull requests
+
+- When creating a pull request, please ensure you follow the same guidelines as [mentioned for issues](#reporting-issues).
+- Creating a pull request does not necessarily require an issue. But if the problem is complex, creating an issue beforehand might make the process smoother.
+- Do not include fixes that are not directly related to the pull request topic.
 
 ### Improving the Commit Graph
 

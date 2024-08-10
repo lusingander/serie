@@ -127,56 +127,58 @@ If `--no-cache` is specified, this cache image will not be used or saved.
 
 You can see the keybindings by pressing the `?` key.
 
+The default key bindings can be overridden. Please refer to [default-keybind.toml](./assets/default-keybind.toml) and add it to [config.toml](#config).
+
 <details>
-<summary>List of all keybindings</summary>
+<summary>List of all default keybindings</summary>
 
 #### Common
 
-| Key                            | Description |
-| ------------------------------ | ----------- |
-| <kbd>Ctrl-c</kbd> <kbd>q</kbd> | Quit app    |
-| <kbd>?</kbd>                   | Open help   |
+| Key                            | Description | Corresponding keybind |
+| ------------------------------ | ----------- | --------------------- |
+| <kbd>Ctrl-c</kbd> <kbd>q</kbd> | Quit app    | `force_quit` `quit`   |
+| <kbd>?</kbd>                   | Open help   | `help_toggle`         |
 
 #### Commit List
 
-| Key                               | Description                                        |
-| --------------------------------- | -------------------------------------------------- |
-| <kbd>Down/Up</kbd> <kbd>j/k</kbd> | Move down/up                                       |
-| <kbd>g/G</kbd>                    | Go to top/bottom                                   |
-| <kbd>Ctrl-f/b</kbd>               | Scroll page down/up                                |
-| <kbd>Ctrl-d/u</kbd>               | Scroll half page down/up                           |
-| <kbd>H/M/L</kbd>                  | Select top/middle/bottom of the screen             |
-| <kbd>Enter</kbd>                  | Show commit details<br>Apply search (if searching) |
-| <kbd>Tab</kbd>                    | Open refs list                                     |
-| <kbd>/</kbd>                      | Start search                                       |
-| <kbd>Esc</kbd>                    | Cancel search                                      |
-| <kbd>n/N</kbd>                    | Go to next/previous search match                   |
-| <kbd>c/C</kbd>                    | Copy commit short/full hash                        |
+| Key                               | Description                                        | Corresponding keybind                        |
+| --------------------------------- | -------------------------------------------------- | -------------------------------------------- |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd> | Move down/up                                       | `navigate_down` `navigate_up`                |
+| <kbd>g/G</kbd>                    | Go to top/bottom                                   | `go_to_top` `go_to_bottom`                   |
+| <kbd>Ctrl-f/b</kbd>               | Scroll page down/up                                | `page_down` `page_up`                        |
+| <kbd>Ctrl-d/u</kbd>               | Scroll half page down/up                           | `half_page_down` `half_page_up`              |
+| <kbd>H/M/L</kbd>                  | Select top/middle/bottom of the screen             | `select_top` `select_middle` `select_bottom` |
+| <kbd>Enter</kbd>                  | Show commit details<br>Apply search (if searching) | `confirm`                                    |
+| <kbd>Tab</kbd>                    | Open refs list                                     | `ref_list_toggle`                            |
+| <kbd>/</kbd>                      | Start search                                       | `search`                                     |
+| <kbd>Esc</kbd>                    | Cancel search                                      | `close_or_cancel`                            |
+| <kbd>n/N</kbd>                    | Go to next/previous search match                   | `go_to_next` `go_to_previous`                |
+| <kbd>c/C</kbd>                    | Copy commit short/full hash                        | `short_copy` `full_copy`                     |
 
 #### Commit Detail
 
-| Key                                 | Description                 |
-| ----------------------------------- | --------------------------- |
-| <kbd>Esc</kbd> <kbd>Backspace</kbd> | Close commit details        |
-| <kbd>Down/Up</kbd> <kbd>j/k</kbd>   | Scroll down/up              |
-| <kbd>c/C</kbd>                      | Copy commit short/full hash |
+| Key                                 | Description                 | Corresponding keybind         |
+| ----------------------------------- | --------------------------- | ----------------------------- |
+| <kbd>Esc</kbd> <kbd>Backspace</kbd> | Close commit details        | `close_or_cancel`             |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd>   | Scroll down/up              | `navigate_down` `navigate_up` |
+| <kbd>c/C</kbd>                      | Copy commit short/full hash | `short_copy` `full_copy`      |
 
 #### Refs List
 
-| Key                                                | Description      |
-| -------------------------------------------------- | ---------------- |
-| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>Tab</kbd> | Close refs list  |
-| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                  | Move down/up     |
-| <kbd>g/G</kbd>                                     | Go to top/bottom |
-| <kbd>Right/Left</kbd> <kbd>l/h</kbd>               | Open/Close node  |
-| <kbd>c</kbd>                                       | Copy ref name    |
+| Key                                                | Description      | Corresponding keybind               |
+| -------------------------------------------------- | ---------------- | ----------------------------------- |
+| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>Tab</kbd> | Close refs list  | `close_or_cancel` `ref_list_toggle` |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                  | Move down/up     | `navigate_down` `navigate_up`       |
+| <kbd>g/G</kbd>                                     | Go to top/bottom | `go_to_top` `go_to_bottom`          |
+| <kbd>Right/Left</kbd> <kbd>l/h</kbd>               | Open/Close node  | `navigate_right` `navigate_left`    |
+| <kbd>c</kbd>                                       | Copy ref name    | `short_copy`                        |
 
 #### Help
 
-| Key                                              | Description    |
-| ------------------------------------------------ | -------------- |
-| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>?</kbd> | Close help     |
-| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                | Scroll down/up |
+| Key                                              | Description    | Corresponding keybind         |
+| ------------------------------------------------ | -------------- | ----------------------------- |
+| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>?</kbd> | Close help     | `help_toggle`                 |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                | Scroll down/up | `navigate_down` `navigate_up` |
 
 </details>
 
@@ -221,6 +223,10 @@ date_format = "%Y-%m-%d %H:%M:%S %z"
 # Whether to show a author/committer date in the commit list in local timezone.
 # type: boolean
 date_local = true
+
+[keybind]
+# See ./assets/default-keybind.toml for a specific example configuration.
+# ...
 ```
 
 ## Compatibility
@@ -256,8 +262,8 @@ Please share your experience with other terminal emulators on the [Discussions](
 
 ## Contributing
 
-Contributions are welcome.
 To get started with contributing, please review [CONTRIBUTING.md](CONTRIBUTING.md).
+
 Contributions that do not follow these guidelines may not be accepted.
 
 ## Screenshots
