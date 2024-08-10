@@ -229,6 +229,7 @@ fn key_event_to_string(key_event: &KeyEvent) -> String {
 mod tests {
     use super::*;
 
+    #[rustfmt::skip]
     #[test]
     fn test_deserialize_keybind() {
         let toml = r#"
@@ -239,7 +240,6 @@ mod tests {
             quit = ["esc", "f12"]
         "#;
 
-        #[rustfmt::skip]
         let expected = KeyBind(
             [
                 (
@@ -290,5 +290,42 @@ mod tests {
         let actual: KeyBind = toml::from_str(toml).unwrap();
 
         assert_eq!(actual, expected);
+    }
+
+    #[rustfmt::skip]
+    #[test]
+    fn test_key_event_to_string() {
+        let key_event = KeyEvent::new(KeyCode::Char('k'), KeyModifiers::empty());
+        assert_eq!(key_event_to_string(&key_event), "<k>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::empty());
+        assert_eq!(key_event_to_string(&key_event), "<j>");
+
+        let key_event = KeyEvent::new(KeyCode::Down, KeyModifiers::empty());
+        assert_eq!(key_event_to_string(&key_event), "<down>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::CONTROL);
+        assert_eq!(key_event_to_string(&key_event), "<ctrl-h>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::SHIFT);
+        assert_eq!(key_event_to_string(&key_event), "<shift-h>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('H'), KeyModifiers::SHIFT);
+        assert_eq!(key_event_to_string(&key_event), "<shift-H>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::ALT);
+        assert_eq!(key_event_to_string(&key_event), "<alt-h>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT);
+        assert_eq!(key_event_to_string(&key_event), "<ctrl-shift-l>");
+
+        let key_event = KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT | KeyModifiers::ALT);
+        assert_eq!(key_event_to_string(&key_event), "<ctrl-shift-alt-l>");
+
+        let key_event = KeyEvent::new(KeyCode::Esc, KeyModifiers::empty());
+        assert_eq!(key_event_to_string(&key_event), "<esc>");
+
+        let key_event = KeyEvent::new(KeyCode::F(12), KeyModifiers::empty());
+        assert_eq!(key_event_to_string(&key_event), "<f(12)>");
     }
 }
