@@ -52,11 +52,11 @@ impl<'de> Deserialize<'de> for KeyBind {
     where
         D: Deserializer<'de>,
     {
-        let mut parsed_map = HashMap::<UserEvent, Vec<String>>::deserialize(deserializer)?;
+        let parsed_map = HashMap::<UserEvent, Vec<String>>::deserialize(deserializer)?;
         let mut key_map = HashMap::<KeyEvent, UserEvent>::new();
-        for (user_event, key_events) in parsed_map.iter_mut() {
-            for key_event_str in key_events.iter_mut() {
-                let key_event = match parse_key_event(key_event_str) {
+        for (user_event, key_events) in parsed_map {
+            for key_event_str in key_events {
+                let key_event = match parse_key_event(&key_event_str) {
                     Ok(e) => e,
                     Err(s) => {
                         panic!("{key_event_str:?} is not a valid key event: {s:}");
