@@ -8,7 +8,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 const DEFAULT_KEY_BIND: &str = include_str!("../assets/default-keybind.toml");
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct KeyBind(pub HashMap<KeyEvent, UserEvent>);
+pub struct KeyBind(HashMap<KeyEvent, UserEvent>);
 
 impl Deref for KeyBind {
     type Target = HashMap<KeyEvent, UserEvent>;
