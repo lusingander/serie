@@ -218,3 +218,71 @@ pub fn key_event_to_string(key_event: &KeyEvent) -> String {
 
     format!("<{key}>")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_keybind() {
+        let toml = r#"
+            navigate_up = ["k"]
+            navigate_down = ["j", "down"]
+            navigate_left = ["ctrl-h", "shift-h", "alt-h"]
+            navigate_right = ["ctrl-shift-l", "alt-shift-ctrl-l"]
+            quit = ["esc", "f12"]
+        "#;
+
+        #[rustfmt::skip]
+        let expected = KeyBind(
+            [
+                (
+                    KeyEvent::new(KeyCode::Char('k'), KeyModifiers::empty()),
+                    UserEvent::NavigateUp,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('j'), KeyModifiers::empty()),
+                    UserEvent::NavigateDown,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Down, KeyModifiers::empty()),
+                    UserEvent::NavigateDown,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('h'), KeyModifiers::CONTROL),
+                    UserEvent::NavigateLeft,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('h'), KeyModifiers::SHIFT),
+                    UserEvent::NavigateLeft,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('h'), KeyModifiers::ALT),
+                    UserEvent::NavigateLeft,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT),
+                    UserEvent::NavigateRight,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT | KeyModifiers::ALT),
+                    UserEvent::NavigateRight,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()),
+                    UserEvent::Quit,
+                ),
+                (
+                    KeyEvent::new(KeyCode::F(12), KeyModifiers::empty()),
+                    UserEvent::Quit,
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+
+        let actual: KeyBind = toml::from_str(toml).unwrap();
+
+        assert_eq!(actual, expected);
+    }
+}
