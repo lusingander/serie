@@ -6,7 +6,7 @@ use ratatui::{
 };
 
 use crate::{
-    config::Config,
+    config::UiConfig,
     event::{AppEvent, Sender, UserEvent},
     git::{Commit, FileChange, Ref},
     protocol::ImageProtocol,
@@ -25,7 +25,7 @@ pub struct DetailView<'a> {
     changes: Vec<FileChange>,
     refs: Vec<Ref>,
 
-    config: &'a Config,
+    ui_config: &'a UiConfig,
     image_protocol: ImageProtocol,
     tx: Sender,
     clear: bool,
@@ -37,7 +37,7 @@ impl<'a> DetailView<'a> {
         commit: Commit,
         changes: Vec<FileChange>,
         refs: Vec<Ref>,
-        config: &'a Config,
+        ui_config: &'a UiConfig,
         image_protocol: ImageProtocol,
         tx: Sender,
     ) -> DetailView<'a> {
@@ -47,7 +47,7 @@ impl<'a> DetailView<'a> {
             commit,
             changes,
             refs,
-            config,
+            ui_config,
             image_protocol,
             tx,
             clear: false,
@@ -84,7 +84,7 @@ impl<'a> DetailView<'a> {
         let [list_area, detail_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(detail_height)]).areas(area);
 
-        let commit_list = CommitList::new(&self.config.ui.list);
+        let commit_list = CommitList::new(&self.ui_config.list);
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
 
         if self.clear {
@@ -96,7 +96,7 @@ impl<'a> DetailView<'a> {
             &self.commit,
             &self.changes,
             &self.refs,
-            &self.config.ui.detail,
+            &self.ui_config.detail,
         );
         f.render_stateful_widget(commit_detail, detail_area, &mut self.commit_detail_state);
 

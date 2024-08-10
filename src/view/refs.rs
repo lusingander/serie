@@ -5,7 +5,7 @@ use ratatui::{
 };
 
 use crate::{
-    config::Config,
+    config::UiConfig,
     event::{AppEvent, Sender, UserEvent},
     git::Ref,
     widget::{
@@ -21,7 +21,7 @@ pub struct RefsView<'a> {
 
     refs: Vec<Ref>,
 
-    config: &'a Config,
+    ui_config: &'a UiConfig,
     tx: Sender,
 }
 
@@ -29,14 +29,14 @@ impl<'a> RefsView<'a> {
     pub fn new(
         commit_list_state: CommitListState<'a>,
         refs: Vec<Ref>,
-        config: &'a Config,
+        ui_config: &'a UiConfig,
         tx: Sender,
     ) -> RefsView<'a> {
         RefsView {
             commit_list_state: Some(commit_list_state),
             ref_list_state: RefListState::new(),
             refs,
-            config,
+            ui_config,
             tx,
         }
     }
@@ -87,7 +87,7 @@ impl<'a> RefsView<'a> {
         let [list_area, refs_area] =
             Layout::horizontal([Constraint::Min(0), Constraint::Length(26)]).areas(area);
 
-        let commit_list = CommitList::new(&self.config.ui.list);
+        let commit_list = CommitList::new(&self.ui_config.list);
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
 
         let ref_list = RefList::new(&self.refs);

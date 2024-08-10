@@ -11,7 +11,7 @@ use ratatui::{
 
 use crate::{
     color::ColorSet,
-    config::Config,
+    config::UiConfig,
     event::{AppEvent, Receiver, Sender, UserEvent},
     external::copy_to_clipboard,
     git::Repository,
@@ -47,7 +47,7 @@ pub struct App<'a> {
     status_line: StatusLine,
 
     keybind: &'a KeyBind,
-    config: &'a Config,
+    ui_config: &'a UiConfig,
     image_protocol: ImageProtocol,
     tx: Sender,
 }
@@ -59,7 +59,7 @@ impl<'a> App<'a> {
         graph: &'a Graph,
         graph_image: &'a GraphImage,
         keybind: &'a KeyBind,
-        config: &'a Config,
+        ui_config: &'a UiConfig,
         color_set: &'a ColorSet,
         image_protocol: ImageProtocol,
         tx: Sender,
@@ -91,14 +91,14 @@ impl<'a> App<'a> {
             head,
             ref_name_to_commit_index_map,
         );
-        let view = View::of_list(commit_list_state, config, tx.clone());
+        let view = View::of_list(commit_list_state, ui_config, tx.clone());
 
         Self {
             repository,
             status_line: StatusLine::None,
             view,
             keybind,
-            config,
+            ui_config,
             image_protocol,
             tx,
         }
@@ -257,7 +257,7 @@ impl App<'_> {
                 commit,
                 changes,
                 refs,
-                self.config,
+                self.ui_config,
                 self.image_protocol,
                 self.tx.clone(),
             );
@@ -267,7 +267,7 @@ impl App<'_> {
     fn close_detail(&mut self) {
         if let View::Detail(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            self.view = View::of_list(commit_list_state, self.config, self.tx.clone());
+            self.view = View::of_list(commit_list_state, self.ui_config, self.tx.clone());
         }
     }
 
@@ -281,14 +281,14 @@ impl App<'_> {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
             let refs = self.repository.all_refs().into_iter().cloned().collect();
-            self.view = View::of_refs(commit_list_state, refs, self.config, self.tx.clone());
+            self.view = View::of_refs(commit_list_state, refs, self.ui_config, self.tx.clone());
         }
     }
 
     fn close_refs(&mut self) {
         if let View::Refs(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            self.view = View::of_list(commit_list_state, self.config, self.tx.clone());
+            self.view = View::of_list(commit_list_state, self.ui_config, self.tx.clone());
         }
     }
 

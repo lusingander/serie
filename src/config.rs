@@ -13,12 +13,25 @@ const DEFAULT_LIST_NAME_WIDTH: u16 = 20;
 const DEFAULT_DETAIL_DATE_FORMAT: &str = "%Y-%m-%d %H:%M:%S %z";
 const DEFAULT_DETAIL_DATE_LOCAL: bool = true;
 
+pub fn load() -> (UiConfig, Option<KeyBind>) {
+    let path = xdg::BaseDirectories::with_prefix(APP_DIR_NAME)
+        .unwrap()
+        .get_config_file(CONFIG_FILE_NAME);
+    let config = if path.exists() {
+        let content = std::fs::read_to_string(path).unwrap();
+        toml::from_str(&content).unwrap()
+    } else {
+        Config::default()
+    };
+    (config.ui, config.keybind)
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
-pub struct Config {
+struct Config {
     #[serde(default)]
-    pub ui: UiConfig,
+    ui: UiConfig,
     /// The user customed keybinds, please ref `assets/default-keybind.toml`
-    pub keybind: Option<KeyBind>,
+    keybind: Option<KeyBind>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
@@ -98,20 +111,6 @@ fn ui_detail_date_format_default() -> String {
 
 fn ui_detail_date_local_default() -> bool {
     DEFAULT_DETAIL_DATE_LOCAL
-}
-
-impl Config {
-    pub fn load() -> Config {
-        let path = xdg::BaseDirectories::with_prefix(APP_DIR_NAME)
-            .unwrap()
-            .get_config_file(CONFIG_FILE_NAME);
-        if path.exists() {
-            let content = std::fs::read_to_string(path).unwrap();
-            toml::from_str(&content).unwrap()
-        } else {
-            Config::default()
-        }
-    }
 }
 
 #[cfg(test)]

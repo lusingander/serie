@@ -1,7 +1,7 @@
 use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
 use crate::{
-    config::Config,
+    config::UiConfig,
     event::{AppEvent, Sender, UserEvent},
     widget::commit_list::{CommitList, CommitListState, SearchState},
 };
@@ -10,19 +10,19 @@ use crate::{
 pub struct ListView<'a> {
     commit_list_state: Option<CommitListState<'a>>,
 
-    config: &'a Config,
+    ui_config: &'a UiConfig,
     tx: Sender,
 }
 
 impl<'a> ListView<'a> {
     pub fn new(
         commit_list_state: CommitListState<'a>,
-        config: &'a Config,
+        ui_config: &'a UiConfig,
         tx: Sender,
     ) -> ListView<'a> {
         ListView {
             commit_list_state: Some(commit_list_state),
-            config,
+            ui_config,
             tx,
         }
     }
@@ -132,7 +132,7 @@ impl<'a> ListView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        let commit_list = CommitList::new(&self.config.ui.list);
+        let commit_list = CommitList::new(&self.ui_config.list);
         f.render_stateful_widget(commit_list, area, self.as_mut_list_state());
     }
 }
