@@ -163,32 +163,38 @@ fn parse_key_code_with_modifiers(
 }
 
 fn key_event_to_string(key_event: &KeyEvent) -> String {
+    if let KeyCode::Char(c) = key_event.code {
+        if key_event.modifiers == KeyModifiers::SHIFT {
+            return format!("<{}>", c.to_ascii_uppercase());
+        }
+    }
+
     let char;
     let key_code = match key_event.code {
-        KeyCode::Backspace => "backspace",
-        KeyCode::Enter => "enter",
-        KeyCode::Left => "left",
-        KeyCode::Right => "right",
-        KeyCode::Up => "up",
-        KeyCode::Down => "down",
-        KeyCode::Home => "home",
-        KeyCode::End => "end",
-        KeyCode::PageUp => "pageup",
-        KeyCode::PageDown => "pagedown",
-        KeyCode::Tab => "tab",
-        KeyCode::BackTab => "backtab",
-        KeyCode::Delete => "delete",
-        KeyCode::Insert => "insert",
-        KeyCode::F(c) => {
-            char = format!("f({c})");
+        KeyCode::Backspace => "Backspace",
+        KeyCode::Enter => "Enter",
+        KeyCode::Left => "Left",
+        KeyCode::Right => "Right",
+        KeyCode::Up => "Up",
+        KeyCode::Down => "Down",
+        KeyCode::Home => "Home",
+        KeyCode::End => "End",
+        KeyCode::PageUp => "PageUp",
+        KeyCode::PageDown => "PageDown",
+        KeyCode::Tab => "Tab",
+        KeyCode::BackTab => "BackTab",
+        KeyCode::Delete => "Delete",
+        KeyCode::Insert => "Insert",
+        KeyCode::F(n) => {
+            char = format!("F{n}");
             &char
         }
-        KeyCode::Char(' ') => "space",
+        KeyCode::Char(' ') => "Space",
         KeyCode::Char(c) => {
             char = c.to_string();
             &char
         }
-        KeyCode::Esc => "esc",
+        KeyCode::Esc => "Esc",
         KeyCode::Null => "",
         KeyCode::CapsLock => "",
         KeyCode::Menu => "",
@@ -204,15 +210,15 @@ fn key_event_to_string(key_event: &KeyEvent) -> String {
     let mut modifiers = Vec::with_capacity(3);
 
     if key_event.modifiers.intersects(KeyModifiers::CONTROL) {
-        modifiers.push("ctrl");
+        modifiers.push("Ctrl");
     }
 
     if key_event.modifiers.intersects(KeyModifiers::SHIFT) {
-        modifiers.push("shift");
+        modifiers.push("Shift");
     }
 
     if key_event.modifiers.intersects(KeyModifiers::ALT) {
-        modifiers.push("alt");
+        modifiers.push("Alt");
     }
 
     let mut key = modifiers.join("-");
@@ -302,30 +308,33 @@ mod tests {
         assert_eq!(key_event_to_string(&key_event), "<j>");
 
         let key_event = KeyEvent::new(KeyCode::Down, KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "<down>");
+        assert_eq!(key_event_to_string(&key_event), "<Down>");
 
         let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::CONTROL);
-        assert_eq!(key_event_to_string(&key_event), "<ctrl-h>");
+        assert_eq!(key_event_to_string(&key_event), "<Ctrl-h>");
 
         let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_string(&key_event), "<shift-h>");
+        assert_eq!(key_event_to_string(&key_event), "<H>");
 
         let key_event = KeyEvent::new(KeyCode::Char('H'), KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_string(&key_event), "<shift-H>");
+        assert_eq!(key_event_to_string(&key_event), "<H>");
+
+        let key_event = KeyEvent::new(KeyCode::Left, KeyModifiers::SHIFT);
+        assert_eq!(key_event_to_string(&key_event), "<Shift-Left>");
 
         let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::ALT);
-        assert_eq!(key_event_to_string(&key_event), "<alt-h>");
+        assert_eq!(key_event_to_string(&key_event), "<Alt-h>");
 
         let key_event = KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_string(&key_event), "<ctrl-shift-l>");
+        assert_eq!(key_event_to_string(&key_event), "<Ctrl-Shift-l>");
 
         let key_event = KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT | KeyModifiers::ALT);
-        assert_eq!(key_event_to_string(&key_event), "<ctrl-shift-alt-l>");
+        assert_eq!(key_event_to_string(&key_event), "<Ctrl-Shift-Alt-l>");
 
         let key_event = KeyEvent::new(KeyCode::Esc, KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "<esc>");
+        assert_eq!(key_event_to_string(&key_event), "<Esc>");
 
         let key_event = KeyEvent::new(KeyCode::F(12), KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "<f(12)>");
+        assert_eq!(key_event_to_string(&key_event), "<F12>");
     }
 }
