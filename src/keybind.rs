@@ -31,9 +31,7 @@ impl KeyBind {
 
         if let Some(mut custom_keybind_patch) = custom_keybind_patch {
             for (key_event, user_event) in custom_keybind_patch.drain() {
-                if let Some(_old_user_event) = keybind.insert(key_event, user_event) {
-                    // log!("{key_event}: {_old_user_event} -> {user_event}")
-                }
+                keybind.insert(key_event, user_event);
             }
         }
 
