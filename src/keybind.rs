@@ -39,10 +39,16 @@ impl KeyBind {
     }
 
     pub fn keys_for_event(&self, user_event: &UserEvent) -> Vec<String> {
-        self.0
+        let mut key_events: Vec<&KeyEvent> = self
+            .0
             .iter()
             .filter(|(_, ue)| *ue == user_event)
-            .map(|(ke, _)| key_event_to_string(ke))
+            .map(|(ke, _)| ke)
+            .collect();
+        key_events.sort_by(|a, b| a.partial_cmp(b).unwrap()); // At least when used for key bindings, it doesn't seem to be a problem...
+        key_events
+            .iter()
+            .map(|ke| key_event_to_string(ke))
             .collect()
     }
 }
@@ -156,7 +162,7 @@ fn parse_key_code_with_modifiers(
     Ok(KeyEvent::new(c, modifiers))
 }
 
-pub fn key_event_to_string(key_event: &KeyEvent) -> String {
+fn key_event_to_string(key_event: &KeyEvent) -> String {
     let char;
     let key_code = match key_event.code {
         KeyCode::Backspace => "backspace",
