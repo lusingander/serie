@@ -566,12 +566,10 @@ impl CommitList<'_> {
     fn render_graph(&self, buf: &mut Buffer, area: Rect, state: &CommitListState) {
         self.rendering_commit_info_iter(state)
             .for_each(|(i, commit_info)| {
-                let cell = buf.get_mut(area.left(), area.top() + i as u16);
-                cell.set_symbol(&commit_info.image);
+                buf[(area.left(), area.top() + i as u16)].set_symbol(&commit_info.image);
 
                 for w in 1..area.width {
-                    buf.get_mut(area.left() + w, area.top() + i as u16)
-                        .set_skip(true);
+                    buf[(area.left() + w, area.top() + i as u16)].set_skip(true);
                 }
             });
     }

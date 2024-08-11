@@ -201,7 +201,7 @@ impl App<'_> {
 
     fn render(&mut self, f: &mut Frame) {
         let [view_area, status_line_area] =
-            Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(f.size());
+            Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(f.area());
 
         self.view.render(f, view_area);
         self.render_status_line(f, status_line_area);
@@ -235,7 +235,7 @@ impl App<'_> {
         f.render_widget(paragraph, area);
 
         if let StatusLine::Input(_, Some(cursor_pos)) = &self.status_line {
-            f.set_cursor(area.x + cursor_pos + 1, area.y + 1);
+            f.set_cursor_position((area.x + cursor_pos + 1, area.y + 1));
         }
     }
 }
