@@ -1,8 +1,8 @@
 force_quit = ["ctrl-c"]
 quit = ["q"]
 help_toggle = ["?"]
-# close widget or cancel progress but not quit app
-close_or_cancel = ["esc"]
+cancel = ["esc"]
+close = ["backspace"]
 
 navigate_up = ["k", "up"]
 navigate_down = ["j", "down"]

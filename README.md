@@ -151,7 +151,7 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 | <kbd>Enter</kbd>                  | Show commit details<br>Apply search (if searching) | `confirm`                                    |
 | <kbd>Tab</kbd>                    | Open refs list                                     | `ref_list_toggle`                            |
 | <kbd>/</kbd>                      | Start search                                       | `search`                                     |
-| <kbd>Esc</kbd>                    | Cancel search                                      | `close_or_cancel`                            |
+| <kbd>Esc</kbd>                    | Cancel search                                      | `cancel`                                     |
 | <kbd>n/N</kbd>                    | Go to next/previous search match                   | `go_to_next` `go_to_previous`                |
 | <kbd>c/C</kbd>                    | Copy commit short/full hash                        | `short_copy` `full_copy`                     |
 
@@ -159,26 +159,26 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 
 | Key                                 | Description                 | Corresponding keybind         |
 | ----------------------------------- | --------------------------- | ----------------------------- |
-| <kbd>Esc</kbd> <kbd>Backspace</kbd> | Close commit details        | `close_or_cancel`             |
+| <kbd>Esc</kbd> <kbd>Backspace</kbd> | Close commit details        | `close` `cancel`              |
 | <kbd>Down/Up</kbd> <kbd>j/k</kbd>   | Scroll down/up              | `navigate_down` `navigate_up` |
 | <kbd>c/C</kbd>                      | Copy commit short/full hash | `short_copy` `full_copy`      |
 
 #### Refs List
 
-| Key                                                | Description      | Corresponding keybind               |
-| -------------------------------------------------- | ---------------- | ----------------------------------- |
-| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>Tab</kbd> | Close refs list  | `close_or_cancel` `ref_list_toggle` |
-| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                  | Move down/up     | `navigate_down` `navigate_up`       |
-| <kbd>g/G</kbd>                                     | Go to top/bottom | `go_to_top` `go_to_bottom`          |
-| <kbd>Right/Left</kbd> <kbd>l/h</kbd>               | Open/Close node  | `navigate_right` `navigate_left`    |
-| <kbd>c</kbd>                                       | Copy ref name    | `short_copy`                        |
+| Key                                                | Description      | Corresponding keybind              |
+| -------------------------------------------------- | ---------------- | ---------------------------------- |
+| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>Tab</kbd> | Close refs list  | `close` `cancel` `ref_list_toggle` |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                  | Move down/up     | `navigate_down` `navigate_up`      |
+| <kbd>g/G</kbd>                                     | Go to top/bottom | `go_to_top` `go_to_bottom`         |
+| <kbd>Right/Left</kbd> <kbd>l/h</kbd>               | Open/Close node  | `navigate_right` `navigate_left`   |
+| <kbd>c</kbd>                                       | Copy ref name    | `short_copy`                       |
 
 #### Help
 
-| Key                                              | Description    | Corresponding keybind         |
-| ------------------------------------------------ | -------------- | ----------------------------- |
-| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>?</kbd> | Close help     | `help_toggle`                 |
-| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                | Scroll down/up | `navigate_down` `navigate_up` |
+| Key                                              | Description    | Corresponding keybind           |
+| ------------------------------------------------ | -------------- | ------------------------------- |
+| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>?</kbd> | Close help     | `close` `cancel` `help_toggle ` |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                | Scroll down/up | `navigate_down` `navigate_up`   |
 
 </details>
 
