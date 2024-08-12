@@ -14,8 +14,6 @@ use crate::{
     view::View,
 };
 
-use strum::{EnumMessage, IntoEnumIterator};
-
 const BLOCK_TITLE_COLOR: Color = Color::Green;
 const KEY_COLOR: Color = Color::Yellow;
 
