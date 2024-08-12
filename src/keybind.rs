@@ -165,7 +165,7 @@ fn parse_key_code_with_modifiers(
 fn key_event_to_string(key_event: &KeyEvent) -> String {
     if let KeyCode::Char(c) = key_event.code {
         if key_event.modifiers == KeyModifiers::SHIFT {
-            return format!("<{}>", c.to_ascii_uppercase());
+            return c.to_ascii_uppercase().into();
         }
     }
 
@@ -228,7 +228,7 @@ fn key_event_to_string(key_event: &KeyEvent) -> String {
     }
     key.push_str(key_code);
 
-    format!("<{key}>")
+    key
 }
 
 #[cfg(test)]
@@ -302,39 +302,39 @@ mod tests {
     #[test]
     fn test_key_event_to_string() {
         let key_event = KeyEvent::new(KeyCode::Char('k'), KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "<k>");
+        assert_eq!(key_event_to_string(&key_event), "k");
 
         let key_event = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "<j>");
+        assert_eq!(key_event_to_string(&key_event), "j");
 
         let key_event = KeyEvent::new(KeyCode::Down, KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "<Down>");
+        assert_eq!(key_event_to_string(&key_event), "Down");
 
         let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::CONTROL);
-        assert_eq!(key_event_to_string(&key_event), "<Ctrl-h>");
+        assert_eq!(key_event_to_string(&key_event), "Ctrl-h");
 
         let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_string(&key_event), "<H>");
+        assert_eq!(key_event_to_string(&key_event), "H");
 
         let key_event = KeyEvent::new(KeyCode::Char('H'), KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_string(&key_event), "<H>");
+        assert_eq!(key_event_to_string(&key_event), "H");
 
         let key_event = KeyEvent::new(KeyCode::Left, KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_string(&key_event), "<Shift-Left>");
+        assert_eq!(key_event_to_string(&key_event), "Shift-Left");
 
         let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::ALT);
-        assert_eq!(key_event_to_string(&key_event), "<Alt-h>");
+        assert_eq!(key_event_to_string(&key_event), "Alt-h");
 
         let key_event = KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_string(&key_event), "<Ctrl-Shift-l>");
+        assert_eq!(key_event_to_string(&key_event), "Ctrl-Shift-l");
 
         let key_event = KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT | KeyModifiers::ALT);
-        assert_eq!(key_event_to_string(&key_event), "<Ctrl-Shift-Alt-l>");
+        assert_eq!(key_event_to_string(&key_event), "Ctrl-Shift-Alt-l");
 
         let key_event = KeyEvent::new(KeyCode::Esc, KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "<Esc>");
+        assert_eq!(key_event_to_string(&key_event), "Esc");
 
         let key_event = KeyEvent::new(KeyCode::F(12), KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "<F12>");
+        assert_eq!(key_event_to_string(&key_event), "F12");
     }
 }
