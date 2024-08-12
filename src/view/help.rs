@@ -55,7 +55,7 @@ impl HelpView<'_> {
             UserEvent::Quit => {
                 self.tx.send(AppEvent::Quit);
             }
-            UserEvent::HelpToggle | UserEvent::CloseOrCancel => {
+            UserEvent::HelpToggle | UserEvent::Cancel | UserEvent::Close => {
                 self.tx.send(AppEvent::ClearHelp); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseHelp);
             }
@@ -146,7 +146,7 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
     let (help_key_lines, help_value_lines) = build_block_lines(
         "Help:",
         &[
-            (&[UserEvent::HelpToggle, UserEvent::CloseOrCancel], "Close help"),
+            (&[UserEvent::HelpToggle, UserEvent::Cancel, UserEvent::Close], "Close help"),
             (&[UserEvent::NavigateDown], "Scroll down"),
             (&[UserEvent::NavigateUp], "Scroll up"),
         ],
@@ -169,7 +169,7 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
             (&[UserEvent::Confirm], "Show commit details"),
             (&[UserEvent::RefListToggle], "Open refs list"),
             (&[UserEvent::Search], "Start search"),
-            (&[UserEvent::CloseOrCancel], "Cancel search"),
+            (&[UserEvent::Cancel], "Cancel search"),
             (&[UserEvent::GoToNext], "Go to next search match"),
             (&[UserEvent::GoToPrevious], "Go to previous search match"),
             (&[UserEvent::ShortCopy], "Copy commit short hash"),
@@ -180,7 +180,7 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
     let (detail_key_lines, detail_value_lines) = build_block_lines(
         "Commit Detail:",
         &[
-            (&[UserEvent::CloseOrCancel], "Close commit details"),
+            (&[UserEvent::Cancel, UserEvent::Close], "Close commit details"),
             (&[UserEvent::PageDown], "Scroll down"),
             (&[UserEvent::PageUp], "Scroll up"),
             (&[UserEvent::ShortCopy], "Copy commit short hash"),
@@ -191,7 +191,7 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
     let (refs_key_lines, refs_value_lines) = build_block_lines(
         "Refs List:",
         &[
-            (&[UserEvent::CloseOrCancel, UserEvent::RefListToggle], "Close refs list"),
+            (&[UserEvent::Cancel, UserEvent::Close, UserEvent::RefListToggle], "Close refs list"),
             (&[UserEvent::NavigateDown], "Move down"),
             (&[UserEvent::NavigateUp], "Move up"),
             (&[UserEvent::GoToTop], "Go to top"),

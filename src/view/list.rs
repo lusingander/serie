@@ -34,7 +34,7 @@ impl<'a> ListView<'a> {
                     self.as_mut_list_state().apply_search();
                     self.update_matched_message();
                 }
-                UserEvent::CloseOrCancel => {
+                UserEvent::Cancel => {
                     self.as_mut_list_state().cancel_search();
                     self.clear_search_query();
                 }
@@ -101,7 +101,7 @@ impl<'a> ListView<'a> {
                 UserEvent::HelpToggle => {
                     self.tx.send(AppEvent::OpenHelp);
                 }
-                UserEvent::CloseOrCancel => {
+                UserEvent::Cancel => {
                     self.as_mut_list_state().cancel_search();
                     self.clear_search_query();
                 }

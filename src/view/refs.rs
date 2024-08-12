@@ -46,7 +46,7 @@ impl<'a> RefsView<'a> {
             UserEvent::Quit => {
                 self.tx.send(AppEvent::Quit);
             }
-            UserEvent::CloseOrCancel | UserEvent::RefListToggle => {
+            UserEvent::Cancel | UserEvent::Close | UserEvent::RefListToggle => {
                 self.tx.send(AppEvent::CloseRefs);
             }
             UserEvent::NavigateDown => {
