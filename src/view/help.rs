@@ -137,28 +137,118 @@ impl<'a> HelpView<'a> {
 
 #[rustfmt::skip]
 fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
-    let mut event_key_maps = Vec::new();
-    for user_event in UserEvent::iter() {
-        let key_events: String = keybind.keys_for_event(&user_event).join(" ");
-        event_key_maps.push((user_event.get_documentation(), key_events));
-    }
+    let (common_key_lines, common_value_lines) = build_block_lines(
+        "Common:",
+        &[
+            (&[UserEvent::ForceQuit, UserEvent::Quit], "Quit app"),
+            (&[UserEvent::HelpToggle], "Open help"),
+        ],
+        keybind,
+    );
+    let (help_key_lines, help_value_lines) = build_block_lines(
+        "Help:",
+        &[
+            (&[UserEvent::HelpToggle, UserEvent::CloseOrCancel], "Close help"),
+            (&[UserEvent::NavigateDown], "Scroll down"),
+            (&[UserEvent::NavigateUp], "Scroll up"),
+        ],
+        keybind,
+    );
+    let (list_key_lines, list_value_lines) = build_block_lines(
+        "Commit List:",
+        &[
+            (&[UserEvent::NavigateDown], "Move down"),
+            (&[UserEvent::NavigateUp], "Move up"),
+            (&[UserEvent::GoToTop], "Go to top"),
+            (&[UserEvent::GoToBottom], "Go to bottom"),
+            (&[UserEvent::PageDown], "Scroll page down"),
+            (&[UserEvent::PageUp], "Scroll page up"),
+            (&[UserEvent::HalfPageDown], "Scroll half page down"),
+            (&[UserEvent::HalfPageUp], "Scroll half page up"),
+            (&[UserEvent::SelectTop], "Select top of the screen"),
+            (&[UserEvent::SelectMiddle], "Select middle of the screen"),
+            (&[UserEvent::SelectBottom], "Select bottom of the screen"),
+            (&[UserEvent::Confirm], "Show commit details"),
+            (&[UserEvent::RefListToggle], "Open refs list"),
+            (&[UserEvent::Search], "Start search"),
+            (&[UserEvent::CloseOrCancel], "Cancel search"),
+            (&[UserEvent::GoToNext], "Go to next search match"),
+            (&[UserEvent::GoToPrevious], "Go to previous search match"),
+            (&[UserEvent::ShortCopy], "Copy commit short hash"),
+            (&[UserEvent::FullCopy], "Copy commit hash"),
+        ],
+        keybind,
+    );
+    let (detail_key_lines, detail_value_lines) = build_block_lines(
+        "Commit Detail:",
+        &[
+            (&[UserEvent::CloseOrCancel], "Close commit details"),
+            (&[UserEvent::PageDown], "Scroll down"),
+            (&[UserEvent::PageUp], "Scroll up"),
+            (&[UserEvent::ShortCopy], "Copy commit short hash"),
+            (&[UserEvent::FullCopy], "Copy commit hash"),
+        ],
+        keybind,
+    );
+    let (refs_key_lines, refs_value_lines) = build_block_lines(
+        "Refs List:",
+        &[
+            (&[UserEvent::CloseOrCancel, UserEvent::RefListToggle], "Close refs list"),
+            (&[UserEvent::NavigateDown], "Move down"),
+            (&[UserEvent::NavigateUp], "Move up"),
+            (&[UserEvent::GoToTop], "Go to top"),
+            (&[UserEvent::GoToBottom], "Go to bottom"),
+            (&[UserEvent::NavigateRight], "Open node"),
+            (&[UserEvent::NavigateLeft], "Close node"),
+            (&[UserEvent::ShortCopy], "Copy ref name"),
+        ],
+        keybind,
+    );
+
+    let key_lines = join_line_groups_with_empty(vec![
+        common_key_lines,
+        help_key_lines,
+        list_key_lines,
+        detail_key_lines,
+        refs_key_lines,
+    ]);
+    let value_lines = join_line_groups_with_empty(vec![
+        common_value_lines,
+        help_value_lines,
+        list_value_lines,
+        detail_value_lines,
+        refs_value_lines,
+    ]);
+
+    (key_lines, value_lines)
+}
+
+fn build_block_lines(
+    title: &'static str,
+    helps: &[(&[UserEvent], &'static str)],
+    keybind: &KeyBind,
+) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
     let mut key_lines = Vec::new();
     let mut value_lines = Vec::new();
 
-    let key_title_lines = vec![Line::from("Help")
+    let key_title_lines = vec![Line::from(title)
         .fg(BLOCK_TITLE_COLOR)
         .add_modifier(Modifier::BOLD)];
     let value_title_lines = vec![Line::from("")];
-    let key_binding_lines: Vec<Line> = event_key_maps.clone()
-        .into_iter()
-        .map(|(_, keys)| {
-            Line::from(Span::raw(keys)).fg(KEY_COLOR)
+    let key_binding_lines: Vec<Line> = helps
+        .iter()
+        .map(|(events, _)| {
+            join_span_groups_with_space(
+                events
+                    .iter()
+                    .flat_map(|event| keybind.keys_for_event(event))
+                    .map(|key| vec!["<".into(), key.fg(KEY_COLOR), ">".into()])
+                    .collect(),
+            )
         })
         .collect();
-    let value_binding_lines: Vec<Line> = event_key_maps
-        .into_iter()
-        .filter_map(|(user_event, _)| user_event.map(Line::from))
-        .collect();
+    let value_binding_lines: Vec<Line> =
+        helps.iter().map(|(_, value)| Line::from(*value)).collect();
 
     key_lines.extend(key_title_lines);
     key_lines.extend(key_binding_lines);
@@ -166,4 +256,28 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
     value_lines.extend(value_binding_lines);
 
     (key_lines, value_lines)
+}
+
+fn join_line_groups_with_empty(line_groups: Vec<Vec<Line<'static>>>) -> Vec<Line<'static>> {
+    let mut result = Vec::new();
+    let n = line_groups.len();
+    for (i, lines) in line_groups.into_iter().enumerate() {
+        result.extend(lines);
+        if i < n - 1 {
+            result.push(Line::raw(""));
+        }
+    }
+    result
+}
+
+fn join_span_groups_with_space(span_groups: Vec<Vec<Span<'static>>>) -> Line<'static> {
+    let mut spans: Vec<Span> = Vec::new();
+    let n = span_groups.len();
+    for (i, ss) in span_groups.into_iter().enumerate() {
+        spans.extend(ss);
+        if i < n - 1 {
+            spans.push(Span::raw(" "));
+        }
+    }
+    Line::from(spans)
 }
