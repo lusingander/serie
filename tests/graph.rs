@@ -853,6 +853,49 @@ fn orphan_001() -> TestResult {
 }
 
 #[test]
+fn orphan_002() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+
+    git.commit("001", "2024-01-01");
+    git.commit("002", "2024-01-02");
+
+    git.checkout_b("010");
+    git.commit("011", "2024-01-03");
+
+    git.checkout("master");
+    git.merge(&["010"], "2024-01-04");
+
+    git.commit("003", "2024-02-01");
+
+    git.checkout_orphan("o1");
+    git.commit("021", "2024-02-02");
+    git.commit("022", "2024-02-03");
+
+    git.checkout("master");
+    git.commit("004", "2024-02-04");
+    git.commit("005", "2024-02-05");
+
+    git.log();
+
+    let options = &[
+        GenerateGraphOption::new("orphan_002_chrono", graph::SortCommit::Chronological),
+        GenerateGraphOption::new("orphan_002_topo", graph::SortCommit::Topological),
+    ];
+
+    copy_git_dir(repo_path, "orphan_002");
+
+    generate_and_output_graph_images(repo_path, options);
+    assert_graph_images(options);
+
+    Ok(())
+}
+
+#[test]
 fn complex_001() -> TestResult {
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
