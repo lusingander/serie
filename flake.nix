@@ -6,8 +6,7 @@
     ref = "nixos-unstable";
   };
 
-  outputs =
-    { nixpkgs, self, ... }:
+  outputs = inputs:
     let
       supportedSystems = [
         "x86_64-linux"
@@ -15,13 +14,13 @@
         "x86_64-darwin"
         "aarch64-darwin"
       ];
-      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+      forAllSystems = inputs.nixpkgs.lib.genAttrs supportedSystems;
     in
     {
       packages = forAllSystems (
         system:
         let
-          pkgs = nixpkgs.legacyPackages.${system};
+          pkgs = inputs.nixpkgs.legacyPackages.${system};
         in
         {
           serie = pkgs.rustPlatform.buildRustPackage {
@@ -32,7 +31,23 @@
             meta.mainProgram = "serie";
             nativeBuildInputs = [ pkgs.git ];
           };
-          default = self.packages.${system}.serie;
+          default = inputs.self.packages.${system}.serie;
+        }
+      );
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = inputs.nixpkgs.legacyPackages.${system};
+        in
+        {
+          default = pkgs.mkShell {
+            name = "devShell";
+            packages = [
+              inputs.self.packages.${system}.serie
+              pkgs.rustfmt
+              pkgs.rustup
+            ];
+          };
         }
       );
     };
