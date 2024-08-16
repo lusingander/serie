@@ -45,7 +45,6 @@
             packages = [
               inputs.self.packages.${system}.serie
               pkgs.rustfmt
-              pkgs.rustup
             ];
           };
         }
