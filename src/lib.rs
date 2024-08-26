@@ -12,23 +12,10 @@ mod macros;
 mod view;
 mod widget;
 
-use std::{
-    env,
-    io::{stdout, Stdout},
-    panic,
-    path::Path,
-};
+use std::{env, path::Path};
 
 use app::App;
 use clap::{Parser, ValueEnum};
-use ratatui::{
-    backend::CrosstermBackend,
-    crossterm::{
-        execute,
-        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    },
-    Terminal,
-};
 
 /// Serie - A rich git commit graph in your terminal, like magic 📚
 #[derive(Parser)]
@@ -79,27 +66,6 @@ impl From<CommitOrderType> for graph::SortCommit {
     }
 }
 
-fn setup() -> std::io::Result<Terminal<CrosstermBackend<Stdout>>> {
-    enable_raw_mode()?;
-    execute!(stdout(), EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout());
-    Terminal::new(backend)
-}
-
-fn shutdown() -> std::io::Result<()> {
-    execute!(stdout(), LeaveAlternateScreen)?;
-    disable_raw_mode()?;
-    Ok(())
-}
-
-fn initialize_panic_handler() {
-    let original_hook = panic::take_hook();
-    panic::set_hook(Box::new(move |panic_info| {
-        shutdown().unwrap();
-        original_hook(panic_info);
-    }));
-}
-
 // By default assume the Iterm2 is the best protocol to use for all terminals *unless* an env
 // variable is set that suggests the terminal is probably Kitty.
 fn auto_detect_best_protocol() -> protocol::ImageProtocol {
@@ -126,8 +92,7 @@ pub fn run() -> std::io::Result<()> {
     let graph_image_options = graph::GraphImageOptions::new(color_set.clone(), args.no_cache);
     let graph_image = graph::build_graph_image(&graph, graph_image_options);
 
-    initialize_panic_handler();
-    let mut terminal = setup()?;
+    let mut terminal = ratatui::init();
 
     let (tx, rx) = event::init();
 
@@ -143,6 +108,6 @@ pub fn run() -> std::io::Result<()> {
     );
     app.run(&mut terminal, rx)?;
 
-    shutdown()?;
+    ratatui::restore();
     Ok(())
 }
