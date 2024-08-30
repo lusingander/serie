@@ -21,7 +21,12 @@ const DEFAULT_DETAIL_DATE_LOCAL: bool = true;
 
 pub fn load() -> (UiConfig, Option<KeyBind>) {
     let config = match config_file_path_from_env() {
-        Some(user_path) => read_config_from_path(&user_path),
+        Some(user_path) => {
+            if !user_path.exists() {
+                panic!("Config file not found: {:?}", user_path);
+            }
+            read_config_from_path(&user_path)
+        }
         None => {
             let default_path = xdg_config_file_path();
             if default_path.exists() {
