@@ -1,3 +1,8 @@
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
+
 use serde::Deserialize;
 
 use crate::keybind::KeyBind;
@@ -15,26 +20,33 @@ const DEFAULT_DETAIL_DATE_FORMAT: &str = "%Y-%m-%d %H:%M:%S %z";
 const DEFAULT_DETAIL_DATE_LOCAL: bool = true;
 
 pub fn load() -> (UiConfig, Option<KeyBind>) {
-    let config = match std::env::var(CONFIG_FILE_ENV_NAME).map(std::path::PathBuf::from) {
-        Ok(user_path) => {
-            // If the user specified the config file, use it
-            let content = std::fs::read_to_string(user_path).unwrap();
-            toml::from_str(&content).unwrap()
-        }
-        Err(_) => {
-            // Otherwise, use the config file in the XDG config directory
-            let default_path = xdg::BaseDirectories::with_prefix(APP_DIR_NAME)
-                .unwrap()
-                .get_config_file(CONFIG_FILE_NAME);
+    let config = match config_file_path_from_env() {
+        Some(user_path) => read_config_from_path(&user_path),
+        None => {
+            let default_path = xdg_config_file_path();
             if default_path.exists() {
-                let content = std::fs::read_to_string(default_path).unwrap();
-                toml::from_str(&content).unwrap()
+                read_config_from_path(&default_path)
             } else {
                 Config::default()
             }
         }
     };
     (config.ui, config.keybind)
+}
+
+fn config_file_path_from_env() -> Option<PathBuf> {
+    env::var(CONFIG_FILE_ENV_NAME).ok().map(PathBuf::from)
+}
+
+fn xdg_config_file_path() -> PathBuf {
+    xdg::BaseDirectories::with_prefix(APP_DIR_NAME)
+        .unwrap()
+        .get_config_file(CONFIG_FILE_NAME)
+}
+
+fn read_config_from_path(path: &Path) -> Config {
+    let content = std::fs::read_to_string(path).unwrap();
+    toml::from_str(&content).unwrap()
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
