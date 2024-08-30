@@ -1,9 +1,15 @@
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
+
 use serde::Deserialize;
 
 use crate::keybind::KeyBind;
 
 const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
+const CONFIG_FILE_ENV_NAME: &str = "SERIE_CONFIG_FILE";
 
 const DEFAULT_LIST_SUBJECT_MIN_WIDTH: u16 = 20;
 const DEFAULT_LIST_DATE_FORMAT: &str = "%Y-%m-%d";
@@ -14,16 +20,38 @@ const DEFAULT_DETAIL_DATE_FORMAT: &str = "%Y-%m-%d %H:%M:%S %z";
 const DEFAULT_DETAIL_DATE_LOCAL: bool = true;
 
 pub fn load() -> (UiConfig, Option<KeyBind>) {
-    let path = xdg::BaseDirectories::with_prefix(APP_DIR_NAME)
-        .unwrap()
-        .get_config_file(CONFIG_FILE_NAME);
-    let config = if path.exists() {
-        let content = std::fs::read_to_string(path).unwrap();
-        toml::from_str(&content).unwrap()
-    } else {
-        Config::default()
+    let config = match config_file_path_from_env() {
+        Some(user_path) => {
+            if !user_path.exists() {
+                panic!("Config file not found: {:?}", user_path);
+            }
+            read_config_from_path(&user_path)
+        }
+        None => {
+            let default_path = xdg_config_file_path();
+            if default_path.exists() {
+                read_config_from_path(&default_path)
+            } else {
+                Config::default()
+            }
+        }
     };
     (config.ui, config.keybind)
+}
+
+fn config_file_path_from_env() -> Option<PathBuf> {
+    env::var(CONFIG_FILE_ENV_NAME).ok().map(PathBuf::from)
+}
+
+fn xdg_config_file_path() -> PathBuf {
+    xdg::BaseDirectories::with_prefix(APP_DIR_NAME)
+        .unwrap()
+        .get_config_file(CONFIG_FILE_NAME)
+}
+
+fn read_config_from_path(path: &Path) -> Config {
+    let content = std::fs::read_to_string(path).unwrap();
+    toml::from_str(&content).unwrap()
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
