@@ -4,6 +4,7 @@ use crate::keybind::KeyBind;
 
 const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
+const CONFIG_FILE_ENV_NAME: &str = "SERIE_CONFIG_FILE";
 
 const DEFAULT_LIST_SUBJECT_MIN_WIDTH: u16 = 20;
 const DEFAULT_LIST_DATE_FORMAT: &str = "%Y-%m-%d";
@@ -14,14 +15,24 @@ const DEFAULT_DETAIL_DATE_FORMAT: &str = "%Y-%m-%d %H:%M:%S %z";
 const DEFAULT_DETAIL_DATE_LOCAL: bool = true;
 
 pub fn load() -> (UiConfig, Option<KeyBind>) {
-    let path = xdg::BaseDirectories::with_prefix(APP_DIR_NAME)
-        .unwrap()
-        .get_config_file(CONFIG_FILE_NAME);
-    let config = if path.exists() {
-        let content = std::fs::read_to_string(path).unwrap();
-        toml::from_str(&content).unwrap()
-    } else {
-        Config::default()
+    let config = match std::env::var(CONFIG_FILE_ENV_NAME).map(std::path::PathBuf::from) {
+        Ok(user_path) => {
+            // If the user specified the config file, use it
+            let content = std::fs::read_to_string(user_path).unwrap();
+            toml::from_str(&content).unwrap()
+        }
+        Err(_) => {
+            // Otherwise, use the config file in the XDG config directory
+            let default_path = xdg::BaseDirectories::with_prefix(APP_DIR_NAME)
+                .unwrap()
+                .get_config_file(CONFIG_FILE_NAME);
+            if default_path.exists() {
+                let content = std::fs::read_to_string(default_path).unwrap();
+                toml::from_str(&content).unwrap()
+            } else {
+                Config::default()
+            }
+        }
     };
     (config.ui, config.keybind)
 }
