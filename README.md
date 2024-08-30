@@ -184,8 +184,12 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 
 ### Config
 
-If `$XDG_CONFIG_HOME/serie/config.toml` exists, it will be read and used.
-If `$XDG_CONFIG_HOME` is not set, `~/.config/` will be used instead.
+Config files are loaded in the following order of priority:
+
+- `$SERIE_CONFIG_FILE`
+  - If `$SERIE_CONFIG_FILE` is set but the file does not exist, an error occurs.
+- `$XDG_CONFIG_HOME/serie/config.toml`
+  - If `$XDG_CONFIG_HOME` is not set, `~/.config/` will be used instead.
 
 If the config file does not exist, the default values will be used for all items.
 If the config file exists but some items are not set, the default values will be used for those unset items.
