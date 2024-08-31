@@ -161,6 +161,7 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 | ----------------------------------- | --------------------------- | ----------------------------- |
 | <kbd>Esc</kbd> <kbd>Backspace</kbd> | Close commit details        | `close` `cancel`              |
 | <kbd>Down/Up</kbd> <kbd>j/k</kbd>   | Scroll down/up              | `navigate_down` `navigate_up` |
+| <kbd>g/G</kbd>                      | Go to top/bottom            | `go_to_top` `go_to_bottom`    |
 | <kbd>c/C</kbd>                      | Copy commit short/full hash | `short_copy` `full_copy`      |
 
 #### Refs List
@@ -175,10 +176,11 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 
 #### Help
 
-| Key                                              | Description    | Corresponding keybind           |
-| ------------------------------------------------ | -------------- | ------------------------------- |
-| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>?</kbd> | Close help     | `close` `cancel` `help_toggle ` |
-| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                | Scroll down/up | `navigate_down` `navigate_up`   |
+| Key                                              | Description      | Corresponding keybind          |
+| ------------------------------------------------ | ---------------- | ------------------------------ |
+| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>?</kbd> | Close help       | `close` `cancel` `help_toggle` |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                | Scroll down/up   | `navigate_down` `navigate_up`  |
+| <kbd>g/G</kbd>                                   | Go to top/bottom | `go_to_top` `go_to_bottom`     |
 
 </details>
 

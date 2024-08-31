@@ -62,6 +62,12 @@ impl<'a> DetailView<'a> {
             UserEvent::NavigateUp => {
                 self.commit_detail_state.scroll_up();
             }
+            UserEvent::GoToTop => {
+                self.commit_detail_state.select_first();
+            }
+            UserEvent::GoToBottom => {
+                self.commit_detail_state.select_last();
+            }
             UserEvent::ShortCopy => {
                 self.copy_commit_short_hash();
             }

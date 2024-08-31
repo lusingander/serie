@@ -65,6 +65,12 @@ impl HelpView<'_> {
             UserEvent::NavigateUp => {
                 self.scroll_up();
             }
+            UserEvent::GoToTop => {
+                self.select_first();
+            }
+            UserEvent::GoToBottom => {
+                self.select_last();
+            }
             _ => {}
         }
     }
@@ -131,6 +137,14 @@ impl<'a> HelpView<'a> {
             self.offset -= 1;
         }
     }
+
+    fn select_first(&mut self) {
+        self.offset = 0;
+    }
+
+    fn select_last(&mut self) {
+        self.offset = self.help_key_lines.len() - 1;
+    }
 }
 
 #[rustfmt::skip]
@@ -149,6 +163,8 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
             (&[UserEvent::HelpToggle, UserEvent::Cancel, UserEvent::Close], "Close help"),
             (&[UserEvent::NavigateDown], "Scroll down"),
             (&[UserEvent::NavigateUp], "Scroll up"),
+            (&[UserEvent::GoToTop], "Go to top"),
+            (&[UserEvent::GoToBottom], "Go to bottom"),
         ],
         keybind,
     );
@@ -183,6 +199,8 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
             (&[UserEvent::Cancel, UserEvent::Close], "Close commit details"),
             (&[UserEvent::PageDown], "Scroll down"),
             (&[UserEvent::PageUp], "Scroll up"),
+            (&[UserEvent::GoToTop], "Go to top"),
+            (&[UserEvent::GoToBottom], "Go to bottom"),
             (&[UserEvent::ShortCopy], "Copy commit short hash"),
             (&[UserEvent::FullCopy], "Copy commit hash"),
         ],
