@@ -27,7 +27,7 @@ If the application does not work with your terminal emulator, please first check
 
 For information on tested terminal emulators, refer to [Compatibility](./README.md#compatibility).
 
-Please share your experience with other terminals on the [Discussions](https://github.com/lusingander/serie/discussions/29). Please share any necessary information listed at the top of the Discussions.
+Please share your experience with other terminals on the [Discussions](https://github.com/lusingander/serie/discussions/29). Please share any necessary information listed at the top of the Discussions. Since implementations of image display protocols in each terminals have differences in behavior and unimplemented features, it is important to check their actual behavior.
 
 ## Pull Requests
 

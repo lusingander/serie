@@ -127,7 +127,7 @@ If `--no-cache` is specified, this cache image will not be used or saved.
 
 You can see the keybindings by pressing the `?` key.
 
-The default key bindings can be overridden. Please refer to [default-keybind.toml](./assets/default-keybind.toml) and add it to [config.toml](#config).
+The default key bindings can be overridden. Please refer to [default-keybind.toml](./assets/default-keybind.toml) and add it to [config file](#config).
 
 <details>
 <summary>List of all default keybindings</summary>
