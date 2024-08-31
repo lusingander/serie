@@ -65,6 +65,12 @@ impl HelpView<'_> {
             UserEvent::NavigateUp => {
                 self.scroll_up();
             }
+            UserEvent::GoToTop => {
+                self.select_first();
+            }
+            UserEvent::GoToBottom => {
+                self.select_last();
+            }
             _ => {}
         }
     }
@@ -130,6 +136,14 @@ impl<'a> HelpView<'a> {
         if self.offset > 0 {
             self.offset -= 1;
         }
+    }
+
+    fn select_first(&mut self) {
+        self.offset = 0;
+    }
+
+    fn select_last(&mut self) {
+        self.offset = self.help_key_lines.len() - 1;
     }
 }
 
