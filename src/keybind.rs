@@ -7,7 +7,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 const DEFAULT_KEY_BIND: &str = include_str!("../assets/default-keybind.toml");
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct KeyBind(HashMap<KeyEvent, UserEvent>);
 
 impl Deref for KeyBind {
@@ -40,7 +40,6 @@ impl KeyBind {
 
     pub fn keys_for_event(&self, user_event: &UserEvent) -> Vec<String> {
         let mut key_events: Vec<&KeyEvent> = self
-            .0
             .iter()
             .filter(|(_, ue)| *ue == user_event)
             .map(|(ke, _)| ke)

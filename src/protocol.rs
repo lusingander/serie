@@ -1,4 +1,17 @@
+use std::env;
+
 use base64::Engine;
+
+// By default assume the Iterm2 is the best protocol to use for all terminals *unless* an env
+// variable is set that suggests the terminal is probably Kitty.
+pub fn auto_detect() -> ImageProtocol {
+    // https://sw.kovidgoyal.net/kitty/glossary/#envvar-KITTY_WINDOW_ID
+    if env::var("KITTY_WINDOW_ID").is_ok() {
+        ImageProtocol::Kitty
+    } else {
+        ImageProtocol::Iterm2
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum ImageProtocol {
