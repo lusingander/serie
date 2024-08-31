@@ -81,7 +81,7 @@ pub fn init() -> (Sender, Receiver) {
     (tx, rx)
 }
 
-/// The event triggered by user's key input
+// The event triggered by user's key input
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum UserEvent {

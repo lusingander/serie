@@ -58,7 +58,7 @@ fn read_config_from_path(path: &Path) -> Config {
 struct Config {
     #[serde(default)]
     ui: UiConfig,
-    /// The user customed keybinds, please ref `assets/default-keybind.toml`
+    // The user customed keybinds, please ref `assets/default-keybind.toml`
     keybind: Option<KeyBind>,
 }
 
