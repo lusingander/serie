@@ -38,6 +38,14 @@ impl CommitDetailState {
     pub fn scroll_up(&mut self) {
         self.offset = self.offset.saturating_sub(1);
     }
+
+    pub fn select_first(&mut self) {
+        self.offset = 0;
+    }
+
+    pub fn select_last(&mut self) {
+        self.offset = usize::MAX;
+    }
 }
 
 pub struct CommitDetail<'a> {
