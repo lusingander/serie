@@ -1,9 +1,9 @@
 use std::{
-    collections::{HashMap, HashSet},
     fmt::{self, Debug, Formatter},
     io::Cursor,
 };
 
+use fxhash::{FxHashMap, FxHashSet};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::{
@@ -18,7 +18,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct GraphImageManager<'a> {
-    encoded_image_map: HashMap<CommitHash, String>,
+    encoded_image_map: FxHashMap<CommitHash, String>,
 
     graph: &'a Graph<'a>,
     image_params: ImageParams,
@@ -39,7 +39,7 @@ impl<'a> GraphImageManager<'a> {
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         let mut m = GraphImageManager {
-            encoded_image_map: HashMap::new(),
+            encoded_image_map: FxHashMap::default(),
             image_params,
             image_cache,
             drawing_pixels,
@@ -94,7 +94,7 @@ impl<'a> GraphImageManager<'a> {
 
 #[derive(Debug, Default)]
 pub struct GraphImage {
-    pub images: HashMap<Vec<Edge>, GraphRowImage>,
+    pub images: FxHashMap<Vec<Edge>, GraphRowImage>,
 }
 
 pub struct GraphRowImage {
@@ -205,7 +205,7 @@ pub fn build_graph_image(
     image_cache: &Option<ImageCache>,
     drawing_pixels: &DrawingPixels,
 ) -> GraphImage {
-    let graph_row_sources: HashSet<(usize, &Vec<Edge>)> = graph
+    let graph_row_sources: FxHashSet<(usize, &Vec<Edge>)> = graph
         .commits
         .iter()
         .map(|commit| {
@@ -264,7 +264,7 @@ fn setup_image_cache(
     }
 }
 
-type Pixels = HashSet<(i32, i32)>;
+type Pixels = FxHashSet<(i32, i32)>;
 
 #[derive(Debug)]
 pub struct DrawingPixels {
@@ -321,7 +321,7 @@ fn calc_commit_circle_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let mut y = 0;
     let mut p = 1 - radius;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
 
     while x >= y {
         for dx in -x..=x {
@@ -349,7 +349,7 @@ fn calc_vertical_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let center_x = (image_params.width / 2) as i32;
     let half_line_width = (image_params.line_width as i32) / 2;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in 0..image_params.height {
         for x in (center_x - half_line_width)..=(center_x + half_line_width) {
             pixels.insert((x, y as i32));
@@ -362,7 +362,7 @@ fn calc_horizontal_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let center_y = (image_params.height / 2) as i32;
     let half_line_width = (image_params.line_width as i32) / 2;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in (center_y - half_line_width)..=(center_y + half_line_width) {
         for x in 0..image_params.width {
             pixels.insert((x as i32, y));
@@ -377,7 +377,7 @@ fn calc_up_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_center_y = (image_params.height / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in 0..=(circle_center_y - circle_outer_radius) {
         for x in (center_x - half_line_width)..=(center_x + half_line_width) {
             pixels.insert((x, y));
@@ -392,7 +392,7 @@ fn calc_down_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_center_y = (image_params.height / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in (circle_center_y + circle_outer_radius)..(image_params.height as i32) {
         for x in (center_x - half_line_width)..=(center_x + half_line_width) {
             pixels.insert((x, y));
@@ -407,7 +407,7 @@ fn calc_left_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_center_x = (image_params.width / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in (center_y - half_line_width)..=(center_y + half_line_width) {
         for x in 0..=(circle_center_x - circle_outer_radius) {
             pixels.insert((x, y));
@@ -422,7 +422,7 @@ fn calc_right_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_center_x = (image_params.width / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in (center_y - half_line_width)..=(center_y + half_line_width) {
         for x in (circle_center_x + circle_outer_radius)..=(image_params.width as i32) {
             pixels.insert((x, y));
@@ -468,7 +468,7 @@ fn calc_corner_edge_drawing_pixels(
     let mut y = 0;
     let mut p = 1 - inner_radius;
 
-    let mut inner_pixels = Pixels::new();
+    let mut inner_pixels = Pixels::default();
 
     while x >= y {
         for dx in -x..=x {
@@ -493,7 +493,7 @@ fn calc_corner_edge_drawing_pixels(
     let mut y = 0;
     let mut p = 1 - outer_radius;
 
-    let mut outer_pixels = Pixels::new();
+    let mut outer_pixels = Pixels::default();
 
     while x >= y {
         for dx in -x..=x {
