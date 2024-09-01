@@ -33,10 +33,6 @@ struct Args {
     /// Preload all graph images
     #[arg(long, default_value = "false")]
     preload: bool,
-
-    /// Do not use graph image cache
-    #[arg(long, default_value = "false")]
-    no_cache: bool,
 }
 
 #[derive(Debug, Clone, ValueEnum)]

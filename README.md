@@ -94,7 +94,6 @@ Options:
   -p, --protocol <TYPE>  Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty]
   -o, --order <TYPE>     Commit ordering algorithm [default: chrono] [possible values: chrono, topo]
       --preload          Preload all graph images
-      --no-cache         Do not use graph image cache
   -h, --help             Print help
   -V, --version          Print version
 ```
@@ -123,13 +122,6 @@ Refer to [Compatibility](#compatibility) for details.
 By default, graph images are generated and loaded lazily as needed.
 
 If `--preload` is specified, all graph images will be generated and loaded at startup. This can result in smoother scrolling, as the images are already available, and might reduce memory usage. However, this may lead to slower startup times, especially for large repositories.
-
-#### --no-cache
-
-The generated graph image is saved in `$XDG_CACHE_HOME/serie` and reused.
-If `$XDG_CACHE_HOME` is not set, `~/.cache/` will be used instead.
-
-If `--no-cache` is specified, this cache image will not be used or saved.
 
 ### Keybindings
 
