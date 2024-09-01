@@ -15,7 +15,7 @@ use crate::{
     event::{AppEvent, Receiver, Sender, UserEvent},
     external::copy_to_clipboard,
     git::Repository,
-    graph::{Graph, GraphImage, GraphImageManager},
+    graph::{Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
     view::View,
@@ -58,7 +58,6 @@ impl<'a> App<'a> {
         repository: &'a Repository,
         graph_image_manager: GraphImageManager,
         graph: &'a Graph,
-        graph_image: &'a GraphImage,
         keybind: &'a KeyBind,
         ui_config: &'a UiConfig,
         color_set: &'a ColorSet,
@@ -71,17 +70,13 @@ impl<'a> App<'a> {
             .iter()
             .enumerate()
             .map(|(i, commit)| {
-                let edges = &graph.edges[i];
-                let graph_row_image = &graph_image.images[edges];
-                let image_cell_width = graph_row_image.cell_count * 2;
-                let image = image_protocol.encode(&graph_row_image.bytes, image_cell_width);
                 let refs = repository.refs(&commit.commit_hash);
                 for r in &refs {
                     ref_name_to_commit_index_map.insert(r.name(), i);
                 }
                 let (pos_x, _) = graph.commit_pos_map[&commit.commit_hash];
                 let graph_color = color_set.get(pos_x).to_ratatui_color();
-                CommitInfo::new(commit, image, refs, graph_color)
+                CommitInfo::new(commit, refs, graph_color)
             })
             .collect();
         let graph_cell_width = (graph.max_pos_x + 1) as u16 * 2;

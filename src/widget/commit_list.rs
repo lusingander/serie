@@ -38,16 +38,14 @@ const ELLIPSIS: &str = "...";
 #[derive(Debug)]
 pub struct CommitInfo<'a> {
     commit: &'a Commit,
-    image: String, // fixme: duplicate
     refs: Vec<&'a Ref>,
     graph_color: Color,
 }
 
 impl<'a> CommitInfo<'a> {
-    pub fn new(commit: &'a Commit, image: String, refs: Vec<&'a Ref>, graph_color: Color) -> Self {
+    pub fn new(commit: &'a Commit, refs: Vec<&'a Ref>, graph_color: Color) -> Self {
         Self {
             commit,
-            image,
             refs,
             graph_color,
         }

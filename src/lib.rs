@@ -81,9 +81,6 @@ pub fn run() -> std::io::Result<()> {
     let graph = graph::calc_graph(&repository);
 
     let graph_image_options = graph::GraphImageOptions::new(color_set.clone(), args.no_cache);
-    let graph_image = graph::build_graph_image(&graph, graph_image_options);
-
-    let graph_image_options = graph::GraphImageOptions::new(color_set.clone(), args.no_cache);
     let graph_image_manager = GraphImageManager::new(&graph, graph_image_options, image_protocol);
 
     let mut terminal = ratatui::init();
@@ -94,7 +91,6 @@ pub fn run() -> std::io::Result<()> {
         &repository,
         graph_image_manager,
         &graph,
-        &graph_image,
         &key_bind,
         &ui_config,
         &color_set,
