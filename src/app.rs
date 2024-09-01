@@ -56,7 +56,7 @@ impl<'a> App<'a> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         repository: &'a Repository,
-        graph_image_manager: GraphImageManager,
+        graph_image_manager: GraphImageManager<'a>,
         graph: &'a Graph,
         keybind: &'a KeyBind,
         ui_config: &'a UiConfig,

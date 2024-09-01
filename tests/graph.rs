@@ -1080,7 +1080,7 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     let repository = git::Repository::load(path.as_ref(), option.sort);
     let graph = graph::calc_graph(&repository);
     let graph_image =
-        graph::build_graph_image(&graph, graph::GraphImageOptions::new(color_set, true));
+        graph::build_graph_image(&graph, &graph::GraphImageOptions::new(color_set, true));
 
     // Create concatenated image
     let (width, height) = (50, 50);

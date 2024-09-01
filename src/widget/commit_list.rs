@@ -111,7 +111,7 @@ impl SearchMatchPosition {
 #[derive(Debug)]
 pub struct CommitListState<'a> {
     commits: Vec<CommitInfo<'a>>,
-    graph_image_manager: GraphImageManager,
+    graph_image_manager: GraphImageManager<'a>,
     graph_cell_width: u16,
     head: &'a Head,
 
@@ -130,7 +130,7 @@ pub struct CommitListState<'a> {
 impl<'a> CommitListState<'a> {
     pub fn new(
         commits: Vec<CommitInfo<'a>>,
-        graph_image_manager: GraphImageManager,
+        graph_image_manager: GraphImageManager<'a>,
         graph_cell_width: u16,
         head: &'a Head,
         ref_name_to_commit_index_map: HashMap<&'a str, usize>,
@@ -525,6 +525,17 @@ impl CommitList<'_> {
             state.selected -= diff;
             state.offset += diff;
         }
+
+        state
+            .commits
+            .iter()
+            .skip(state.offset)
+            .take(state.height)
+            .for_each(|commit_info| {
+                state
+                    .graph_image_manager
+                    .load_encoded_image(&commit_info.commit.commit_hash);
+            });
     }
 
     fn calc_cell_widths(
