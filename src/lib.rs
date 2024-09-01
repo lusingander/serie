@@ -33,10 +33,6 @@ struct Args {
     /// Preload all graph images
     #[arg(long, default_value = "false")]
     preload: bool,
-
-    /// Do not use graph image cache
-    #[arg(long, default_value = "false")]
-    no_cache: bool,
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -84,7 +80,7 @@ pub fn run() -> std::io::Result<()> {
 
     let graph = graph::calc_graph(&repository);
 
-    let graph_image_options = graph::GraphImageOptions::new(color_set.clone(), args.no_cache);
+    let graph_image_options = graph::GraphImageOptions::new(color_set.clone());
     let graph_image_manager =
         GraphImageManager::new(&graph, graph_image_options, image_protocol, args.preload);
 
