@@ -21,7 +21,9 @@ pub struct GraphImageManager<'a> {
     encoded_image_map: HashMap<CommitHash, String>,
 
     graph: &'a Graph<'a>,
-    options: GraphImageOptions,
+    image_params: ImageParams,
+    image_cache: Option<ImageCache>,
+    drawing_pixels: DrawingPixels,
     image_protocol: ImageProtocol,
 }
 
@@ -32,45 +34,60 @@ impl<'a> GraphImageManager<'a> {
         image_protocol: ImageProtocol,
         preload: bool,
     ) -> Self {
-        let encoded_image_map = if preload {
-            let graph_image = build_graph_image(graph, &options);
-            graph
-                .commits
-                .iter()
-                .enumerate()
-                .map(|(i, commit)| {
-                    let edges = &graph.edges[i];
-                    let graph_row_image = &graph_image.images[edges];
-                    let image_cell_width = graph_row_image.cell_count * 2;
-                    let image = image_protocol.encode(&graph_row_image.bytes, image_cell_width);
-                    (commit.commit_hash.clone(), image)
-                })
-                .collect()
-        } else {
-            HashMap::new()
-        };
+        let image_params = ImageParams::new(&options.color_set);
+        let image_cache = setup_image_cache(&image_params, &options);
+        let drawing_pixels = DrawingPixels::new(&image_params);
 
-        Self {
-            encoded_image_map,
+        let mut m = GraphImageManager {
+            encoded_image_map: HashMap::new(),
+            image_params,
+            image_cache,
+            drawing_pixels,
             graph,
-            options,
             image_protocol,
+        };
+        if preload {
+            m.load_all_encoded_image();
         }
+        m
     }
 
     pub fn encoded_image(&self, commit_hash: &CommitHash) -> &str {
         self.encoded_image_map.get(commit_hash).unwrap()
     }
 
+    pub fn load_all_encoded_image(&mut self) {
+        let graph_image = build_graph_image(
+            self.graph,
+            &self.image_params,
+            &self.image_cache,
+            &self.drawing_pixels,
+        );
+        self.encoded_image_map = self
+            .graph
+            .commits
+            .iter()
+            .enumerate()
+            .map(|(i, commit)| {
+                let edges = &self.graph.edges[i];
+                let image = graph_image.images[edges].encode(self.image_protocol);
+                (commit.commit_hash.clone(), image)
+            })
+            .collect()
+    }
+
     pub fn load_encoded_image(&mut self, commit_hash: &CommitHash) {
         if self.encoded_image_map.contains_key(commit_hash) {
             return;
         }
-        let graph_row_image = build_single_graph_row_image(self.graph, &self.options, commit_hash);
-        let image_cell_width = graph_row_image.cell_count * 2;
-        let image = self
-            .image_protocol
-            .encode(&graph_row_image.bytes, image_cell_width);
+        let graph_row_image = build_single_graph_row_image(
+            self.graph,
+            &self.image_params,
+            &self.image_cache,
+            &self.drawing_pixels,
+            commit_hash,
+        );
+        let image = graph_row_image.encode(self.image_protocol);
         self.encoded_image_map.insert(commit_hash.clone(), image);
     }
 }
@@ -96,7 +113,15 @@ impl Debug for GraphRowImage {
     }
 }
 
-struct ImageParams {
+impl GraphRowImage {
+    fn encode(&self, image_protocol: ImageProtocol) -> String {
+        let image_cell_width = self.cell_count * 2;
+        image_protocol.encode(&self.bytes, image_cell_width)
+    }
+}
+
+#[derive(Debug)]
+pub struct ImageParams {
     width: u16,
     height: u16,
     line_width: u16,
@@ -106,7 +131,7 @@ struct ImageParams {
 }
 
 impl ImageParams {
-    fn new(color_set: &ColorSet) -> Self {
+    pub fn new(color_set: &ColorSet) -> Self {
         let width = 50;
         let height = 50;
         let line_width = 5;
@@ -149,40 +174,37 @@ impl GraphImageOptions {
 
 fn build_single_graph_row_image(
     graph: &Graph<'_>,
-    options: &GraphImageOptions,
+    image_params: &ImageParams,
+    image_cache: &Option<ImageCache>,
+    drawing_pixels: &DrawingPixels,
     commit_hash: &CommitHash,
 ) -> GraphRowImage {
-    let image_params = ImageParams::new(&options.color_set);
-    let image_cache = setup_image_cache(&image_params, options);
-
-    let drawing_pixels = DrawingPixels::new(&image_params);
-
     let (pos_x, pos_y) = graph.commit_pos_map[&commit_hash];
     let edges = &graph.edges[pos_y];
 
     let cell_count = graph.max_pos_x + 1;
 
-    if let Some(image_cache) = &image_cache {
+    if let Some(image_cache) = image_cache {
         let image_cache_file_key = ImageCacheFileKey::new(pos_x, cell_count, edges.clone());
         image_cache
             .load_image_cache(&image_cache_file_key)
             .unwrap_or_else(|| {
                 let graph_row_image =
-                    calc_graph_row_image(pos_x, cell_count, edges, &image_params, &drawing_pixels);
+                    calc_graph_row_image(pos_x, cell_count, edges, image_params, drawing_pixels);
                 image_cache.save_image_cache(&image_cache_file_key, &graph_row_image);
                 graph_row_image
             })
     } else {
-        calc_graph_row_image(pos_x, cell_count, edges, &image_params, &drawing_pixels)
+        calc_graph_row_image(pos_x, cell_count, edges, image_params, drawing_pixels)
     }
 }
 
-pub fn build_graph_image(graph: &Graph<'_>, options: &GraphImageOptions) -> GraphImage {
-    let image_params = ImageParams::new(&options.color_set);
-    let image_cache = setup_image_cache(&image_params, options);
-
-    let drawing_pixels = DrawingPixels::new(&image_params);
-
+pub fn build_graph_image(
+    graph: &Graph<'_>,
+    image_params: &ImageParams,
+    image_cache: &Option<ImageCache>,
+    drawing_pixels: &DrawingPixels,
+) -> GraphImage {
     let graph_row_sources: HashSet<(usize, &Vec<Edge>)> = graph
         .commits
         .iter()
@@ -207,14 +229,14 @@ pub fn build_graph_image(graph: &Graph<'_>, options: &GraphImageOptions) -> Grap
                             pos_x,
                             cell_count,
                             edges,
-                            &image_params,
-                            &drawing_pixels,
+                            image_params,
+                            drawing_pixels,
                         );
                         image_cache.save_image_cache(&image_cache_file_key, &graph_row_image);
                         graph_row_image
                     })
             } else {
-                calc_graph_row_image(pos_x, cell_count, edges, &image_params, &drawing_pixels)
+                calc_graph_row_image(pos_x, cell_count, edges, image_params, drawing_pixels)
             };
             (edges.clone(), graph_row_image)
         })
@@ -244,7 +266,8 @@ fn setup_image_cache(
 
 type Pixels = HashSet<(i32, i32)>;
 
-struct DrawingPixels {
+#[derive(Debug)]
+pub struct DrawingPixels {
     circle: Pixels,
     vertical_edge: Pixels,
     horizontal_edge: Pixels,
@@ -259,7 +282,7 @@ struct DrawingPixels {
 }
 
 impl DrawingPixels {
-    fn new(image_params: &ImageParams) -> Self {
+    pub fn new(image_params: &ImageParams) -> Self {
         let circle = calc_commit_circle_drawing_pixels(image_params);
         let vertical_edge = calc_vertical_edge_drawing_pixels(image_params);
         let horizontal_edge = calc_horizontal_edge_drawing_pixels(image_params);
