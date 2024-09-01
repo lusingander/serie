@@ -184,19 +184,14 @@ fn build_single_graph_row_image(
 
     let cell_count = graph.max_pos_x + 1;
 
-    if let Some(image_cache) = image_cache {
-        let image_cache_file_key = ImageCacheFileKey::new(pos_x, cell_count, edges.clone());
-        image_cache
-            .load_image_cache(&image_cache_file_key)
-            .unwrap_or_else(|| {
-                let graph_row_image =
-                    calc_graph_row_image(pos_x, cell_count, edges, image_params, drawing_pixels);
-                image_cache.save_image_cache(&image_cache_file_key, &graph_row_image);
-                graph_row_image
-            })
-    } else {
-        calc_graph_row_image(pos_x, cell_count, edges, image_params, drawing_pixels)
-    }
+    calc_graph_row_image_or_load_from_cache(
+        pos_x,
+        cell_count,
+        edges.clone(),
+        image_params,
+        drawing_pixels,
+        image_cache,
+    )
 }
 
 pub fn build_graph_image(
@@ -220,24 +215,14 @@ pub fn build_graph_image(
     let images = graph_row_sources
         .into_par_iter()
         .map(|(pos_x, edges)| {
-            let graph_row_image = if let Some(image_cache) = &image_cache {
-                let image_cache_file_key = ImageCacheFileKey::new(pos_x, cell_count, edges.clone());
-                image_cache
-                    .load_image_cache(&image_cache_file_key)
-                    .unwrap_or_else(|| {
-                        let graph_row_image = calc_graph_row_image(
-                            pos_x,
-                            cell_count,
-                            edges,
-                            image_params,
-                            drawing_pixels,
-                        );
-                        image_cache.save_image_cache(&image_cache_file_key, &graph_row_image);
-                        graph_row_image
-                    })
-            } else {
-                calc_graph_row_image(pos_x, cell_count, edges, image_params, drawing_pixels)
-            };
+            let graph_row_image = calc_graph_row_image_or_load_from_cache(
+                pos_x,
+                cell_count,
+                edges.clone(),
+                image_params,
+                drawing_pixels,
+                image_cache,
+            );
             (edges.clone(), graph_row_image)
         })
         .collect();
@@ -524,6 +509,40 @@ fn calc_corner_edge_drawing_pixels(
         })
         .cloned()
         .collect()
+}
+
+fn calc_graph_row_image_or_load_from_cache(
+    commit_pos_x: usize,
+    cell_count: usize,
+    edges: Vec<Edge>,
+    image_params: &ImageParams,
+    drawing_pixels: &DrawingPixels,
+    image_cache: &Option<ImageCache>,
+) -> GraphRowImage {
+    if let Some(image_cache) = image_cache {
+        let image_cache_file_key = ImageCacheFileKey::new(commit_pos_x, cell_count, edges.clone());
+        image_cache
+            .load_image_cache(&image_cache_file_key)
+            .unwrap_or_else(|| {
+                let graph_row_image = calc_graph_row_image(
+                    commit_pos_x,
+                    cell_count,
+                    &edges,
+                    image_params,
+                    drawing_pixels,
+                );
+                image_cache.save_image_cache(&image_cache_file_key, &graph_row_image);
+                graph_row_image
+            })
+    } else {
+        calc_graph_row_image(
+            commit_pos_x,
+            cell_count,
+            &edges,
+            image_params,
+            drawing_pixels,
+        )
+    }
 }
 
 fn calc_graph_row_image(
