@@ -9,10 +9,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use crate::{
     color::ColorSet,
     git::CommitHash,
-    graph::{
-        cache::{ImageCache, ImageCacheDirKey, ImageCacheFileKey},
-        Edge, EdgeType, Graph,
-    },
+    graph::{Edge, EdgeType, Graph},
     protocol::ImageProtocol,
 };
 
@@ -22,7 +19,6 @@ pub struct GraphImageManager<'a> {
 
     graph: &'a Graph<'a>,
     image_params: ImageParams,
-    image_cache: Option<ImageCache>,
     drawing_pixels: DrawingPixels,
     image_protocol: ImageProtocol,
 }
@@ -35,13 +31,11 @@ impl<'a> GraphImageManager<'a> {
         preload: bool,
     ) -> Self {
         let image_params = ImageParams::new(&options.color_set);
-        let image_cache = setup_image_cache(&image_params, &options);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         let mut m = GraphImageManager {
             encoded_image_map: FxHashMap::default(),
             image_params,
-            image_cache,
             drawing_pixels,
             graph,
             image_protocol,
@@ -57,12 +51,7 @@ impl<'a> GraphImageManager<'a> {
     }
 
     pub fn load_all_encoded_image(&mut self) {
-        let graph_image = build_graph_image(
-            self.graph,
-            &self.image_params,
-            &self.image_cache,
-            &self.drawing_pixels,
-        );
+        let graph_image = build_graph_image(self.graph, &self.image_params, &self.drawing_pixels);
         self.encoded_image_map = self
             .graph
             .commits
@@ -83,7 +72,6 @@ impl<'a> GraphImageManager<'a> {
         let graph_row_image = build_single_graph_row_image(
             self.graph,
             &self.image_params,
-            &self.image_cache,
             &self.drawing_pixels,
             commit_hash,
         );
@@ -160,22 +148,17 @@ impl ImageParams {
 #[derive(Debug, Clone)]
 pub struct GraphImageOptions {
     color_set: ColorSet,
-    no_cache: bool,
 }
 
 impl GraphImageOptions {
-    pub fn new(color_set: ColorSet, no_cache: bool) -> Self {
-        Self {
-            color_set,
-            no_cache,
-        }
+    pub fn new(color_set: ColorSet) -> Self {
+        Self { color_set }
     }
 }
 
 fn build_single_graph_row_image(
     graph: &Graph<'_>,
     image_params: &ImageParams,
-    image_cache: &Option<ImageCache>,
     drawing_pixels: &DrawingPixels,
     commit_hash: &CommitHash,
 ) -> GraphRowImage {
@@ -184,20 +167,12 @@ fn build_single_graph_row_image(
 
     let cell_count = graph.max_pos_x + 1;
 
-    calc_graph_row_image_or_load_from_cache(
-        pos_x,
-        cell_count,
-        edges.clone(),
-        image_params,
-        drawing_pixels,
-        image_cache,
-    )
+    calc_graph_row_image(pos_x, cell_count, edges, image_params, drawing_pixels)
 }
 
 pub fn build_graph_image(
     graph: &Graph<'_>,
     image_params: &ImageParams,
-    image_cache: &Option<ImageCache>,
     drawing_pixels: &DrawingPixels,
 ) -> GraphImage {
     let graph_row_sources: FxHashSet<(usize, &Vec<Edge>)> = graph
@@ -215,38 +190,13 @@ pub fn build_graph_image(
     let images = graph_row_sources
         .into_par_iter()
         .map(|(pos_x, edges)| {
-            let graph_row_image = calc_graph_row_image_or_load_from_cache(
-                pos_x,
-                cell_count,
-                edges.clone(),
-                image_params,
-                drawing_pixels,
-                image_cache,
-            );
+            let graph_row_image =
+                calc_graph_row_image(pos_x, cell_count, edges, image_params, drawing_pixels);
             (edges.clone(), graph_row_image)
         })
         .collect();
 
     GraphImage { images }
-}
-
-fn setup_image_cache(
-    image_params: &ImageParams,
-    options: &GraphImageOptions,
-) -> Option<ImageCache> {
-    if options.no_cache {
-        None
-    } else {
-        let image_cache_dir_key = ImageCacheDirKey::new(
-            image_params.width,
-            image_params.height,
-            image_params.line_width,
-            image_params.circle_inner_radius,
-            image_params.circle_outer_radius,
-            image_params.edge_colors.clone(),
-        );
-        Some(ImageCache::new(image_cache_dir_key))
-    }
 }
 
 type Pixels = FxHashSet<(i32, i32)>;
@@ -509,40 +459,6 @@ fn calc_corner_edge_drawing_pixels(
         })
         .cloned()
         .collect()
-}
-
-fn calc_graph_row_image_or_load_from_cache(
-    commit_pos_x: usize,
-    cell_count: usize,
-    edges: Vec<Edge>,
-    image_params: &ImageParams,
-    drawing_pixels: &DrawingPixels,
-    image_cache: &Option<ImageCache>,
-) -> GraphRowImage {
-    if let Some(image_cache) = image_cache {
-        let image_cache_file_key = ImageCacheFileKey::new(commit_pos_x, cell_count, edges.clone());
-        image_cache
-            .load_image_cache(&image_cache_file_key)
-            .unwrap_or_else(|| {
-                let graph_row_image = calc_graph_row_image(
-                    commit_pos_x,
-                    cell_count,
-                    &edges,
-                    image_params,
-                    drawing_pixels,
-                );
-                image_cache.save_image_cache(&image_cache_file_key, &graph_row_image);
-                graph_row_image
-            })
-    } else {
-        calc_graph_row_image(
-            commit_pos_x,
-            cell_count,
-            &edges,
-            image_params,
-            drawing_pixels,
-        )
-    }
 }
 
 fn calc_graph_row_image(

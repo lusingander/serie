@@ -84,7 +84,7 @@ pub fn run() -> std::io::Result<()> {
 
     let graph = graph::calc_graph(&repository);
 
-    let graph_image_options = graph::GraphImageOptions::new(color_set.clone(), args.no_cache);
+    let graph_image_options = graph::GraphImageOptions::new(color_set.clone());
     let graph_image_manager =
         GraphImageManager::new(&graph, graph_image_options, image_protocol, args.preload);
 
