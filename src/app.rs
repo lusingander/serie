@@ -15,7 +15,7 @@ use crate::{
     event::{AppEvent, Receiver, Sender, UserEvent},
     external::copy_to_clipboard,
     git::Repository,
-    graph::{Graph, GraphImage},
+    graph::{Graph, GraphImage, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
     view::View,
@@ -56,6 +56,7 @@ impl<'a> App<'a> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         repository: &'a Repository,
+        graph_image_manager: GraphImageManager,
         graph: &'a Graph,
         graph_image: &'a GraphImage,
         keybind: &'a KeyBind,
@@ -87,6 +88,7 @@ impl<'a> App<'a> {
         let head = repository.head();
         let commit_list_state = CommitListState::new(
             commits,
+            graph_image_manager,
             graph_cell_width,
             head,
             ref_name_to_commit_index_map,

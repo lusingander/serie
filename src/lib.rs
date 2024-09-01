@@ -16,6 +16,7 @@ use std::path::Path;
 
 use app::App;
 use clap::{Parser, ValueEnum};
+use graph::GraphImageManager;
 
 /// Serie - A rich git commit graph in your terminal, like magic 📚
 #[derive(Parser)]
@@ -82,12 +83,16 @@ pub fn run() -> std::io::Result<()> {
     let graph_image_options = graph::GraphImageOptions::new(color_set.clone(), args.no_cache);
     let graph_image = graph::build_graph_image(&graph, graph_image_options);
 
+    let graph_image_options = graph::GraphImageOptions::new(color_set.clone(), args.no_cache);
+    let graph_image_manager = GraphImageManager::new(&graph, graph_image_options, image_protocol);
+
     let mut terminal = ratatui::init();
 
     let (tx, rx) = event::init();
 
     let mut app = App::new(
         &repository,
+        graph_image_manager,
         &graph,
         &graph_image,
         &key_bind,

@@ -8,11 +8,45 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::{
     color::ColorSet,
+    git::CommitHash,
     graph::{
         cache::{ImageCache, ImageCacheDirKey, ImageCacheFileKey},
         Edge, EdgeType, Graph,
     },
+    protocol::ImageProtocol,
 };
+
+#[derive(Debug)]
+pub struct GraphImageManager {
+    encoded_image_map: HashMap<CommitHash, String>,
+}
+
+impl GraphImageManager {
+    pub fn new(graph: &Graph, options: GraphImageOptions, image_protocol: ImageProtocol) -> Self {
+        let graph_image = build_graph_image(graph, options);
+        let encoded_image_map = graph
+            .commits
+            .iter()
+            .enumerate()
+            .map(|(i, commit)| {
+                let edges = &graph.edges[i];
+                let graph_row_image = &graph_image.images[edges];
+                let image_cell_width = graph_row_image.cell_count * 2;
+                let image = image_protocol.encode(&graph_row_image.bytes, image_cell_width);
+                (commit.commit_hash.clone(), image)
+            })
+            .collect();
+
+        Self { encoded_image_map }
+    }
+
+    pub fn encoded_image(&self, commit_hash: &CommitHash) -> &str {
+        match self.encoded_image_map.get(commit_hash) {
+            Some(image) => image,
+            None => todo!(),
+        }
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct GraphImage {
