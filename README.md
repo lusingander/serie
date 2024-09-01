@@ -93,6 +93,7 @@ Usage: serie [OPTIONS]
 Options:
   -p, --protocol <TYPE>  Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty]
   -o, --order <TYPE>     Commit ordering algorithm [default: chrono] [possible values: chrono, topo]
+      --preload          Preload all graph images
       --no-cache         Do not use graph image cache
   -h, --help             Print help
   -V, --version          Print version
@@ -101,6 +102,7 @@ Options:
 #### -p, --protocol \<TYPE\>
 
 A protocol type for rendering images of commit graphs.
+
 By default `auto` will guess the best supported protocol for the current terminal.
 Kitty terminals are detected as `kitty` via an environment variable, and all others are assumed to support `iterm`.
 
@@ -115,6 +117,12 @@ Refer to [Compatibility](#compatibility) for details.
 `--order topo` will order commits on the same branch consecutively if possible.
 
 <img src="./img/order-topo.png" width=500>
+
+#### --preload
+
+By default, graph images are generated and loaded lazily as needed.
+
+If `--preload` is specified, all graph images will be generated and loaded at startup. This can result in smoother scrolling, as the images are already available, and might reduce memory usage. However, this may lead to slower startup times, especially for large repositories.
 
 #### --no-cache
 

@@ -58,6 +58,7 @@ impl ImageCacheFileKey {
     }
 }
 
+#[derive(Debug)]
 pub struct ImageCache {
     cache_dir: PathBuf,
 }

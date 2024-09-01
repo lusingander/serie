@@ -13,6 +13,7 @@ use tui_input::{backend::crossterm::EventHandler, Input};
 use crate::{
     config::UiListConfig,
     git::{Commit, CommitHash, Head, Ref},
+    graph::GraphImageManager,
 };
 
 const SELECTED_BACKGROUND_COLOR: Color = Color::DarkGray;
@@ -37,16 +38,14 @@ const ELLIPSIS: &str = "...";
 #[derive(Debug)]
 pub struct CommitInfo<'a> {
     commit: &'a Commit,
-    image: String, // fixme: duplicate
     refs: Vec<&'a Ref>,
     graph_color: Color,
 }
 
 impl<'a> CommitInfo<'a> {
-    pub fn new(commit: &'a Commit, image: String, refs: Vec<&'a Ref>, graph_color: Color) -> Self {
+    pub fn new(commit: &'a Commit, refs: Vec<&'a Ref>, graph_color: Color) -> Self {
         Self {
             commit,
-            image,
             refs,
             graph_color,
         }
@@ -112,6 +111,7 @@ impl SearchMatchPosition {
 #[derive(Debug)]
 pub struct CommitListState<'a> {
     commits: Vec<CommitInfo<'a>>,
+    graph_image_manager: GraphImageManager<'a>,
     graph_cell_width: u16,
     head: &'a Head,
 
@@ -130,6 +130,7 @@ pub struct CommitListState<'a> {
 impl<'a> CommitListState<'a> {
     pub fn new(
         commits: Vec<CommitInfo<'a>>,
+        graph_image_manager: GraphImageManager<'a>,
         graph_cell_width: u16,
         head: &'a Head,
         ref_name_to_commit_index_map: HashMap<&'a str, usize>,
@@ -137,6 +138,7 @@ impl<'a> CommitListState<'a> {
         let total = commits.len();
         CommitListState {
             commits,
+            graph_image_manager,
             graph_cell_width,
             head,
             ref_name_to_commit_index_map,
@@ -453,6 +455,11 @@ impl<'a> CommitListState<'a> {
             }
         }
     }
+
+    fn encoded_image(&self, commit_info: &'a CommitInfo) -> &str {
+        self.graph_image_manager
+            .encoded_image(&commit_info.commit.commit_hash)
+    }
 }
 
 pub struct CommitList<'a> {
@@ -518,6 +525,17 @@ impl CommitList<'_> {
             state.selected -= diff;
             state.offset += diff;
         }
+
+        state
+            .commits
+            .iter()
+            .skip(state.offset)
+            .take(state.height)
+            .for_each(|commit_info| {
+                state
+                    .graph_image_manager
+                    .load_encoded_image(&commit_info.commit.commit_hash);
+            });
     }
 
     fn calc_cell_widths(
@@ -566,7 +584,8 @@ impl CommitList<'_> {
     fn render_graph(&self, buf: &mut Buffer, area: Rect, state: &CommitListState) {
         self.rendering_commit_info_iter(state)
             .for_each(|(i, commit_info)| {
-                buf[(area.left(), area.top() + i as u16)].set_symbol(&commit_info.image);
+                buf[(area.left(), area.top() + i as u16)]
+                    .set_symbol(state.encoded_image(commit_info));
 
                 for w in 1..area.width {
                     buf[(area.left() + w, area.top() + i as u16)].set_skip(true);

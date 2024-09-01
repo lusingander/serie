@@ -1,22 +1,100 @@
 use std::{
-    collections::{HashMap, HashSet},
     fmt::{self, Debug, Formatter},
     io::Cursor,
 };
 
+use fxhash::{FxHashMap, FxHashSet};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::{
     color::ColorSet,
+    git::CommitHash,
     graph::{
         cache::{ImageCache, ImageCacheDirKey, ImageCacheFileKey},
         Edge, EdgeType, Graph,
     },
+    protocol::ImageProtocol,
 };
+
+#[derive(Debug)]
+pub struct GraphImageManager<'a> {
+    encoded_image_map: FxHashMap<CommitHash, String>,
+
+    graph: &'a Graph<'a>,
+    image_params: ImageParams,
+    image_cache: Option<ImageCache>,
+    drawing_pixels: DrawingPixels,
+    image_protocol: ImageProtocol,
+}
+
+impl<'a> GraphImageManager<'a> {
+    pub fn new(
+        graph: &'a Graph,
+        options: GraphImageOptions,
+        image_protocol: ImageProtocol,
+        preload: bool,
+    ) -> Self {
+        let image_params = ImageParams::new(&options.color_set);
+        let image_cache = setup_image_cache(&image_params, &options);
+        let drawing_pixels = DrawingPixels::new(&image_params);
+
+        let mut m = GraphImageManager {
+            encoded_image_map: FxHashMap::default(),
+            image_params,
+            image_cache,
+            drawing_pixels,
+            graph,
+            image_protocol,
+        };
+        if preload {
+            m.load_all_encoded_image();
+        }
+        m
+    }
+
+    pub fn encoded_image(&self, commit_hash: &CommitHash) -> &str {
+        self.encoded_image_map.get(commit_hash).unwrap()
+    }
+
+    pub fn load_all_encoded_image(&mut self) {
+        let graph_image = build_graph_image(
+            self.graph,
+            &self.image_params,
+            &self.image_cache,
+            &self.drawing_pixels,
+        );
+        self.encoded_image_map = self
+            .graph
+            .commits
+            .iter()
+            .enumerate()
+            .map(|(i, commit)| {
+                let edges = &self.graph.edges[i];
+                let image = graph_image.images[edges].encode(self.image_protocol);
+                (commit.commit_hash.clone(), image)
+            })
+            .collect()
+    }
+
+    pub fn load_encoded_image(&mut self, commit_hash: &CommitHash) {
+        if self.encoded_image_map.contains_key(commit_hash) {
+            return;
+        }
+        let graph_row_image = build_single_graph_row_image(
+            self.graph,
+            &self.image_params,
+            &self.image_cache,
+            &self.drawing_pixels,
+            commit_hash,
+        );
+        let image = graph_row_image.encode(self.image_protocol);
+        self.encoded_image_map.insert(commit_hash.clone(), image);
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct GraphImage {
-    pub images: HashMap<Vec<Edge>, GraphRowImage>,
+    pub images: FxHashMap<Vec<Edge>, GraphRowImage>,
 }
 
 pub struct GraphRowImage {
@@ -35,7 +113,15 @@ impl Debug for GraphRowImage {
     }
 }
 
-struct ImageParams {
+impl GraphRowImage {
+    fn encode(&self, image_protocol: ImageProtocol) -> String {
+        let image_cell_width = self.cell_count * 2;
+        image_protocol.encode(&self.bytes, image_cell_width)
+    }
+}
+
+#[derive(Debug)]
+pub struct ImageParams {
     width: u16,
     height: u16,
     line_width: u16,
@@ -45,7 +131,7 @@ struct ImageParams {
 }
 
 impl ImageParams {
-    fn new(color_set: &ColorSet) -> Self {
+    pub fn new(color_set: &ColorSet) -> Self {
         let width = 50;
         let height = 50;
         let line_width = 5;
@@ -71,6 +157,7 @@ impl ImageParams {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct GraphImageOptions {
     color_set: ColorSet,
     no_cache: bool,
@@ -85,13 +172,35 @@ impl GraphImageOptions {
     }
 }
 
-pub fn build_graph_image(graph: &Graph<'_>, options: GraphImageOptions) -> GraphImage {
-    let image_params = ImageParams::new(&options.color_set);
-    let image_cache = setup_image_cache(&image_params, &options);
+fn build_single_graph_row_image(
+    graph: &Graph<'_>,
+    image_params: &ImageParams,
+    image_cache: &Option<ImageCache>,
+    drawing_pixels: &DrawingPixels,
+    commit_hash: &CommitHash,
+) -> GraphRowImage {
+    let (pos_x, pos_y) = graph.commit_pos_map[&commit_hash];
+    let edges = &graph.edges[pos_y];
 
-    let drawing_pixels = DrawingPixels::new(&image_params);
+    let cell_count = graph.max_pos_x + 1;
 
-    let graph_row_sources: HashSet<(usize, &Vec<Edge>)> = graph
+    calc_graph_row_image_or_load_from_cache(
+        pos_x,
+        cell_count,
+        edges.clone(),
+        image_params,
+        drawing_pixels,
+        image_cache,
+    )
+}
+
+pub fn build_graph_image(
+    graph: &Graph<'_>,
+    image_params: &ImageParams,
+    image_cache: &Option<ImageCache>,
+    drawing_pixels: &DrawingPixels,
+) -> GraphImage {
+    let graph_row_sources: FxHashSet<(usize, &Vec<Edge>)> = graph
         .commits
         .iter()
         .map(|commit| {
@@ -106,24 +215,14 @@ pub fn build_graph_image(graph: &Graph<'_>, options: GraphImageOptions) -> Graph
     let images = graph_row_sources
         .into_par_iter()
         .map(|(pos_x, edges)| {
-            let graph_row_image = if let Some(image_cache) = &image_cache {
-                let image_cache_file_key = ImageCacheFileKey::new(pos_x, cell_count, edges.clone());
-                image_cache
-                    .load_image_cache(&image_cache_file_key)
-                    .unwrap_or_else(|| {
-                        let graph_row_image = build_graph_row_image(
-                            pos_x,
-                            cell_count,
-                            edges,
-                            &image_params,
-                            &drawing_pixels,
-                        );
-                        image_cache.save_image_cache(&image_cache_file_key, &graph_row_image);
-                        graph_row_image
-                    })
-            } else {
-                build_graph_row_image(pos_x, cell_count, edges, &image_params, &drawing_pixels)
-            };
+            let graph_row_image = calc_graph_row_image_or_load_from_cache(
+                pos_x,
+                cell_count,
+                edges.clone(),
+                image_params,
+                drawing_pixels,
+                image_cache,
+            );
             (edges.clone(), graph_row_image)
         })
         .collect();
@@ -150,9 +249,10 @@ fn setup_image_cache(
     }
 }
 
-type Pixels = HashSet<(i32, i32)>;
+type Pixels = FxHashSet<(i32, i32)>;
 
-struct DrawingPixels {
+#[derive(Debug)]
+pub struct DrawingPixels {
     circle: Pixels,
     vertical_edge: Pixels,
     horizontal_edge: Pixels,
@@ -167,7 +267,7 @@ struct DrawingPixels {
 }
 
 impl DrawingPixels {
-    fn new(image_params: &ImageParams) -> Self {
+    pub fn new(image_params: &ImageParams) -> Self {
         let circle = calc_commit_circle_drawing_pixels(image_params);
         let vertical_edge = calc_vertical_edge_drawing_pixels(image_params);
         let horizontal_edge = calc_horizontal_edge_drawing_pixels(image_params);
@@ -206,7 +306,7 @@ fn calc_commit_circle_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let mut y = 0;
     let mut p = 1 - radius;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
 
     while x >= y {
         for dx in -x..=x {
@@ -234,7 +334,7 @@ fn calc_vertical_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let center_x = (image_params.width / 2) as i32;
     let half_line_width = (image_params.line_width as i32) / 2;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in 0..image_params.height {
         for x in (center_x - half_line_width)..=(center_x + half_line_width) {
             pixels.insert((x, y as i32));
@@ -247,7 +347,7 @@ fn calc_horizontal_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let center_y = (image_params.height / 2) as i32;
     let half_line_width = (image_params.line_width as i32) / 2;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in (center_y - half_line_width)..=(center_y + half_line_width) {
         for x in 0..image_params.width {
             pixels.insert((x as i32, y));
@@ -262,7 +362,7 @@ fn calc_up_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_center_y = (image_params.height / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in 0..=(circle_center_y - circle_outer_radius) {
         for x in (center_x - half_line_width)..=(center_x + half_line_width) {
             pixels.insert((x, y));
@@ -277,7 +377,7 @@ fn calc_down_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_center_y = (image_params.height / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in (circle_center_y + circle_outer_radius)..(image_params.height as i32) {
         for x in (center_x - half_line_width)..=(center_x + half_line_width) {
             pixels.insert((x, y));
@@ -292,7 +392,7 @@ fn calc_left_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_center_x = (image_params.width / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in (center_y - half_line_width)..=(center_y + half_line_width) {
         for x in 0..=(circle_center_x - circle_outer_radius) {
             pixels.insert((x, y));
@@ -307,7 +407,7 @@ fn calc_right_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_center_x = (image_params.width / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
-    let mut pixels = Pixels::new();
+    let mut pixels = Pixels::default();
     for y in (center_y - half_line_width)..=(center_y + half_line_width) {
         for x in (circle_center_x + circle_outer_radius)..=(image_params.width as i32) {
             pixels.insert((x, y));
@@ -353,7 +453,7 @@ fn calc_corner_edge_drawing_pixels(
     let mut y = 0;
     let mut p = 1 - inner_radius;
 
-    let mut inner_pixels = Pixels::new();
+    let mut inner_pixels = Pixels::default();
 
     while x >= y {
         for dx in -x..=x {
@@ -378,7 +478,7 @@ fn calc_corner_edge_drawing_pixels(
     let mut y = 0;
     let mut p = 1 - outer_radius;
 
-    let mut outer_pixels = Pixels::new();
+    let mut outer_pixels = Pixels::default();
 
     while x >= y {
         for dx in -x..=x {
@@ -411,7 +511,41 @@ fn calc_corner_edge_drawing_pixels(
         .collect()
 }
 
-fn build_graph_row_image(
+fn calc_graph_row_image_or_load_from_cache(
+    commit_pos_x: usize,
+    cell_count: usize,
+    edges: Vec<Edge>,
+    image_params: &ImageParams,
+    drawing_pixels: &DrawingPixels,
+    image_cache: &Option<ImageCache>,
+) -> GraphRowImage {
+    if let Some(image_cache) = image_cache {
+        let image_cache_file_key = ImageCacheFileKey::new(commit_pos_x, cell_count, edges.clone());
+        image_cache
+            .load_image_cache(&image_cache_file_key)
+            .unwrap_or_else(|| {
+                let graph_row_image = calc_graph_row_image(
+                    commit_pos_x,
+                    cell_count,
+                    &edges,
+                    image_params,
+                    drawing_pixels,
+                );
+                image_cache.save_image_cache(&image_cache_file_key, &graph_row_image);
+                graph_row_image
+            })
+    } else {
+        calc_graph_row_image(
+            commit_pos_x,
+            cell_count,
+            &edges,
+            image_params,
+            drawing_pixels,
+        )
+    }
+}
+
+fn calc_graph_row_image(
     commit_pos_x: usize,
     cell_count: usize,
     edges: &[Edge],

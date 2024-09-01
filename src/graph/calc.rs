@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use fxhash::FxHashMap;
 
 use crate::git::{Commit, CommitHash, Repository};
 
-type CommitPosMap<'a> = HashMap<&'a CommitHash, (usize, usize)>;
+type CommitPosMap<'a> = FxHashMap<&'a CommitHash, (usize, usize)>;
 
 #[derive(Debug)]
 pub struct Graph<'a> {
@@ -72,7 +72,7 @@ fn calc_commit_positions<'a>(
     commits: &[&'a Commit],
     repository: &'a Repository,
 ) -> CommitPosMap<'a> {
-    let mut commit_pos_map: CommitPosMap = HashMap::new();
+    let mut commit_pos_map: CommitPosMap = FxHashMap::default();
     let mut commit_line_state: Vec<Option<&CommitHash>> = Vec::new();
 
     for (pos_y, commit) in commits.iter().enumerate() {
