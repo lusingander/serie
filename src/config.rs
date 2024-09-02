@@ -18,6 +18,8 @@ const DEFAULT_LIST_DATE_LOCAL: bool = true;
 const DEFAULT_LIST_NAME_WIDTH: u16 = 20;
 const DEFAULT_DETAIL_DATE_FORMAT: &str = "%Y-%m-%d %H:%M:%S %z";
 const DEFAULT_DETAIL_DATE_LOCAL: bool = true;
+const DEFAULT_DETAIL_HEIGHT: u16 = 20;
+const DEFAULT_REFS_WIDTH: u16 = 26;
 
 pub fn load() -> (UiConfig, Option<KeyBind>) {
     let config = match config_file_path_from_env() {
@@ -68,6 +70,8 @@ pub struct UiConfig {
     pub list: UiListConfig,
     #[serde(default)]
     pub detail: UiDetailConfig,
+    #[serde(default)]
+    pub refs: UiRefsConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -118,6 +122,8 @@ fn ui_list_name_width_default() -> u16 {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct UiDetailConfig {
+    #[serde(default = "ui_detail_height_default")]
+    pub height: u16,
     #[serde(default = "ui_detail_date_format_default")]
     pub date_format: String,
     #[serde(default = "ui_detail_date_local_default")]
@@ -127,10 +133,15 @@ pub struct UiDetailConfig {
 impl Default for UiDetailConfig {
     fn default() -> Self {
         Self {
+            height: ui_detail_height_default(),
             date_format: ui_detail_date_format_default(),
             date_local: ui_detail_date_local_default(),
         }
     }
+}
+
+fn ui_detail_height_default() -> u16 {
+    DEFAULT_DETAIL_HEIGHT
 }
 
 fn ui_detail_date_format_default() -> String {
@@ -139,6 +150,24 @@ fn ui_detail_date_format_default() -> String {
 
 fn ui_detail_date_local_default() -> bool {
     DEFAULT_DETAIL_DATE_LOCAL
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct UiRefsConfig {
+    #[serde(default = "ui_refs_width_default")]
+    pub width: u16,
+}
+
+impl Default for UiRefsConfig {
+    fn default() -> Self {
+        Self {
+            width: ui_refs_width_default(),
+        }
+    }
+}
+
+fn ui_refs_width_default() -> u16 {
+    DEFAULT_REFS_WIDTH
 }
 
 #[cfg(test)]
@@ -158,9 +187,11 @@ mod tests {
                     name_width: 20,
                 },
                 detail: UiDetailConfig {
+                    height: 20,
                     date_format: "%Y-%m-%d %H:%M:%S %z".into(),
                     date_local: true,
                 },
+                refs: UiRefsConfig { width: 26 },
             },
             keybind: None,
         };
@@ -177,8 +208,11 @@ mod tests {
             date_local = false
             name_width = 30
             [ui.detail]
+            height = 30
             date_format = "%Y/%m/%d %H:%M:%S"
             date_local = false
+            [ui.refs]
+            width = 40
         "#;
         let actual: Config = toml::from_str(toml).unwrap();
         let expected = Config {
@@ -191,9 +225,11 @@ mod tests {
                     name_width: 30,
                 },
                 detail: UiDetailConfig {
+                    height: 30,
                     date_format: "%Y/%m/%d %H:%M:%S".into(),
                     date_local: false,
                 },
+                refs: UiRefsConfig { width: 40 },
             },
             keybind: None,
         };
@@ -217,9 +253,11 @@ mod tests {
                     name_width: 20,
                 },
                 detail: UiDetailConfig {
+                    height: 20,
                     date_format: "%Y-%m-%d %H:%M:%S %z".into(),
                     date_local: true,
                 },
+                refs: UiRefsConfig { width: 26 },
             },
             keybind: None,
         };
