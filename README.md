@@ -54,6 +54,12 @@ $ pacman -S serie
 $ brew install lusingander/tap/serie
 ```
 
+### NetBSD
+
+```
+$ pkgin install serie
+```
+
 ### Downloading binary
 
 You can download pre-compiled binaries from [releases](https://github.com/lusingander/serie/releases).
