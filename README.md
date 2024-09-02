@@ -71,12 +71,9 @@ If you want to check the latest development version, build from source:
 ```
 $ git clone https://github.com/lusingander/serie.git
 $ cd serie
-$ cargo build --release
+$ cargo build --release # Unless it's a release build, it's very slow.
 $ ./target/release/serie
 ```
-
-> [!NOTE]
-> Unless it's a release build, it's very slow.
 
 ## Usage
 
