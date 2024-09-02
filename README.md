@@ -227,6 +227,9 @@ date_local = true
 name_width = 20
 
 [ui.detail]
+# The height of a commit detail area.
+# type: u16
+height = 20
 # The date format of a author/committer date in the commit detail.
 # The format must be specified in strftime format.
 # https://docs.rs/chrono/latest/chrono/format/strftime/index.html
@@ -235,6 +238,11 @@ date_format = "%Y-%m-%d %H:%M:%S %z"
 # Whether to show a author/committer date in the commit list in local timezone.
 # type: boolean
 date_local = true
+
+[ui.refs]
+# The width of a refs list area.
+# type: u16
+width = 26
 
 [keybind]
 # See ./assets/default-keybind.toml for a specific example configuration.
