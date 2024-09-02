@@ -84,8 +84,11 @@ impl<'a> RefsView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
+        let graph_width = self.as_list_state().graph_area_cell_width() + 1; // graph area + marker
+        let refs_width = (area.width.saturating_sub(graph_width)).min(26);
+
         let [list_area, refs_area] =
-            Layout::horizontal([Constraint::Min(0), Constraint::Length(26)]).areas(area);
+            Layout::horizontal([Constraint::Min(0), Constraint::Length(refs_width)]).areas(area);
 
         let commit_list = CommitList::new(&self.ui_config.list);
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
@@ -102,6 +105,10 @@ impl<'a> RefsView<'a> {
 
     fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {
         self.commit_list_state.as_mut().unwrap()
+    }
+
+    fn as_list_state(&self) -> &CommitListState<'a> {
+        self.commit_list_state.as_ref().unwrap()
     }
 
     fn update_commit_list_selected(&mut self) {
