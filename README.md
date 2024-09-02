@@ -39,19 +39,56 @@ Personally, I found the output from `git log --graph` difficult to read, even wi
 ### Cargo
 
 ```
-$ cargo install --locked serie
+cargo install --locked serie
 ```
 
 ### Arch Linux
 
 ```
-$ pacman -S serie
+pacman -S serie
 ```
 
 ### Homebrew (macOS)
 
 ```
-$ brew install lusingander/tap/serie
+brew install lusingander/tap/serie
+```
+
+### Nix
+
+#### Running with Nix
+
+```sh
+$ nix run "github:lusingander/serie" --extra-experimental-features "nix-command
+flakes"
+```
+
+#### Installation with Nix
+
+Add to flake inputs
+
+```nix
+inputs.serie.url = "github:lusingander/serie";
+```
+
+As a home-manager package,
+
+```nix
+{ inputs, pkgs, ... }:
+
+{
+  home.packages = [ inputs.serie.packages.${pkgs.system}.default ];
+}
+```
+
+As a nix package,
+
+```nix
+{ inputs, pkgs, ... }:
+
+{
+  home.packages = [ inputs.serie.packages.${pkgs.system}.default ];
+}
 ```
 
 ### NetBSD
@@ -69,10 +106,10 @@ You can download pre-compiled binaries from [releases](https://github.com/lusing
 If you want to check the latest development version, build from source:
 
 ```
-$ git clone https://github.com/lusingander/serie.git
-$ cd serie
-$ cargo build --release
-$ ./target/release/serie
+git clone https://github.com/lusingander/serie.git
+cd serie
+cargo build --release
+./target/release/serie
 ```
 
 > [!NOTE]
@@ -85,8 +122,8 @@ $ ./target/release/serie
 Run `serie` in the directory where your git repository exists.
 
 ```
-$ cd <your git repository>
-$ serie
+cd <your git repository>
+serie
 ```
 
 ### Options
