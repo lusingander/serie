@@ -85,7 +85,7 @@ impl<'a> RefsView<'a> {
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
         let graph_width = self.as_list_state().graph_area_cell_width() + 1; // graph area + marker
-        let refs_width = (area.width.saturating_sub(graph_width)).min(26);
+        let refs_width = (area.width.saturating_sub(graph_width)).min(self.ui_config.refs.width);
 
         let [list_area, refs_area] =
             Layout::horizontal([Constraint::Min(0), Constraint::Length(refs_width)]).areas(area);
