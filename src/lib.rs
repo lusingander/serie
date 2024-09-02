@@ -4,6 +4,7 @@ pub mod graph;
 pub mod protocol;
 
 mod app;
+mod check;
 mod config;
 mod event;
 mod external;
@@ -79,6 +80,8 @@ pub fn run() -> std::io::Result<()> {
     let repository = git::Repository::load(Path::new("."), args.order.into());
 
     let graph = graph::calc_graph(&repository);
+
+    check::term_size(&graph)?;
 
     let graph_image_options = graph::GraphImageOptions::new(color_set.clone());
     let graph_image_manager =
