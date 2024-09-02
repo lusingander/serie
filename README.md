@@ -36,25 +36,25 @@ Personally, I found the output from `git log --graph` difficult to read, even wi
 
 ## Installation
 
-### Cargo
+### [Cargo](https://crates.io/crates/serie)
 
 ```
 $ cargo install --locked serie
 ```
 
-### Arch Linux
+### [Arch Linux](https://archlinux.org/packages/extra/x86_64/serie/)
 
 ```
 $ pacman -S serie
 ```
 
-### Homebrew (macOS)
+### [Homebrew (macOS)](https://github.com/lusingander/homebrew-tap/blob/master/serie.rb)
 
 ```
 $ brew install lusingander/tap/serie
 ```
 
-### NetBSD
+### [NetBSD](https://pkgsrc.se/devel/serie)
 
 ```
 $ pkgin install serie
