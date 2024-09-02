@@ -86,7 +86,7 @@ impl<'a> DetailView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        let detail_height = (area.height / 2).min(20);
+        let detail_height = (area.height - 1).min(self.ui_config.detail.height);
         let [list_area, detail_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(detail_height)]).areas(area);
 

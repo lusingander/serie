@@ -152,6 +152,10 @@ impl<'a> CommitListState<'a> {
         }
     }
 
+    pub fn graph_area_cell_width(&self) -> u16 {
+        self.graph_cell_width + 1 // right pad
+    }
+
     pub fn select_next(&mut self) {
         if self.selected < (self.total - 1).min(self.height - 1) {
             self.selected += 1;
@@ -547,7 +551,7 @@ impl CommitList<'_> {
         date_width: u16,
     ) -> (u16, u16, u16, u16, u16) {
         let pad = 2;
-        let graph_cell_width = state.graph_cell_width + 1; // right pad
+        let graph_cell_width = state.graph_area_cell_width();
         let marker_cell_width = 1;
         let mut name_cell_width = name_width + pad;
         let mut hash_cell_width = 7 + pad;
