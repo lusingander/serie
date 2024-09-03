@@ -546,3 +546,90 @@ fn build_image(img_buf: &[u8], image_width: u32, image_height: u32) -> Vec<u8> {
     .unwrap();
     bytes.into_inner()
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use image::GenericImage;
+
+    use super::*;
+    use EdgeType::*;
+
+    const OUTPUT_DIR: &str = "./out/ut/graph/image";
+
+    // Note: The output contents are not verified by the code.
+
+    #[test]
+    fn test_calc_graph_row_image_default_params() {
+        let cell_count = 3;
+        let color_set = ColorSet::default();
+        let image_params = &ImageParams::new(&color_set);
+        let drawing_pixels = &DrawingPixels::new(image_params);
+
+        #[rustfmt::skip]
+        let graph_row_images: Vec<GraphRowImage> = vec![
+            (1, vec![(LeftBottom, 0, 0), (Left, 1, 0), (Down, 1, 1), (Right, 1, 2), (RightBottom, 2, 2)]),
+            (2, vec![(Vertical, 0, 0), (Up, 2, 2), (Down, 2, 2)]),
+            (1, vec![(LeftTop, 0, 0), (Left, 1, 0), (Up, 1, 1), (Right, 1, 2), (RightTop, 2, 2)]),
+        ]
+        .into_iter()
+        .map(|(commit_pos_x, edges)| {
+            let edges: Vec<Edge> = edges
+                .into_iter()
+                .map(|t| Edge::new(t.0, t.1, t.2))
+                .collect();
+            calc_graph_row_image(
+                commit_pos_x,
+                cell_count,
+                &edges,
+                image_params,
+                drawing_pixels,
+            )
+        })
+        .collect();
+
+        save_image(
+            &graph_row_images,
+            image_params,
+            cell_count,
+            "default_params",
+        );
+    }
+
+    fn save_image(
+        graph_row_images: &[GraphRowImage],
+        image_params: &ImageParams,
+        cell_count: usize,
+        file_name: &str,
+    ) {
+        let rows_len = graph_row_images.len() as u32;
+        let image_width = image_params.width as u32 * cell_count as u32;
+        let image_height = image_params.height as u32 * rows_len;
+
+        let mut img_buf: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
+            image::ImageBuffer::new(image_width, image_height);
+
+        for (i, graph_row_image) in graph_row_images.iter().enumerate() {
+            let image = image::load_from_memory(&graph_row_image.bytes).unwrap();
+            let y = image_params.height as u32 * (rows_len - (i as u32) - 1);
+            img_buf.copy_from(&image, 0, y).unwrap();
+        }
+
+        create_output_dirs(OUTPUT_DIR);
+        let file_name = format!("{}/{}.png", OUTPUT_DIR, file_name);
+        image::save_buffer(
+            file_name,
+            &img_buf,
+            image_width,
+            image_height,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+    }
+
+    fn create_output_dirs(path: &str) {
+        let path = Path::new(path);
+        std::fs::create_dir_all(path).unwrap();
+    }
+}
