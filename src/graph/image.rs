@@ -564,37 +564,51 @@ mod tests {
     fn test_calc_graph_row_image_default_params() {
         let cell_count = 3;
         let color_set = ColorSet::default();
-        let image_params = &ImageParams::new(&color_set);
-        let drawing_pixels = &DrawingPixels::new(image_params);
+        let image_params = ImageParams::new(&color_set);
+        let drawing_pixels = DrawingPixels::new(&image_params);
 
         #[rustfmt::skip]
-        let graph_row_images: Vec<GraphRowImage> = vec![
+        let params = vec![
             (1, vec![(LeftBottom, 0, 0), (Left, 1, 0), (Down, 1, 1), (Right, 1, 2), (RightBottom, 2, 2)]),
             (2, vec![(Vertical, 0, 0), (Up, 2, 2), (Down, 2, 2)]),
             (1, vec![(LeftTop, 0, 0), (Left, 1, 0), (Up, 1, 1), (Right, 1, 2), (RightTop, 2, 2)]),
-        ]
-        .into_iter()
-        .map(|(commit_pos_x, edges)| {
-            let edges: Vec<Edge> = edges
-                .into_iter()
-                .map(|t| Edge::new(t.0, t.1, t.2))
-                .collect();
-            calc_graph_row_image(
-                commit_pos_x,
-                cell_count,
-                &edges,
-                image_params,
-                drawing_pixels,
-            )
-        })
-        .collect();
+        ];
 
-        save_image(
-            &graph_row_images,
-            image_params,
+        test_calc_graph_row_image(
+            params,
             cell_count,
+            image_params,
+            drawing_pixels,
             "default_params",
         );
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn test_calc_graph_row_image(
+        params: Vec<(usize, Vec<(EdgeType, usize, usize)>)>,
+        cell_count: usize,
+        image_params: ImageParams,
+        drawing_pixels: DrawingPixels,
+        file_name: &str,
+    ) {
+        let graph_row_images: Vec<GraphRowImage> = params
+            .into_iter()
+            .map(|(commit_pos_x, edges)| {
+                let edges: Vec<Edge> = edges
+                    .into_iter()
+                    .map(|t| Edge::new(t.0, t.1, t.2))
+                    .collect();
+                calc_graph_row_image(
+                    commit_pos_x,
+                    cell_count,
+                    &edges,
+                    &image_params,
+                    &drawing_pixels,
+                )
+            })
+            .collect();
+
+        save_image(&graph_row_images, &image_params, cell_count, file_name);
     }
 
     fn save_image(
