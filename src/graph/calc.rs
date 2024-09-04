@@ -20,7 +20,7 @@ pub struct Edge {
 }
 
 impl Edge {
-    fn new(edge_type: EdgeType, pos_x: usize, line_pos_x: usize) -> Self {
+    pub fn new(edge_type: EdgeType, pos_x: usize, line_pos_x: usize) -> Self {
         Self {
             edge_type,
             pos_x,
