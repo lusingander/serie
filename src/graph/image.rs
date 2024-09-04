@@ -558,34 +558,59 @@ mod tests {
 
     const OUTPUT_DIR: &str = "./out/ut/graph/image";
 
+    type TestParam = (usize, Vec<(EdgeType, usize, usize)>);
+
     // Note: The output contents are not verified by the code.
 
     #[test]
     fn test_calc_graph_row_image_default_params() {
+        let params = simple_test_params();
         let cell_count = 4;
         let color_set = ColorSet::default();
         let image_params = ImageParams::new(&color_set);
         let drawing_pixels = DrawingPixels::new(&image_params);
+        let file_name = "default_params";
 
-        #[rustfmt::skip]
-        let params = vec![
+        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+    }
+
+    #[test]
+    fn test_calc_graph_row_image_wide_image() {
+        let params = simple_test_params();
+        let cell_count = 4;
+        let color_set = ColorSet::default();
+        let mut image_params = ImageParams::new(&color_set);
+        image_params.width = 100;
+        let drawing_pixels = DrawingPixels::new(&image_params);
+        let file_name = "wide_image";
+
+        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+    }
+
+    #[test]
+    fn test_calc_graph_row_image_tall_image() {
+        let params = simple_test_params();
+        let cell_count = 4;
+        let color_set = ColorSet::default();
+        let mut image_params = ImageParams::new(&color_set);
+        image_params.height = 100;
+        let drawing_pixels = DrawingPixels::new(&image_params);
+        let file_name = "tall_image";
+
+        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+    }
+
+    #[rustfmt::skip]
+    fn simple_test_params() -> Vec<TestParam> {
+        vec![
             (1, vec![(LeftBottom, 0, 0), (Left, 1, 0), (Down, 1, 1), (Right, 1, 3), (Horizontal, 2, 3), (RightBottom, 3, 3)]),
             (3, vec![(Vertical, 0, 0), (Up, 3, 3), (Down, 3, 3)]),
             (2, vec![(LeftTop, 0, 0), (Horizontal, 1, 0), (Left, 2, 0), (Up, 2, 2), (Right, 2, 3), (RightTop, 3, 3)]),
-        ];
-
-        test_calc_graph_row_image(
-            params,
-            cell_count,
-            image_params,
-            drawing_pixels,
-            "default_params",
-        );
+        ]
     }
 
-    #[allow(clippy::type_complexity)]
     fn test_calc_graph_row_image(
-        params: Vec<(usize, Vec<(EdgeType, usize, usize)>)>,
+        params: Vec<TestParam>,
         cell_count: usize,
         image_params: ImageParams,
         drawing_pixels: DrawingPixels,
