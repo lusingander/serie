@@ -633,6 +633,8 @@ mod tests {
 
     use image::GenericImage;
 
+    use crate::color::Color;
+
     use super::*;
     use EdgeType::*;
 
@@ -680,12 +682,82 @@ mod tests {
         test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
     }
 
+    #[test]
+    fn test_calc_graph_row_image_circle_radius() {
+        let params = straight_test_params();
+        let cell_count = 2;
+        let color_set = ColorSet::default();
+        let mut image_params = ImageParams::new(&color_set);
+        image_params.circle_inner_radius = 5;
+        image_params.circle_outer_radius = 12;
+        let drawing_pixels = DrawingPixels::new(&image_params);
+        let file_name = "circle_radius";
+
+        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+    }
+
+    #[test]
+    fn test_calc_graph_row_image_line_width() {
+        let params = straight_test_params();
+        let cell_count = 2;
+        let color_set = ColorSet::default();
+        let mut image_params = ImageParams::new(&color_set);
+        image_params.line_width = 1;
+        let drawing_pixels = DrawingPixels::new(&image_params);
+        let file_name = "line_width";
+
+        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+    }
+
+    #[test]
+    fn test_calc_graph_row_image_color() {
+        let params = branches_test_params();
+        let cell_count = 7;
+        let color_set = ColorSet {
+            colors: vec![
+                Color::from_rgb(200, 200, 100),
+                Color::from_rgb(100, 200, 200),
+                Color::from_rgb(100, 100, 100),
+                Color::from_rgb(200, 100, 200),
+            ],
+        };
+        let image_params = ImageParams::new(&color_set);
+        let drawing_pixels = DrawingPixels::new(&image_params);
+        let file_name = "color";
+
+        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+    }
+
     #[rustfmt::skip]
     fn simple_test_params() -> Vec<TestParam> {
         vec![
             (1, vec![(LeftBottom, 0, 0), (Left, 1, 0), (Down, 1, 1), (Right, 1, 3), (Horizontal, 2, 3), (RightBottom, 3, 3)]),
             (3, vec![(Vertical, 0, 0), (Up, 3, 3), (Down, 3, 3)]),
             (2, vec![(LeftTop, 0, 0), (Horizontal, 1, 0), (Left, 2, 0), (Up, 2, 2), (Right, 2, 3), (RightTop, 3, 3)]),
+        ]
+    }
+
+    #[rustfmt::skip]
+    fn straight_test_params() -> Vec<TestParam> {
+        vec![
+            (0, vec![(Up, 0, 0), (Down, 0, 0)]),
+            (0, vec![(Up, 0, 0), (Down, 0, 0), (Right, 0, 1), (RightBottom, 1, 1)]),
+            (1, vec![(Vertical, 0, 0), (Up, 1, 1), (Down, 1, 1)]),
+            (0, vec![(Up, 0, 0), (Down, 0, 0), (Right, 0, 1), (RightTop, 1, 1)]),
+        ]
+    }
+
+    #[rustfmt::skip]
+    fn branches_test_params() -> Vec<TestParam> {
+        vec![
+            (0, vec![(Up, 0, 0), (Down, 0, 0),
+                    (Right, 0, 1), (RightBottom, 1, 1),
+                    (Right, 0, 2), (Horizontal, 1, 2), (RightBottom, 2, 2),
+                    (Right, 0, 3), (Horizontal, 1, 3), (Horizontal, 2, 3), (RightBottom, 3, 3),
+                    (Right, 0, 4), (Horizontal, 1, 4), (Horizontal, 2, 4), (Horizontal, 3, 4), (RightBottom, 4, 4),
+                    (Right, 0, 5), (Horizontal, 1, 5), (Horizontal, 2, 5), (Horizontal, 3, 5), (Horizontal, 4, 5), (RightBottom, 5, 5),
+                    (Right, 0, 6), (Horizontal, 1, 6), (Horizontal, 2, 6), (Horizontal, 3, 6), (Horizontal, 4, 6), (Horizontal, 5, 6), (RightBottom, 6, 6)]),
+            (6, vec![(Vertical, 0, 0), (Vertical, 1, 1), (Vertical, 2, 2), (Vertical, 3, 3), (Vertical, 4, 4), (Vertical, 5, 5), (Down, 6, 6), (Up, 6, 6)]),
         ]
     }
 

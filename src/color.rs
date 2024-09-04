@@ -7,11 +7,11 @@ pub struct Color {
 }
 
 impl Color {
-    fn from_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+    pub fn from_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
     }
 
-    fn from_rgb(r: u8, g: u8, b: u8) -> Self {
+    pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
         Self::from_rgba(r, g, b, 255)
     }
 
