@@ -653,6 +653,12 @@ mod tests {
             let image = image::load_from_memory(&graph_row_image.bytes).unwrap();
             let y = image_params.height as u32 * (rows_len - (i as u32) - 1);
             img_buf.copy_from(&image, 0, y).unwrap();
+
+            for x in 0..cell_count {
+                let x_offset = x as u32 * image_params.width as u32;
+                let y_offset = y;
+                draw_border(&mut img_buf, image_params, x_offset, y_offset);
+            }
         }
 
         create_output_dirs(OUTPUT_DIR);
@@ -665,6 +671,25 @@ mod tests {
             image::ColorType::Rgba8,
         )
         .unwrap();
+    }
+
+    fn draw_border(
+        img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+        image_params: &ImageParams,
+        x_offset: u32,
+        y_offset: u32,
+    ) {
+        for x in 0..image_params.width {
+            for y in 0..image_params.height {
+                if x == 0 || x == image_params.width - 1 || y == 0 || y == image_params.height - 1 {
+                    img_buf.put_pixel(
+                        x as u32 + x_offset,
+                        y as u32 + y_offset,
+                        image::Rgba([255, 0, 0, 50]),
+                    );
+                }
+            }
+        }
     }
 
     fn create_output_dirs(path: &str) {
