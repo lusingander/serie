@@ -143,6 +143,14 @@ impl ImageParams {
     fn edge_color(&self, index: usize) -> image::Rgba<u8> {
         self.edge_colors[index % self.edge_colors.len()]
     }
+
+    fn corner_radius(&self) -> u16 {
+        if self.width < self.height {
+            self.width / 2
+        } else {
+            self.height / 2
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -367,37 +375,80 @@ fn calc_right_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
 }
 
 fn calc_right_top_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
-    calc_corner_edge_drawing_pixels(image_params, 0, image_params.height)
+    let (w, h, r) = (
+        image_params.width as i32,
+        image_params.height as i32,
+        image_params.corner_radius() as i32,
+    );
+    let (x_offset, y_offset) = if w < h {
+        (0, r - (h / 2))
+    } else {
+        ((w / 2) - r, 0)
+    };
+    calc_corner_edge_drawing_pixels(image_params, 0, h, x_offset, y_offset)
 }
 
 fn calc_left_top_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
-    calc_corner_edge_drawing_pixels(image_params, image_params.width, image_params.height)
+    let (w, h, r) = (
+        image_params.width as i32,
+        image_params.height as i32,
+        image_params.corner_radius() as i32,
+    );
+    let (x_offset, y_offset) = if w < h {
+        (0, r - (h / 2))
+    } else {
+        (r - (w / 2), 0)
+    };
+    calc_corner_edge_drawing_pixels(image_params, w, h, x_offset, y_offset)
 }
 
 fn calc_right_bottom_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
-    calc_corner_edge_drawing_pixels(image_params, 0, 0)
+    let (w, h, r) = (
+        image_params.width as i32,
+        image_params.height as i32,
+        image_params.corner_radius() as i32,
+    );
+    let (x_offset, y_offset) = if w < h {
+        (0, (h / 2) - r)
+    } else {
+        ((w / 2) - r, 0)
+    };
+    calc_corner_edge_drawing_pixels(image_params, 0, 0, x_offset, y_offset)
 }
 
 fn calc_left_bottom_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
-    calc_corner_edge_drawing_pixels(image_params, image_params.width, 0)
+    let (w, h, r) = (
+        image_params.width as i32,
+        image_params.height as i32,
+        image_params.corner_radius() as i32,
+    );
+    let (x_offset, y_offset) = if w < h {
+        (0, (h / 2) - r)
+    } else {
+        (r - (w / 2), 0)
+    };
+    calc_corner_edge_drawing_pixels(image_params, w, 0, x_offset, y_offset)
 }
 
 fn calc_corner_edge_drawing_pixels(
     image_params: &ImageParams,
-    curve_center_x: u16,
-    curve_center_y: u16,
+    base_center_x: i32,
+    base_center_y: i32,
+    x_offset: i32,
+    y_offset: i32,
 ) -> Pixels {
     // Bresenham's circle algorithm
-    let curve_center_x = curve_center_x as i32;
-    let curve_center_y = curve_center_y as i32;
+    let curve_center_x = base_center_x;
+    let curve_center_y = base_center_y;
     let half_line_width = (image_params.line_width as i32) / 2;
     let adjust = if image_params.line_width % 2 == 0 {
         0
     } else {
         1
     };
-    let inner_radius = (image_params.width / 2) as i32 - half_line_width - adjust;
-    let outer_radius = (image_params.width / 2) as i32 + half_line_width;
+    let radius_base_length = image_params.corner_radius() as i32;
+    let inner_radius = radius_base_length - half_line_width - adjust;
+    let outer_radius = radius_base_length + half_line_width;
 
     let mut x = inner_radius;
     let mut y = 0;
@@ -449,7 +500,7 @@ fn calc_corner_edge_drawing_pixels(
         }
     }
 
-    outer_pixels
+    let mut pixels: Pixels = outer_pixels
         .difference(&inner_pixels)
         .filter(|p| {
             p.0 >= 0
@@ -457,8 +508,37 @@ fn calc_corner_edge_drawing_pixels(
                 && p.1 >= 0
                 && p.1 < image_params.height as i32
         })
-        .cloned()
-        .collect()
+        .map(|p| (p.0 + x_offset, p.1 + y_offset))
+        .collect();
+
+    if image_params.width < image_params.height {
+        let (ys, ye) = if y_offset < 0 {
+            (base_center_y + y_offset, base_center_y)
+        } else {
+            (base_center_y, base_center_y + y_offset)
+        };
+        let center_x = (image_params.width / 2) as i32;
+        for x in (center_x - half_line_width)..=(center_x + half_line_width) {
+            for y in ys..ye {
+                pixels.insert((x, y));
+            }
+        }
+    }
+    if image_params.width > image_params.height {
+        let (xs, xe) = if x_offset < 0 {
+            (base_center_x + x_offset, base_center_x)
+        } else {
+            (base_center_x, base_center_x + x_offset)
+        };
+        let center_y = (image_params.height / 2) as i32;
+        for y in (center_y - half_line_width)..=(center_y + half_line_width) {
+            for x in xs..xe {
+                pixels.insert((x, y));
+            }
+        }
+    }
+
+    pixels
 }
 
 fn calc_graph_row_image(
