@@ -25,6 +25,7 @@ jobs:
         with:
           toolchain: ${{ matrix.versions }}
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
       - name: Version
         run: |
           rustc --version
