@@ -81,7 +81,7 @@ impl<'de> Deserialize<'de> for KeyBind {
 }
 
 fn parse_key_event(raw: &str) -> Result<KeyEvent, String> {
-    let raw_lower = raw.to_ascii_lowercase().replace(" ", "");
+    let raw_lower = raw.to_ascii_lowercase().replace(' ', "");
     let (remaining, modifiers) = extract_modifiers(&raw_lower);
     parse_key_code_with_modifiers(remaining, modifiers)
 }

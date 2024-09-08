@@ -13,9 +13,25 @@ env:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        versions:
+          - stable
+          - '1.79.0' # MSRV
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.versions }}
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Version
+        run: |
+          rustc --version
+          cargo --version
+          cargo fmt -- --version
+          cargo clippy -- --version
       - name: Format
         run: cargo fmt --all -- --check
       - name: Build
