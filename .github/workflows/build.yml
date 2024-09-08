@@ -16,6 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Version
+        run: |
+          rustc --version
+          cargo --version
+          cargo fmt -- --version
+          cargo clippy -- --version
       - name: Format
         run: cargo fmt --all -- --check
       - name: Build
