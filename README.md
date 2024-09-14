@@ -241,6 +241,26 @@ date_local = true
 # type: u16
 width = 26
 
+[graph.color]
+# Colors should be specified in the format #RRGGBB or #RRGGBBAA.
+
+# Array of colors used for the commit graph.
+# type: array of strings
+branches = [
+  "#E06C76",
+  "#98C379",
+  "#E5C07B",
+  "#61AFEF",
+  "#C678DD",
+  "#56B6C2",
+]
+# Color of the edge surrounding the commit circles in the graph.
+# type: string
+edge = "#00000000"
+# Background color of the commit graph.
+# type: string
+background = "#00000000"
+
 [keybind]
 # See ./assets/default-keybind.toml for a specific example configuration.
 # ...
