@@ -116,6 +116,8 @@ pub struct ImageParams {
     circle_inner_radius: u16,
     circle_outer_radius: u16,
     edge_colors: Vec<image::Rgba<u8>>,
+    circle_edge_color: image::Rgba<u8>,
+    background_color: image::Rgba<u8>,
 }
 
 impl ImageParams {
@@ -130,6 +132,8 @@ impl ImageParams {
             .iter()
             .map(|c| c.to_image_color())
             .collect();
+        let circle_edge_color = color_set.edge_color.to_image_color();
+        let background_color = color_set.background_color.to_image_color();
         Self {
             width,
             height,
@@ -137,6 +141,8 @@ impl ImageParams {
             circle_inner_radius,
             circle_outer_radius,
             edge_colors,
+            circle_edge_color,
+            background_color,
         }
     }
 
@@ -212,6 +218,7 @@ type Pixels = FxHashSet<(i32, i32)>;
 #[derive(Debug)]
 pub struct DrawingPixels {
     circle: Pixels,
+    circle_edge: Pixels,
     vertical_edge: Pixels,
     horizontal_edge: Pixels,
     up_edge: Pixels,
@@ -227,6 +234,7 @@ pub struct DrawingPixels {
 impl DrawingPixels {
     pub fn new(image_params: &ImageParams) -> Self {
         let circle = calc_commit_circle_drawing_pixels(image_params);
+        let circle_edge = calc_circle_edge_drawing_pixels(image_params);
         let vertical_edge = calc_vertical_edge_drawing_pixels(image_params);
         let horizontal_edge = calc_horizontal_edge_drawing_pixels(image_params);
         let up_edge = calc_up_edge_drawing_pixels(image_params);
@@ -240,6 +248,7 @@ impl DrawingPixels {
 
         Self {
             circle,
+            circle_edge,
             vertical_edge,
             horizontal_edge,
             up_edge,
@@ -255,10 +264,20 @@ impl DrawingPixels {
 }
 
 fn calc_commit_circle_drawing_pixels(image_params: &ImageParams) -> Pixels {
+    calc_circle_drawing_pixels(image_params, image_params.circle_inner_radius as i32)
+}
+
+fn calc_circle_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
+    let inner = calc_circle_drawing_pixels(image_params, image_params.circle_inner_radius as i32);
+    let outer = calc_circle_drawing_pixels(image_params, image_params.circle_outer_radius as i32);
+
+    outer.difference(&inner).cloned().collect()
+}
+
+fn calc_circle_drawing_pixels(image_params: &ImageParams, radius: i32) -> Pixels {
     // Bresenham's circle algorithm
     let center_x = (image_params.width / 2) as i32;
     let center_y = (image_params.height / 2) as i32;
-    let radius = image_params.circle_inner_radius as i32;
 
     let mut x = radius;
     let mut y = 0;
@@ -553,6 +572,7 @@ fn calc_graph_row_image(
 
     let mut img_buf = image::ImageBuffer::new(image_width, image_height);
 
+    draw_background(&mut img_buf, image_params);
     draw_commit_circle(&mut img_buf, commit_pos_x, image_params, drawing_pixels);
 
     for edge in edges {
@@ -562,6 +582,19 @@ fn calc_graph_row_image(
     let bytes = build_image(&img_buf, image_width, image_height);
 
     GraphRowImage { bytes, cell_count }
+}
+
+fn draw_background(
+    img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+    image_params: &ImageParams,
+) {
+    if image_params.background_color[3] == 0 {
+        // If the alpha value is 0, the background is transparent, so we don't need to draw it.
+        return;
+    }
+    for pixel in img_buf.pixels_mut() {
+        *pixel = image_params.background_color;
+    }
 }
 
 fn draw_commit_circle(
@@ -579,6 +612,19 @@ fn draw_commit_circle(
 
         let pixel = img_buf.get_pixel_mut(x, y);
         *pixel = color;
+    }
+
+    if image_params.circle_edge_color[3] == 0 {
+        // If the alpha value is 0, the circle edge is transparent, so we don't need to draw it.
+        return;
+    }
+
+    for (x, y) in &drawing_pixels.circle_edge {
+        let x = (*x + x_offset) as u32;
+        let y = *y as u32;
+
+        let pixel = img_buf.get_pixel_mut(x, y);
+        *pixel = image_params.circle_edge_color;
     }
 }
 
