@@ -35,5 +35,6 @@ xdg = "2.5.2"
 
 [dev-dependencies]
 dircpy = "0.3.19"
+rstest = "0.22.0"
 tempfile = "3.12.0"
 text-to-png = "0.2.0"

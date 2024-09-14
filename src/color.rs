@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Color {
     r: u8,
     g: u8,
@@ -47,5 +47,45 @@ impl Default for ColorSet {
                 Color::from_rgb(86, 182, 194),
             ],
         }
+    }
+}
+
+fn parse_rgba_color(s: &str) -> Option<Color> {
+    if !s.starts_with("#") {
+        return None;
+    }
+
+    let s = &s[1..];
+    let l = s.len();
+    if l != 6 && l != 8 {
+        return None;
+    }
+
+    let r = u8::from_str_radix(&s[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&s[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&s[4..6], 16).ok()?;
+    if l == 6 {
+        Some(Color::from_rgb(r, g, b))
+    } else {
+        let a = u8::from_str_radix(&s[6..8], 16).ok()?;
+        Some(Color::from_rgba(r, g, b, a))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case("#ff0000", Some(Color { r: 255, g: 0, b: 0, a: 255}))]
+    #[case("#AABBCCDD", Some(Color { r: 170, g: 187, b: 204, a: 221}))]
+    #[case("#ff000", None)]
+    #[case("#fff", None)]
+    #[case("000000", None)]
+    #[case("##123456", None)]
+    fn test_parse_rgba_color(#[case] input: &str, #[case] expected: Option<Color>) {
+        assert_eq!(parse_rgba_color(input), expected);
     }
 }
