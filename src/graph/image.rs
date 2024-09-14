@@ -771,7 +771,8 @@ mod tests {
                 "#646464".into(),
                 "#c864c8".into(),
             ],
-            ..Default::default()
+            edge: "#ffffff".into(),
+            background: "#00ff0070".into(),
         };
         let color_set = ColorSet::new(&graph_color_config);
         let image_params = ImageParams::new(&color_set);
