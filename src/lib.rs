@@ -1,11 +1,11 @@
 pub mod color;
+pub mod config;
 pub mod git;
 pub mod graph;
 pub mod protocol;
 
 mod app;
 mod check;
-mod config;
 mod event;
 mod external;
 mod keybind;
@@ -71,10 +71,10 @@ impl From<CommitOrderType> for graph::SortCommit {
 pub fn run() -> std::io::Result<()> {
     color_eyre::install().unwrap();
     let args = Args::parse();
-    let (ui_config, key_bind_patch) = config::load();
+    let (ui_config, graph_config, key_bind_patch) = config::load();
     let key_bind = keybind::KeyBind::new(key_bind_patch);
 
-    let color_set = color::ColorSet::default();
+    let color_set = color::ColorSet::new(&graph_config.color);
     let image_protocol = args.protocol.into();
 
     let repository = git::Repository::load(Path::new("."), args.order.into());

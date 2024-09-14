@@ -633,7 +633,7 @@ mod tests {
 
     use image::GenericImage;
 
-    use crate::color::Color;
+    use crate::config::GraphColorConfig;
 
     use super::*;
     use EdgeType::*;
@@ -648,7 +648,8 @@ mod tests {
     fn test_calc_graph_row_image_default_params() {
         let params = simple_test_params();
         let cell_count = 4;
-        let color_set = ColorSet::default();
+        let graph_color_config = GraphColorConfig::default();
+        let color_set = ColorSet::new(&graph_color_config);
         let image_params = ImageParams::new(&color_set);
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "default_params";
@@ -660,7 +661,8 @@ mod tests {
     fn test_calc_graph_row_image_wide_image() {
         let params = simple_test_params();
         let cell_count = 4;
-        let color_set = ColorSet::default();
+        let graph_color_config = GraphColorConfig::default();
+        let color_set = ColorSet::new(&graph_color_config);
         let mut image_params = ImageParams::new(&color_set);
         image_params.width = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -673,7 +675,8 @@ mod tests {
     fn test_calc_graph_row_image_tall_image() {
         let params = simple_test_params();
         let cell_count = 4;
-        let color_set = ColorSet::default();
+        let graph_color_config = GraphColorConfig::default();
+        let color_set = ColorSet::new(&graph_color_config);
         let mut image_params = ImageParams::new(&color_set);
         image_params.height = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -686,7 +689,8 @@ mod tests {
     fn test_calc_graph_row_image_circle_radius() {
         let params = straight_test_params();
         let cell_count = 2;
-        let color_set = ColorSet::default();
+        let graph_color_config = GraphColorConfig::default();
+        let color_set = ColorSet::new(&graph_color_config);
         let mut image_params = ImageParams::new(&color_set);
         image_params.circle_inner_radius = 5;
         image_params.circle_outer_radius = 12;
@@ -700,7 +704,8 @@ mod tests {
     fn test_calc_graph_row_image_line_width() {
         let params = straight_test_params();
         let cell_count = 2;
-        let color_set = ColorSet::default();
+        let graph_color_config = GraphColorConfig::default();
+        let color_set = ColorSet::new(&graph_color_config);
         let mut image_params = ImageParams::new(&color_set);
         image_params.line_width = 1;
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -713,14 +718,16 @@ mod tests {
     fn test_calc_graph_row_image_color() {
         let params = branches_test_params();
         let cell_count = 7;
-        let color_set = ColorSet {
-            colors: vec![
-                Color::from_rgb(200, 200, 100),
-                Color::from_rgb(100, 200, 200),
-                Color::from_rgb(100, 100, 100),
-                Color::from_rgb(200, 100, 200),
+        let graph_color_config = GraphColorConfig {
+            branches: vec![
+                "#c8c864".into(),
+                "#64c8c8".into(),
+                "#646464".into(),
+                "#c864c8".into(),
             ],
+            ..Default::default()
         };
+        let color_set = ColorSet::new(&graph_color_config);
         let image_params = ImageParams::new(&color_set);
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "color";

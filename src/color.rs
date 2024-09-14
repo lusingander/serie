@@ -1,3 +1,5 @@
+use crate::config::GraphColorConfig;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Color {
     r: u8,
@@ -22,31 +24,38 @@ impl Color {
     pub fn to_ratatui_color(self) -> ratatui::style::Color {
         ratatui::style::Color::Rgb(self.r, self.g, self.b)
     }
+
+    fn transparent() -> Self {
+        Self::from_rgba(0, 0, 0, 0)
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct ColorSet {
     pub colors: Vec<Color>,
+    pub edge_color: Color,
+    pub background_color: Color,
 }
 
 impl ColorSet {
+    pub fn new(config: &GraphColorConfig) -> Self {
+        let colors = config
+            .branches
+            .iter()
+            .filter_map(|s| parse_rgba_color(s))
+            .collect();
+        let edge_color = parse_rgba_color(&config.edge).unwrap_or(Color::transparent());
+        let background_color = parse_rgba_color(&config.background).unwrap_or(Color::transparent());
+
+        Self {
+            colors,
+            edge_color,
+            background_color,
+        }
+    }
+
     pub fn get(&self, index: usize) -> Color {
         self.colors[index % self.colors.len()]
-    }
-}
-
-impl Default for ColorSet {
-    fn default() -> Self {
-        Self {
-            colors: vec![
-                Color::from_rgb(224, 108, 118),
-                Color::from_rgb(152, 195, 121),
-                Color::from_rgb(229, 192, 123),
-                Color::from_rgb(97, 175, 239),
-                Color::from_rgb(198, 120, 221),
-                Color::from_rgb(86, 182, 194),
-            ],
-        }
     }
 }
 

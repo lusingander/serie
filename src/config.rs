@@ -27,7 +27,7 @@ const DEFAULT_GRAPH_COLOR_BRANCHES: [&str; 6] = [
 const DEFAULT_GRAPH_COLOR_EDGE: &str = "#00000000";
 const DEFAULT_GRAPH_COLOR_BACKGROUND: &str = "#00000000";
 
-pub fn load() -> (UiConfig, Option<KeyBind>) {
+pub fn load() -> (UiConfig, GraphConfig, Option<KeyBind>) {
     let config = match config_file_path_from_env() {
         Some(user_path) => {
             if !user_path.exists() {
@@ -44,7 +44,7 @@ pub fn load() -> (UiConfig, Option<KeyBind>) {
             }
         }
     };
-    (config.ui, config.keybind)
+    (config.ui, config.graph, config.keybind)
 }
 
 fn config_file_path_from_env() -> Option<PathBuf> {

@@ -2,7 +2,7 @@ use std::{path::Path, process::Command};
 
 use chrono::{DateTime, Days, NaiveDate, TimeZone, Utc};
 use image::{GenericImage, GenericImageView};
-use serie::{color, git, graph};
+use serie::{color, config::GraphColorConfig, git, graph};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -1076,7 +1076,8 @@ fn generate_and_output_graph_images(repo_path: &Path, options: &[GenerateGraphOp
 
 fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGraphOption) {
     // Build graphs in the same way as application
-    let color_set = color::ColorSet::default();
+    let graph_color_config = GraphColorConfig::default();
+    let color_set = color::ColorSet::new(&graph_color_config);
     let repository = git::Repository::load(path.as_ref(), option.sort);
     let graph = graph::calc_graph(&repository);
     let image_params = graph::ImageParams::new(&color_set);
