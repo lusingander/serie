@@ -60,7 +60,7 @@ impl ColorSet {
 }
 
 fn parse_rgba_color(s: &str) -> Option<Color> {
-    if !s.starts_with("#") {
+    if !s.starts_with('#') {
         return None;
     }
 
