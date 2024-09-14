@@ -116,6 +116,8 @@ pub struct ImageParams {
     circle_inner_radius: u16,
     circle_outer_radius: u16,
     edge_colors: Vec<image::Rgba<u8>>,
+    circle_edge_color: image::Rgba<u8>,
+    background_color: image::Rgba<u8>,
 }
 
 impl ImageParams {
@@ -124,12 +126,14 @@ impl ImageParams {
         let height = 50;
         let line_width = 5;
         let circle_inner_radius = 10;
-        let circle_outer_radius = 14;
+        let circle_outer_radius = 13;
         let edge_colors = color_set
             .colors
             .iter()
             .map(|c| c.to_image_color())
             .collect();
+        let circle_edge_color = color_set.edge_color.to_image_color();
+        let background_color = color_set.background_color.to_image_color();
         Self {
             width,
             height,
@@ -137,6 +141,8 @@ impl ImageParams {
             circle_inner_radius,
             circle_outer_radius,
             edge_colors,
+            circle_edge_color,
+            background_color,
         }
     }
 
@@ -212,6 +218,7 @@ type Pixels = FxHashSet<(i32, i32)>;
 #[derive(Debug)]
 pub struct DrawingPixels {
     circle: Pixels,
+    circle_edge: Pixels,
     vertical_edge: Pixels,
     horizontal_edge: Pixels,
     up_edge: Pixels,
@@ -227,6 +234,7 @@ pub struct DrawingPixels {
 impl DrawingPixels {
     pub fn new(image_params: &ImageParams) -> Self {
         let circle = calc_commit_circle_drawing_pixels(image_params);
+        let circle_edge = calc_circle_edge_drawing_pixels(image_params);
         let vertical_edge = calc_vertical_edge_drawing_pixels(image_params);
         let horizontal_edge = calc_horizontal_edge_drawing_pixels(image_params);
         let up_edge = calc_up_edge_drawing_pixels(image_params);
@@ -240,6 +248,7 @@ impl DrawingPixels {
 
         Self {
             circle,
+            circle_edge,
             vertical_edge,
             horizontal_edge,
             up_edge,
@@ -255,10 +264,20 @@ impl DrawingPixels {
 }
 
 fn calc_commit_circle_drawing_pixels(image_params: &ImageParams) -> Pixels {
+    calc_circle_drawing_pixels(image_params, image_params.circle_inner_radius as i32)
+}
+
+fn calc_circle_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
+    let inner = calc_circle_drawing_pixels(image_params, image_params.circle_inner_radius as i32);
+    let outer = calc_circle_drawing_pixels(image_params, image_params.circle_outer_radius as i32);
+
+    outer.difference(&inner).cloned().collect()
+}
+
+fn calc_circle_drawing_pixels(image_params: &ImageParams, radius: i32) -> Pixels {
     // Bresenham's circle algorithm
     let center_x = (image_params.width / 2) as i32;
     let center_y = (image_params.height / 2) as i32;
-    let radius = image_params.circle_inner_radius as i32;
 
     let mut x = radius;
     let mut y = 0;
@@ -321,7 +340,7 @@ fn calc_up_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
     let mut pixels = Pixels::default();
-    for y in 0..=(circle_center_y - circle_outer_radius) {
+    for y in 0..(circle_center_y - circle_outer_radius) {
         for x in (center_x - half_line_width)..=(center_x + half_line_width) {
             pixels.insert((x, y));
         }
@@ -336,7 +355,7 @@ fn calc_down_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
     let mut pixels = Pixels::default();
-    for y in (circle_center_y + circle_outer_radius)..(image_params.height as i32) {
+    for y in (circle_center_y + circle_outer_radius + 1)..(image_params.height as i32) {
         for x in (center_x - half_line_width)..=(center_x + half_line_width) {
             pixels.insert((x, y));
         }
@@ -352,7 +371,7 @@ fn calc_left_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
 
     let mut pixels = Pixels::default();
     for y in (center_y - half_line_width)..=(center_y + half_line_width) {
-        for x in 0..=(circle_center_x - circle_outer_radius) {
+        for x in 0..(circle_center_x - circle_outer_radius) {
             pixels.insert((x, y));
         }
     }
@@ -367,7 +386,7 @@ fn calc_right_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
 
     let mut pixels = Pixels::default();
     for y in (center_y - half_line_width)..=(center_y + half_line_width) {
-        for x in (circle_center_x + circle_outer_radius)..=(image_params.width as i32) {
+        for x in (circle_center_x + circle_outer_radius + 1)..=(image_params.width as i32) {
             pixels.insert((x, y));
         }
     }
@@ -553,6 +572,7 @@ fn calc_graph_row_image(
 
     let mut img_buf = image::ImageBuffer::new(image_width, image_height);
 
+    draw_background(&mut img_buf, image_params);
     draw_commit_circle(&mut img_buf, commit_pos_x, image_params, drawing_pixels);
 
     for edge in edges {
@@ -562,6 +582,19 @@ fn calc_graph_row_image(
     let bytes = build_image(&img_buf, image_width, image_height);
 
     GraphRowImage { bytes, cell_count }
+}
+
+fn draw_background(
+    img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+    image_params: &ImageParams,
+) {
+    if image_params.background_color[3] == 0 {
+        // If the alpha value is 0, the background is transparent, so we don't need to draw it.
+        return;
+    }
+    for pixel in img_buf.pixels_mut() {
+        *pixel = image_params.background_color;
+    }
 }
 
 fn draw_commit_circle(
@@ -579,6 +612,19 @@ fn draw_commit_circle(
 
         let pixel = img_buf.get_pixel_mut(x, y);
         *pixel = color;
+    }
+
+    if image_params.circle_edge_color[3] == 0 {
+        // If the alpha value is 0, the circle edge is transparent, so we don't need to draw it.
+        return;
+    }
+
+    for (x, y) in &drawing_pixels.circle_edge {
+        let x = (*x + x_offset) as u32;
+        let y = *y as u32;
+
+        let pixel = img_buf.get_pixel_mut(x, y);
+        *pixel = image_params.circle_edge_color;
     }
 }
 
@@ -633,7 +679,7 @@ mod tests {
 
     use image::GenericImage;
 
-    use crate::color::Color;
+    use crate::config::GraphColorConfig;
 
     use super::*;
     use EdgeType::*;
@@ -648,7 +694,8 @@ mod tests {
     fn test_calc_graph_row_image_default_params() {
         let params = simple_test_params();
         let cell_count = 4;
-        let color_set = ColorSet::default();
+        let graph_color_config = GraphColorConfig::default();
+        let color_set = ColorSet::new(&graph_color_config);
         let image_params = ImageParams::new(&color_set);
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "default_params";
@@ -660,7 +707,8 @@ mod tests {
     fn test_calc_graph_row_image_wide_image() {
         let params = simple_test_params();
         let cell_count = 4;
-        let color_set = ColorSet::default();
+        let graph_color_config = GraphColorConfig::default();
+        let color_set = ColorSet::new(&graph_color_config);
         let mut image_params = ImageParams::new(&color_set);
         image_params.width = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -673,7 +721,8 @@ mod tests {
     fn test_calc_graph_row_image_tall_image() {
         let params = simple_test_params();
         let cell_count = 4;
-        let color_set = ColorSet::default();
+        let graph_color_config = GraphColorConfig::default();
+        let color_set = ColorSet::new(&graph_color_config);
         let mut image_params = ImageParams::new(&color_set);
         image_params.height = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -686,7 +735,8 @@ mod tests {
     fn test_calc_graph_row_image_circle_radius() {
         let params = straight_test_params();
         let cell_count = 2;
-        let color_set = ColorSet::default();
+        let graph_color_config = GraphColorConfig::default();
+        let color_set = ColorSet::new(&graph_color_config);
         let mut image_params = ImageParams::new(&color_set);
         image_params.circle_inner_radius = 5;
         image_params.circle_outer_radius = 12;
@@ -700,7 +750,8 @@ mod tests {
     fn test_calc_graph_row_image_line_width() {
         let params = straight_test_params();
         let cell_count = 2;
-        let color_set = ColorSet::default();
+        let graph_color_config = GraphColorConfig::default();
+        let color_set = ColorSet::new(&graph_color_config);
         let mut image_params = ImageParams::new(&color_set);
         image_params.line_width = 1;
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -713,14 +764,17 @@ mod tests {
     fn test_calc_graph_row_image_color() {
         let params = branches_test_params();
         let cell_count = 7;
-        let color_set = ColorSet {
-            colors: vec![
-                Color::from_rgb(200, 200, 100),
-                Color::from_rgb(100, 200, 200),
-                Color::from_rgb(100, 100, 100),
-                Color::from_rgb(200, 100, 200),
+        let graph_color_config = GraphColorConfig {
+            branches: vec![
+                "#c8c864".into(),
+                "#64c8c8".into(),
+                "#646464".into(),
+                "#c864c8".into(),
             ],
+            edge: "#ffffff".into(),
+            background: "#00ff0070".into(),
         };
+        let color_set = ColorSet::new(&graph_color_config);
         let image_params = ImageParams::new(&color_set);
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "color";
