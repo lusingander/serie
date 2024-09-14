@@ -199,6 +199,9 @@ Config files are loaded in the following order of priority:
 If the config file does not exist, the default values will be used for all items.
 If the config file exists but some items are not set, the default values will be used for those unset items.
 
+<details>
+<summary>Config file details</summary>
+
 #### Config file format
 
 The values set in this example are the default values.
@@ -265,6 +268,8 @@ background = "#00000000"
 # See ./assets/default-keybind.toml for a specific example configuration.
 # ...
 ```
+
+</details>
 
 ## Compatibility
 
