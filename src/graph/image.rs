@@ -126,7 +126,7 @@ impl ImageParams {
         let height = 50;
         let line_width = 5;
         let circle_inner_radius = 10;
-        let circle_outer_radius = 14;
+        let circle_outer_radius = 13;
         let edge_colors = color_set
             .colors
             .iter()
@@ -340,7 +340,7 @@ fn calc_up_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
     let mut pixels = Pixels::default();
-    for y in 0..=(circle_center_y - circle_outer_radius) {
+    for y in 0..(circle_center_y - circle_outer_radius) {
         for x in (center_x - half_line_width)..=(center_x + half_line_width) {
             pixels.insert((x, y));
         }
@@ -355,7 +355,7 @@ fn calc_down_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
     let mut pixels = Pixels::default();
-    for y in (circle_center_y + circle_outer_radius)..(image_params.height as i32) {
+    for y in (circle_center_y + circle_outer_radius + 1)..(image_params.height as i32) {
         for x in (center_x - half_line_width)..=(center_x + half_line_width) {
             pixels.insert((x, y));
         }
@@ -371,7 +371,7 @@ fn calc_left_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
 
     let mut pixels = Pixels::default();
     for y in (center_y - half_line_width)..=(center_y + half_line_width) {
-        for x in 0..=(circle_center_x - circle_outer_radius) {
+        for x in 0..(circle_center_x - circle_outer_radius) {
             pixels.insert((x, y));
         }
     }
@@ -386,7 +386,7 @@ fn calc_right_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
 
     let mut pixels = Pixels::default();
     for y in (center_y - half_line_width)..=(center_y + half_line_width) {
-        for x in (circle_center_x + circle_outer_radius)..=(image_params.width as i32) {
+        for x in (circle_center_x + circle_outer_radius + 1)..=(image_params.width as i32) {
             pixels.insert((x, y));
         }
     }
