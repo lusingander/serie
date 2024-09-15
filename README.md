@@ -6,7 +6,7 @@ A rich git commit graph in your terminal, like magic 📚
 
 <img src="./img/demo.gif">
 
-(This demo shows [Ratatui](https://github.com/ratatui-org/ratatui) repository!)
+(This demo shows [Ratatui](https://github.com/ratatui/ratatui) repository!)
 
 ## About
 
@@ -27,6 +27,7 @@ Personally, I found the output from `git log --graph` difficult to read, even wi
 
 - Implement a fully-featured Git client.
 - Create a TUI application with a complex UI.
+- Works in any terminal environment.
 
 ## Requirements
 
@@ -298,6 +299,10 @@ The terminals on which each has been confirmed to work are listed below.
 | ----------------------------------------- | ------- | ---- |
 | [kitty](https://sw.kovidgoyal.net/kitty/) | ○       |      |
 
+### Terminal multiplexers
+
+Terminal multiplexers (tmux, Zellij, etc.) are not supported.
+
 ### Reporting Compatibility
 
 Please share your experience with other terminal emulators on the [Discussions](https://github.com/lusingander/serie/discussions/29).
@@ -318,7 +323,7 @@ Contributions that do not follow these guidelines may not be accepted.
 
 The following repositories are used as these examples:
 
-- [ratatui-org/ratatui](https://github.com/ratatui-org/ratatui)
+- [ratatui/ratatui](https://github.com/ratatui/ratatui)
 - [charmbracelet/vhs](https://github.com/charmbracelet/vhs)
 - [lusingander/stu](https://github.com/lusingander/stu)
 

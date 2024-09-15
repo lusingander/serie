@@ -13,6 +13,7 @@ Before reporting, please check if an issue with the same content already exists.
 When reporting a bug, please include the following information:
 
 - Application version
+  - `serie --version`
 - Version of the terminal emulator and the OS it's running on
 - Information about the git repository to reproduce the issue
   - If possible, provide the smallest possible repository (debugging a repository with 100,000 commits is difficult)
