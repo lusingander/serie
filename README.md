@@ -116,11 +116,20 @@ Refer to [Compatibility](#compatibility) for details.
 
 `--order chrono` will order commits by commit date if possible.
 
-<img src="./img/order-chrono.png" width=500>
-
 `--order topo` will order commits on the same branch consecutively if possible.
 
-<img src="./img/order-topo.png" width=500>
+<details>
+<summary>Screenshots</summary>
+
+<img src="./img/order-chrono.png" width=400>
+
+`--order chrono`
+
+<img src="./img/order-topo.png" width=400>
+
+`--order topo`
+
+</details>
 
 #### -g, --graph-width \<TYPE\>
 
