@@ -748,6 +748,20 @@ mod tests {
     }
 
     #[test]
+    fn test_calc_graph_row_image_single_cell_width() {
+        let params = simple_test_params();
+        let cell_count = 4;
+        let graph_color_config = GraphColorConfig::default();
+        let color_set = ColorSet::new(&graph_color_config);
+        let cell_width_type = CellWidthType::Single;
+        let image_params = ImageParams::new(&color_set, cell_width_type);
+        let drawing_pixels = DrawingPixels::new(&image_params);
+        let file_name = "single_cell_width";
+
+        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+    }
+
+    #[test]
     fn test_calc_graph_row_image_circle_radius() {
         let params = straight_test_params();
         let cell_count = 2;
