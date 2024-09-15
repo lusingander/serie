@@ -15,7 +15,7 @@ use crate::{
     event::{AppEvent, Receiver, Sender, UserEvent},
     external::copy_to_clipboard,
     git::Repository,
-    graph::{Graph, GraphImageManager},
+    graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
     view::View,
@@ -61,6 +61,7 @@ impl<'a> App<'a> {
         keybind: &'a KeyBind,
         ui_config: &'a UiConfig,
         color_set: &'a ColorSet,
+        cell_width_type: CellWidthType,
         image_protocol: ImageProtocol,
         tx: Sender,
     ) -> Self {
@@ -79,7 +80,10 @@ impl<'a> App<'a> {
                 CommitInfo::new(commit, refs, graph_color)
             })
             .collect();
-        let graph_cell_width = (graph.max_pos_x + 1) as u16 * 2;
+        let graph_cell_width = match cell_width_type {
+            CellWidthType::Double => (graph.max_pos_x + 1) as u16 * 2,
+            CellWidthType::Single => (graph.max_pos_x + 1) as u16,
+        };
         let head = repository.head();
         let commit_list_state = CommitListState::new(
             commits,

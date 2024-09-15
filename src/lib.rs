@@ -31,6 +31,10 @@ struct Args {
     #[arg(short, long, value_name = "TYPE", default_value = "chrono")]
     order: CommitOrderType,
 
+    /// Commit graph image cell width
+    #[arg(short, long, value_name = "TYPE")]
+    graph_width: Option<GraphWidthType>,
+
     /// Preload all graph images
     #[arg(long, default_value = "false")]
     preload: bool,
@@ -68,6 +72,21 @@ impl From<CommitOrderType> for graph::SortCommit {
     }
 }
 
+#[derive(Debug, Clone, ValueEnum)]
+enum GraphWidthType {
+    Double,
+    Single,
+}
+
+impl From<GraphWidthType> for graph::CellWidthType {
+    fn from(width: GraphWidthType) -> Self {
+        match width {
+            GraphWidthType::Double => graph::CellWidthType::Double,
+            GraphWidthType::Single => graph::CellWidthType::Single,
+        }
+    }
+}
+
 pub fn run() -> std::io::Result<()> {
     color_eyre::install().unwrap();
     let args = Args::parse();
@@ -81,11 +100,17 @@ pub fn run() -> std::io::Result<()> {
 
     let graph = graph::calc_graph(&repository);
 
-    check::term_size(&graph)?;
+    let cell_width_type =
+        check::decide_cell_width_type(&graph, args.graph_width.map(|w| w.into()))?;
 
     let graph_image_options = graph::GraphImageOptions::new(color_set.clone());
-    let graph_image_manager =
-        GraphImageManager::new(&graph, graph_image_options, image_protocol, args.preload);
+    let graph_image_manager = GraphImageManager::new(
+        &graph,
+        graph_image_options,
+        cell_width_type,
+        image_protocol,
+        args.preload,
+    );
 
     let mut terminal = ratatui::init();
 
@@ -98,6 +123,7 @@ pub fn run() -> std::io::Result<()> {
         &key_bind,
         &ui_config,
         &color_set,
+        cell_width_type,
         image_protocol,
         tx,
     );

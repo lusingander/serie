@@ -18,6 +18,7 @@ pub struct GraphImageManager<'a> {
     encoded_image_map: FxHashMap<CommitHash, String>,
 
     graph: &'a Graph<'a>,
+    cell_width_type: CellWidthType,
     image_params: ImageParams,
     drawing_pixels: DrawingPixels,
     image_protocol: ImageProtocol,
@@ -27,10 +28,11 @@ impl<'a> GraphImageManager<'a> {
     pub fn new(
         graph: &'a Graph,
         options: GraphImageOptions,
+        cell_width_type: CellWidthType,
         image_protocol: ImageProtocol,
         preload: bool,
     ) -> Self {
-        let image_params = ImageParams::new(&options.color_set);
+        let image_params = ImageParams::new(&options.color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         let mut m = GraphImageManager {
@@ -38,6 +40,7 @@ impl<'a> GraphImageManager<'a> {
             image_params,
             drawing_pixels,
             graph,
+            cell_width_type,
             image_protocol,
         };
         if preload {
@@ -59,7 +62,8 @@ impl<'a> GraphImageManager<'a> {
             .enumerate()
             .map(|(i, commit)| {
                 let edges = &self.graph.edges[i];
-                let image = graph_image.images[edges].encode(self.image_protocol);
+                let image =
+                    graph_image.images[edges].encode(self.cell_width_type, self.image_protocol);
                 (commit.commit_hash.clone(), image)
             })
             .collect()
@@ -75,7 +79,7 @@ impl<'a> GraphImageManager<'a> {
             &self.drawing_pixels,
             commit_hash,
         );
-        let image = graph_row_image.encode(self.image_protocol);
+        let image = graph_row_image.encode(self.cell_width_type, self.image_protocol);
         self.encoded_image_map.insert(commit_hash.clone(), image);
     }
 }
@@ -102,8 +106,11 @@ impl Debug for GraphRowImage {
 }
 
 impl GraphRowImage {
-    fn encode(&self, image_protocol: ImageProtocol) -> String {
-        let image_cell_width = self.cell_count * 2;
+    fn encode(&self, cell_width_type: CellWidthType, image_protocol: ImageProtocol) -> String {
+        let image_cell_width = match cell_width_type {
+            CellWidthType::Double => self.cell_count * 2,
+            CellWidthType::Single => self.cell_count,
+        };
         image_protocol.encode(&self.bytes, image_cell_width)
     }
 }
@@ -120,13 +127,19 @@ pub struct ImageParams {
     background_color: image::Rgba<u8>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CellWidthType {
+    Double, // 2 cells
+    Single,
+}
+
 impl ImageParams {
-    pub fn new(color_set: &ColorSet) -> Self {
-        let width = 50;
-        let height = 50;
-        let line_width = 5;
-        let circle_inner_radius = 10;
-        let circle_outer_radius = 13;
+    pub fn new(color_set: &ColorSet, cell_width_type: CellWidthType) -> Self {
+        let (width, height, line_width, circle_inner_radius, circle_outer_radius) =
+            match cell_width_type {
+                CellWidthType::Double => (50, 50, 5, 10, 13),
+                CellWidthType::Single => (25, 50, 3, 7, 10),
+            };
         let edge_colors = color_set
             .colors
             .iter()
@@ -696,7 +709,8 @@ mod tests {
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
         let color_set = ColorSet::new(&graph_color_config);
-        let image_params = ImageParams::new(&color_set);
+        let cell_width_type = CellWidthType::Double;
+        let image_params = ImageParams::new(&color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "default_params";
 
@@ -709,7 +723,8 @@ mod tests {
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
         let color_set = ColorSet::new(&graph_color_config);
-        let mut image_params = ImageParams::new(&color_set);
+        let cell_width_type = CellWidthType::Double;
+        let mut image_params = ImageParams::new(&color_set, cell_width_type);
         image_params.width = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "wide_image";
@@ -723,7 +738,8 @@ mod tests {
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
         let color_set = ColorSet::new(&graph_color_config);
-        let mut image_params = ImageParams::new(&color_set);
+        let cell_width_type = CellWidthType::Double;
+        let mut image_params = ImageParams::new(&color_set, cell_width_type);
         image_params.height = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "tall_image";
@@ -737,7 +753,8 @@ mod tests {
         let cell_count = 2;
         let graph_color_config = GraphColorConfig::default();
         let color_set = ColorSet::new(&graph_color_config);
-        let mut image_params = ImageParams::new(&color_set);
+        let cell_width_type = CellWidthType::Double;
+        let mut image_params = ImageParams::new(&color_set, cell_width_type);
         image_params.circle_inner_radius = 5;
         image_params.circle_outer_radius = 12;
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -752,7 +769,8 @@ mod tests {
         let cell_count = 2;
         let graph_color_config = GraphColorConfig::default();
         let color_set = ColorSet::new(&graph_color_config);
-        let mut image_params = ImageParams::new(&color_set);
+        let cell_width_type = CellWidthType::Double;
+        let mut image_params = ImageParams::new(&color_set, cell_width_type);
         image_params.line_width = 1;
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "line_width";
@@ -775,7 +793,8 @@ mod tests {
             background: "#00ff0070".into(),
         };
         let color_set = ColorSet::new(&graph_color_config);
-        let image_params = ImageParams::new(&color_set);
+        let cell_width_type = CellWidthType::Double;
+        let image_params = ImageParams::new(&color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "color";
 
