@@ -43,12 +43,6 @@ pub enum EdgeType {
     LeftBottom,  // ╰
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum SortCommit {
-    Chronological,
-    Topological,
-}
-
 pub fn calc_graph(repository: &Repository) -> Graph<'_> {
     let commits = repository.all_commits();
 

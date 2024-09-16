@@ -63,11 +63,11 @@ enum CommitOrderType {
     Topo,
 }
 
-impl From<CommitOrderType> for graph::SortCommit {
+impl From<CommitOrderType> for git::SortCommit {
     fn from(order: CommitOrderType) -> Self {
         match order {
-            CommitOrderType::Chrono => graph::SortCommit::Chronological,
-            CommitOrderType::Topo => graph::SortCommit::Topological,
+            CommitOrderType::Chrono => git::SortCommit::Chronological,
+            CommitOrderType::Topo => git::SortCommit::Topological,
         }
     }
 }
