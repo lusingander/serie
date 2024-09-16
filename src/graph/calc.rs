@@ -285,7 +285,6 @@ fn calc_edges(
                     let mut new_pos_x = pos_x;
 
                     let mut skip_judge_overlap = true;
-                    #[allow(clippy::needless_range_loop)]
                     for y in (child_pos_y + 1)..pos_y {
                         let processing_commit_pos_x =
                             commit_pos_map.get(&commits[y].commit_hash).unwrap().0;
