@@ -27,12 +27,12 @@ pub struct GraphImageManager<'a> {
 impl<'a> GraphImageManager<'a> {
     pub fn new(
         graph: &'a Graph,
-        options: GraphImageOptions,
+        color_set: &ColorSet,
         cell_width_type: CellWidthType,
         image_protocol: ImageProtocol,
         preload: bool,
     ) -> Self {
-        let image_params = ImageParams::new(&options.color_set, cell_width_type);
+        let image_params = ImageParams::new(color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         let mut m = GraphImageManager {
@@ -169,17 +169,6 @@ impl ImageParams {
         } else {
             self.height / 2
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct GraphImageOptions {
-    color_set: ColorSet,
-}
-
-impl GraphImageOptions {
-    pub fn new(color_set: ColorSet) -> Self {
-        Self { color_set }
     }
 }
 

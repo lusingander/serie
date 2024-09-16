@@ -8,8 +8,6 @@ use std::{
 
 use chrono::{DateTime, FixedOffset};
 
-use crate::graph::SortCommit;
-
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CommitHash(String);
 
@@ -96,6 +94,12 @@ impl Ref {
 pub enum Head {
     Branch { name: String },
     Detached { target: CommitHash },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum SortCommit {
+    Chronological,
+    Topological,
 }
 
 type CommitMap = HashMap<CommitHash, Commit>;

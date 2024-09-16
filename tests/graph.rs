@@ -30,7 +30,7 @@ fn straight_001() -> TestResult {
 
     let options = &[GenerateGraphOption::new(
         "straight_001",
-        graph::SortCommit::Chronological,
+        git::SortCommit::Chronological,
     )];
 
     copy_git_dir(repo_path, "straight_001");
@@ -98,8 +98,8 @@ fn branch_001() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("branch_001_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("branch_001_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("branch_001_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("branch_001_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "branch_001");
@@ -166,8 +166,8 @@ fn branch_002() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("branch_002_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("branch_002_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("branch_002_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("branch_002_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "branch_002");
@@ -212,8 +212,8 @@ fn branch_003() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("branch_003_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("branch_003_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("branch_003_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("branch_003_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "branch_003");
@@ -293,8 +293,8 @@ fn branch_004() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("branch_004_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("branch_004_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("branch_004_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("branch_004_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "branch_004");
@@ -341,8 +341,8 @@ fn branch_005() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("branch_005_chrono", serie::graph::SortCommit::Chronological),
-        GenerateGraphOption::new("branch_005_topo", serie::graph::SortCommit::Topological),
+        GenerateGraphOption::new("branch_005_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("branch_005_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "branch_005");
@@ -408,8 +408,8 @@ fn merge_001() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("merge_001_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("merge_001_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("merge_001_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("merge_001_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "merge_001");
@@ -457,8 +457,8 @@ fn merge_002() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("merge_002_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("merge_002_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("merge_002_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("merge_002_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "merge_002");
@@ -508,8 +508,8 @@ fn merge_003() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("merge_003_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("merge_003_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("merge_003_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("merge_003_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "merge_003");
@@ -571,8 +571,8 @@ fn merge_004() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("merge_004_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("merge_004_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("merge_004_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("merge_004_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "merge_004");
@@ -640,8 +640,8 @@ fn merge_005() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("merge_005_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("merge_005_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("merge_005_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("merge_005_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "merge_005");
@@ -686,8 +686,8 @@ fn stash_001() -> TestResult {
     git.commit("007", "2024-01-10");
 
     let options = &[
-        GenerateGraphOption::new("stash_001_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("stash_001_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("stash_001_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("stash_001_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "stash_001");
@@ -729,8 +729,8 @@ fn stash_002() -> TestResult {
     git.stash("2024-01-09");
 
     let options = &[
-        GenerateGraphOption::new("stash_002_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("stash_002_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("stash_002_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("stash_002_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "stash_002");
@@ -765,8 +765,8 @@ fn stash_003() -> TestResult {
     git.branch_d("10");
 
     let options = &[
-        GenerateGraphOption::new("stash_003_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("stash_003_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("stash_003_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("stash_003_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "stash_003");
@@ -797,8 +797,8 @@ fn stash_004() -> TestResult {
     git.commit("003", "2024-03-01");
 
     let options = &[
-        GenerateGraphOption::new("stash_004_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("stash_004_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("stash_004_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("stash_004_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "stash_004");
@@ -840,8 +840,8 @@ fn orphan_001() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("orphan_001_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("orphan_001_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("orphan_001_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("orphan_001_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "orphan_001");
@@ -883,8 +883,8 @@ fn orphan_002() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("orphan_002_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("orphan_002_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("orphan_002_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("orphan_002_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "orphan_002");
@@ -966,8 +966,8 @@ fn complex_001() -> TestResult {
     git.log();
 
     let options = &[
-        GenerateGraphOption::new("complex_001_chrono", graph::SortCommit::Chronological),
-        GenerateGraphOption::new("complex_001_topo", graph::SortCommit::Topological),
+        GenerateGraphOption::new("complex_001_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("complex_001_topo", git::SortCommit::Topological),
     ];
 
     copy_git_dir(repo_path, "complex_001");
@@ -1059,11 +1059,11 @@ fn parse_date(date: &str) -> DateTime<Utc> {
 
 struct GenerateGraphOption<'a> {
     output_name: &'a str,
-    sort: graph::SortCommit,
+    sort: git::SortCommit,
 }
 
 impl GenerateGraphOption<'_> {
-    fn new(output_name: &str, sort: graph::SortCommit) -> GenerateGraphOption {
+    fn new(output_name: &str, sort: git::SortCommit) -> GenerateGraphOption {
         GenerateGraphOption { output_name, sort }
     }
 }
