@@ -103,10 +103,9 @@ pub fn run() -> std::io::Result<()> {
     let cell_width_type =
         check::decide_cell_width_type(&graph, args.graph_width.map(|w| w.into()))?;
 
-    let graph_image_options = graph::GraphImageOptions::new(color_set.clone());
     let graph_image_manager = GraphImageManager::new(
         &graph,
-        graph_image_options,
+        &color_set,
         cell_width_type,
         image_protocol,
         args.preload,
