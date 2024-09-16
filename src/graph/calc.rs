@@ -44,11 +44,6 @@ pub enum EdgeType {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct CalcGraphOptions {
-    pub sort: SortCommit,
-}
-
-#[derive(Debug, Clone, Copy)]
 pub enum SortCommit {
     Chronological,
     Topological,
