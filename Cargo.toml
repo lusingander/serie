@@ -23,14 +23,14 @@ color-eyre = "0.6.3"
 console = "0.15.8"
 fxhash = "0.2.1"
 image = "0.25.2"
-ratatui = "0.28.1"
+ratatui = "0.29.0"
 rayon = "1.10.0"
 semver = "1.0.23"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 toml = "0.8.19"
-tui-input = "0.10.1"
-tui-tree-widget = "0.22.0"
+tui-input = "0.11.1"
+tui-tree-widget = "0.23.0"
 xdg = "2.5.2"
 
 [dev-dependencies]
