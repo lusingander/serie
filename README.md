@@ -107,10 +107,7 @@ Options:
 
 A protocol type for rendering images of commit graphs.
 
-By default `auto` will guess the best supported protocol for the current terminal.
-Kitty terminals are detected as `kitty` via an environment variable, and all others are assumed to support `iterm`.
-
-Refer to [Compatibility](#compatibility) for details.
+By default `auto` will guess the best supported protocol for the current terminal (if listed in [Supported terminals](#supported-terminals)).
 
 #### -o, --order \<TYPE\>
 
@@ -328,13 +325,10 @@ The terminals on which each has been confirmed to work are listed below.
 | ----------------------------------------- | ------- | ---- |
 | [kitty](https://sw.kovidgoyal.net/kitty/) | ○       |      |
 
-### Terminal multiplexers
+### Unsupported environments
 
-Terminal multiplexers (tmux, Zellij, etc.) are not supported.
-
-### Reporting Compatibility
-
-Please share your experience with other terminal emulators on the [Discussions](https://github.com/lusingander/serie/discussions/29).
+- Sixel graphics is not supported.
+- Terminal multiplexers (tmux, Zellij, etc.) are not supported.
 
 ## Contributing
 
