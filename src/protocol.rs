@@ -7,10 +7,13 @@ use base64::Engine;
 pub fn auto_detect() -> ImageProtocol {
     // https://sw.kovidgoyal.net/kitty/glossary/#envvar-KITTY_WINDOW_ID
     if env::var("KITTY_WINDOW_ID").is_ok() {
-        ImageProtocol::Kitty
-    } else {
-        ImageProtocol::Iterm2
+        return ImageProtocol::Kitty;
     }
+    // https://ghostty.org/docs/help/terminfo
+    if env::var("TERM").is_ok_and(|t| t == "xterm-ghostty") {
+        return ImageProtocol::Kitty;
+    }
+    ImageProtocol::Iterm2
 }
 
 #[derive(Debug, Clone, Copy)]
