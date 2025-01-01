@@ -739,7 +739,7 @@ impl CommitList<'_> {
     fn rendering_commit_info_iter<'a>(
         &'a self,
         state: &'a CommitListState,
-    ) -> impl Iterator<Item = (usize, &'a CommitInfo)> {
+    ) -> impl Iterator<Item = (usize, &'a CommitInfo<'a>)> {
         state
             .commits
             .iter()
