@@ -63,8 +63,8 @@ fn kitty_encode(bytes: &[u8], cell_width: usize, cell_height: usize) -> String {
     let chunks = base64_str.as_bytes().chunks(chunk_size);
     let total_chunks = chunks.len();
 
+    s.push_str("\x1b_Ga=d,d=C;\x1b\\");
     for (i, chunk) in chunks.enumerate() {
-        s.push_str("\x1b_Ga=d,d=C;\x1b\\");
         s.push_str("\x1b_G");
         if i == 0 {
             s.push_str(&format!("a=T,f=100,c={},r={},", cell_width, cell_height));
