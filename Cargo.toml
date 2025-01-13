@@ -21,6 +21,7 @@ chrono = "0.4.39"
 clap = { version = "4.5.26", features = ["derive"] }
 color-eyre = "0.6.3"
 console = "0.15.10"
+directories = "6.0.0"
 fxhash = "0.2.1"
 image = "0.25.5"
 laurier = "0.1.0"
