@@ -9,7 +9,6 @@ mod check;
 mod event;
 mod external;
 mod keybind;
-mod macros;
 mod view;
 mod widget;
 

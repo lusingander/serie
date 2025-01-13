@@ -7,10 +7,13 @@ use base64::Engine;
 pub fn auto_detect() -> ImageProtocol {
     // https://sw.kovidgoyal.net/kitty/glossary/#envvar-KITTY_WINDOW_ID
     if env::var("KITTY_WINDOW_ID").is_ok() {
-        ImageProtocol::Kitty
-    } else {
-        ImageProtocol::Iterm2
+        return ImageProtocol::Kitty;
     }
+    // https://ghostty.org/docs/help/terminfo
+    if env::var("TERM").is_ok_and(|t| t == "xterm-ghostty") {
+        return ImageProtocol::Kitty;
+    }
+    ImageProtocol::Iterm2
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -60,8 +63,8 @@ fn kitty_encode(bytes: &[u8], cell_width: usize, cell_height: usize) -> String {
     let chunks = base64_str.as_bytes().chunks(chunk_size);
     let total_chunks = chunks.len();
 
+    s.push_str("\x1b_Ga=d,d=C;\x1b\\");
     for (i, chunk) in chunks.enumerate() {
-        s.push_str("\x1b_Ga=d,d=c;\x1b\\");
         s.push_str("\x1b_G");
         if i == 0 {
             s.push_str(&format!("a=T,f=100,c={},r={},", cell_width, cell_height));
@@ -80,5 +83,5 @@ fn kitty_encode(bytes: &[u8], cell_width: usize, cell_height: usize) -> String {
 
 fn kitty_clear_line(y: u16) {
     let y = y + 1; // 1-based
-    print!("\x1b_Ga=d,d=p,x=1,y={y};\x1b\\");
+    print!("\x1b_Ga=d,d=P,x=1,y={y};\x1b\\");
 }

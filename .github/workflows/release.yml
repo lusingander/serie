@@ -15,6 +15,12 @@ jobs:
         targets:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
           - target: x86_64-apple-darwin
             os: macos-14
           - target: aarch64-apple-darwin
@@ -26,7 +32,11 @@ jobs:
       - name: Setup
         run: rustup target add ${{ matrix.targets.target }}
       - name: Build
-        run: cargo build --release --target ${{ matrix.targets.target }}
+        uses: houseabsolute/actions-rust-cross@v1.0.0
+        with:
+          command: build
+          target: ${{ matrix.targets.target }}
+          args: "--release"
       - name: Set release version
         run: echo "RELEASE_VERSION=${GITHUB_REF_NAME#v}" >> ${GITHUB_ENV}
       - name: Archive

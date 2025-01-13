@@ -71,7 +71,7 @@ impl<'a> CommitDetail<'a> {
     }
 }
 
-impl<'a> StatefulWidget for CommitDetail<'a> {
+impl StatefulWidget for CommitDetail<'_> {
     type State = CommitDetailState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {

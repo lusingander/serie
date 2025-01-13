@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
+use laurier::highlight::highlight_matched_text;
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{Event, KeyEvent},
     layout::{Constraint, Layout, Rect},
-    style::{Color, Stylize},
+    style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{List, ListItem, StatefulWidget, Widget},
 };
@@ -625,29 +626,12 @@ impl CommitList<'_> {
                         commit.subject.to_string()
                     };
 
-                    let sub_spans = if let Some(SearchMatchPosition { start, end }) =
-                        state.search_matches[state.offset + i].subject
-                    {
-                        if truncate {
-                            let not_truncated_width = max_width - ELLIPSIS.len();
-                            if not_truncated_width < start {
-                                highlight_matched_text(
-                                    subject,
-                                    not_truncated_width,
-                                    end,
-                                    SUBJECT_COLOR,
-                                )
-                            } else if start <= not_truncated_width && not_truncated_width < end {
-                                highlight_matched_text(subject, start, max_width, SUBJECT_COLOR)
-                            } else {
-                                highlight_matched_text(subject, start, end, SUBJECT_COLOR)
-                            }
+                    let sub_spans =
+                        if let Some(pos) = state.search_matches[state.offset + i].subject {
+                            highlighted_spans(subject, pos, SUBJECT_COLOR, truncate)
                         } else {
-                            highlight_matched_text(subject, start, end, SUBJECT_COLOR)
-                        }
-                    } else {
-                        vec![subject.into()]
-                    };
+                            vec![subject.into()]
+                        };
 
                     spans.extend(sub_spans)
                 }
@@ -671,21 +655,8 @@ impl CommitList<'_> {
                 } else {
                     commit.author_name.to_string()
                 };
-                let spans = if let Some(SearchMatchPosition { start, end }) =
-                    state.search_matches[state.offset + i].author_name
-                {
-                    if truncate {
-                        let not_truncated_width = max_width - ELLIPSIS.len();
-                        if not_truncated_width < start {
-                            highlight_matched_text(name, not_truncated_width, end, NAME_COLOR)
-                        } else if start <= not_truncated_width && not_truncated_width < end {
-                            highlight_matched_text(name, start, max_width, NAME_COLOR)
-                        } else {
-                            highlight_matched_text(name, start, end, NAME_COLOR)
-                        }
-                    } else {
-                        highlight_matched_text(name, start, end, NAME_COLOR)
-                    }
+                let spans = if let Some(pos) = state.search_matches[state.offset + i].author_name {
+                    highlighted_spans(name, pos, NAME_COLOR, truncate)
                 } else {
                     vec![name.fg(NAME_COLOR)]
                 };
@@ -703,10 +674,8 @@ impl CommitList<'_> {
             .rendering_commit_iter(state)
             .map(|(i, commit)| {
                 let hash = commit.commit_hash.as_short_hash();
-                let spans = if let Some(SearchMatchPosition { start, end }) =
-                    state.search_matches[state.offset + i].commit_hash
-                {
-                    highlight_matched_text(hash, start, end, HASH_COLOR)
+                let spans = if let Some(pos) = state.search_matches[state.offset + i].commit_hash {
+                    highlighted_spans(hash, pos, HASH_COLOR, false)
                 } else {
                     vec![hash.fg(HASH_COLOR)]
                 };
@@ -738,8 +707,8 @@ impl CommitList<'_> {
 
     #[allow(elided_named_lifetimes)]
     fn rendering_commit_info_iter<'a>(
-        &self,
-        state: &'a CommitListState<'a>,
+        &'a self,
+        state: &'a CommitListState,
     ) -> impl Iterator<Item = (usize, &'a CommitInfo<'a>)> {
         state
             .commits
@@ -829,21 +798,22 @@ fn refs_spans<'a>(commit_info: &'a CommitInfo, head: &'a Head) -> Vec<Span<'a>> 
     spans
 }
 
-fn highlight_matched_text(
+fn highlighted_spans(
     s: String,
-    start: usize,
-    end: usize,
-    base_color: Color,
+    pos: SearchMatchPosition,
+    base_fg: Color,
+    truncate: bool,
 ) -> Vec<Span<'static>> {
-    let mut chars = s.chars();
-    let head = chars.by_ref().take(start).collect::<String>();
-    let matched = chars.by_ref().take(end - start).collect::<String>();
-    let tail = chars.collect::<String>();
-    vec![
-        head.fg(base_color),
-        matched
-            .fg(MATCH_FOREGROUND_COLOR)
-            .bg(MATCH_BACKGROUND_COLOR),
-        tail.fg(base_color),
-    ]
+    let mut hm = highlight_matched_text(s)
+        .matched_range(pos.start, pos.end)
+        .not_matched_style(Style::default().fg(base_fg))
+        .matched_style(
+            Style::default()
+                .fg(MATCH_FOREGROUND_COLOR)
+                .bg(MATCH_BACKGROUND_COLOR),
+        );
+    if truncate {
+        hm = hm.ellipsis(ELLIPSIS);
+    }
+    hm.into_spans()
 }
