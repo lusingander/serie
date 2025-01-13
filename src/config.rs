@@ -59,6 +59,7 @@ fn config_file_path() -> PathBuf {
         .config_dir()
         .join(APP_DIR_NAME)
         .join(CONFIG_FILE_NAME)
+}
 
 fn read_config_from_path(path: &Path) -> Config {
     let content = std::fs::read_to_string(path).unwrap();
