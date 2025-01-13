@@ -705,7 +705,6 @@ impl CommitList<'_> {
         Widget::render(List::new(items), area, buf);
     }
 
-    #[allow(elided_named_lifetimes)]
     fn rendering_commit_info_iter<'a>(
         &'a self,
         state: &'a CommitListState,
