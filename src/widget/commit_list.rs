@@ -738,9 +738,9 @@ impl CommitList<'_> {
 
     #[allow(elided_named_lifetimes)]
     fn rendering_commit_info_iter<'a>(
-        &'a self,
-        state: &'a CommitListState,
-    ) -> impl Iterator<Item = (usize, &'a CommitInfo)> {
+        &self,
+        state: &'a CommitListState<'a>,
+    ) -> impl Iterator<Item = (usize, &'a CommitInfo<'a>)> {
         state
             .commits
             .iter()
