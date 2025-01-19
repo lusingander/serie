@@ -179,6 +179,8 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
             (&[UserEvent::PageUp], "Scroll page up"),
             (&[UserEvent::HalfPageDown], "Scroll half page down"),
             (&[UserEvent::HalfPageUp], "Scroll half page up"),
+            (&[UserEvent::ScrollDown], "Scroll down"),
+            (&[UserEvent::ScrollUp], "Scroll up"),
             (&[UserEvent::SelectTop], "Select top of the screen"),
             (&[UserEvent::SelectMiddle], "Select middle of the screen"),
             (&[UserEvent::SelectBottom], "Select bottom of the screen"),
