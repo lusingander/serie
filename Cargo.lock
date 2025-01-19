@@ -1923,11 +1923,13 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "smart-default",
  "tempfile",
  "text-to-png",
  "toml",
  "tui-input",
  "tui-tree-widget",
+ "umbra",
  "xdg",
 ]
 
@@ -2014,6 +2016,17 @@ name = "smallvec"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
+
+[[package]]
+name = "smart-default"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0eb01866308440fc64d6c44d9e86c5cc17adfe33c4d6eed55da9145044d0ffc1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.93",
+]
 
 [[package]]
 name = "spin"
@@ -2294,6 +2307,17 @@ checksum = "fcc95ebc9c578c67223514d0e10a75c3b996d1f22dc93a4792475260f7c3c11e"
 dependencies = [
  "ratatui",
  "unicode-width 0.2.0",
+]
+
+[[package]]
+name = "umbra"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45d86354af8a2e2a94422523983d9ac6690cb2158f26051b7fa40f6179ada9e7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.93",
 ]
 
 [[package]]

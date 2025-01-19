@@ -4,28 +4,14 @@ use std::{
 };
 
 use serde::Deserialize;
+use smart_default::SmartDefault;
+use umbra::optional;
 
 use crate::keybind::KeyBind;
 
 const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
 const CONFIG_FILE_ENV_NAME: &str = "SERIE_CONFIG_FILE";
-
-const DEFAULT_LIST_SUBJECT_MIN_WIDTH: u16 = 20;
-const DEFAULT_LIST_DATE_FORMAT: &str = "%Y-%m-%d";
-const DEFAULT_LIST_DATE_WIDTH: u16 = 10;
-const DEFAULT_LIST_DATE_LOCAL: bool = true;
-const DEFAULT_LIST_NAME_WIDTH: u16 = 20;
-const DEFAULT_DETAIL_DATE_FORMAT: &str = "%Y-%m-%d %H:%M:%S %z";
-const DEFAULT_DETAIL_DATE_LOCAL: bool = true;
-const DEFAULT_DETAIL_HEIGHT: u16 = 20;
-const DEFAULT_REFS_WIDTH: u16 = 26;
-
-const DEFAULT_GRAPH_COLOR_BRANCHES: [&str; 6] = [
-    "#E06C76", "#98C379", "#E5C07B", "#61AFEF", "#C678DD", "#56B6C2",
-];
-const DEFAULT_GRAPH_COLOR_EDGE: &str = "#00000000";
-const DEFAULT_GRAPH_COLOR_BACKGROUND: &str = "#00000000";
 
 pub fn load() -> (UiConfig, GraphConfig, Option<KeyBind>) {
     let config = match config_file_path_from_env() {
@@ -59,164 +45,88 @@ fn xdg_config_file_path() -> PathBuf {
 
 fn read_config_from_path(path: &Path) -> Config {
     let content = std::fs::read_to_string(path).unwrap();
-    toml::from_str(&content).unwrap()
+    let config: OptionalConfig = toml::from_str(&content).unwrap();
+    config.into()
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct Config {
-    #[serde(default)]
+    #[nested]
     ui: UiConfig,
-    #[serde(default)]
+    #[nested]
     graph: GraphConfig,
     // The user customed keybinds, please ref `assets/default-keybind.toml`
     keybind: Option<KeyBind>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct UiConfig {
-    #[serde(default)]
+    #[nested]
     pub list: UiListConfig,
-    #[serde(default)]
+    #[nested]
     pub detail: UiDetailConfig,
-    #[serde(default)]
+    #[nested]
     pub refs: UiRefsConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
 pub struct UiListConfig {
-    #[serde(default = "ui_list_subject_min_width_default")]
+    #[default = 20]
     pub subject_min_width: u16,
-    #[serde(default = "ui_list_date_format_default")]
+    #[default = "%Y-%m-%d"]
     pub date_format: String,
-    #[serde(default = "ui_list_date_width_default")]
+    #[default = 10]
     pub date_width: u16,
-    #[serde(default = "ui_list_date_local_default")]
+    #[default = true]
     pub date_local: bool,
-    #[serde(default = "ui_list_name_width_default")]
+    #[default = 20]
     pub name_width: u16,
 }
 
-impl Default for UiListConfig {
-    fn default() -> Self {
-        Self {
-            subject_min_width: ui_list_subject_min_width_default(),
-            date_format: ui_list_date_format_default(),
-            date_width: ui_list_date_width_default(),
-            date_local: ui_list_date_local_default(),
-            name_width: ui_list_name_width_default(),
-        }
-    }
-}
-
-fn ui_list_subject_min_width_default() -> u16 {
-    DEFAULT_LIST_SUBJECT_MIN_WIDTH
-}
-
-fn ui_list_date_format_default() -> String {
-    DEFAULT_LIST_DATE_FORMAT.to_string()
-}
-
-fn ui_list_date_width_default() -> u16 {
-    DEFAULT_LIST_DATE_WIDTH
-}
-
-fn ui_list_date_local_default() -> bool {
-    DEFAULT_LIST_DATE_LOCAL
-}
-
-fn ui_list_name_width_default() -> u16 {
-    DEFAULT_LIST_NAME_WIDTH
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
 pub struct UiDetailConfig {
-    #[serde(default = "ui_detail_height_default")]
+    #[default = 20]
     pub height: u16,
-    #[serde(default = "ui_detail_date_format_default")]
+    #[default = "%Y-%m-%d %H:%M:%S %z"]
     pub date_format: String,
-    #[serde(default = "ui_detail_date_local_default")]
+    #[default = true]
     pub date_local: bool,
 }
 
-impl Default for UiDetailConfig {
-    fn default() -> Self {
-        Self {
-            height: ui_detail_height_default(),
-            date_format: ui_detail_date_format_default(),
-            date_local: ui_detail_date_local_default(),
-        }
-    }
-}
-
-fn ui_detail_height_default() -> u16 {
-    DEFAULT_DETAIL_HEIGHT
-}
-
-fn ui_detail_date_format_default() -> String {
-    DEFAULT_DETAIL_DATE_FORMAT.to_string()
-}
-
-fn ui_detail_date_local_default() -> bool {
-    DEFAULT_DETAIL_DATE_LOCAL
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
 pub struct UiRefsConfig {
-    #[serde(default = "ui_refs_width_default")]
+    #[default = 26]
     pub width: u16,
 }
 
-impl Default for UiRefsConfig {
-    fn default() -> Self {
-        Self {
-            width: ui_refs_width_default(),
-        }
-    }
-}
-
-fn ui_refs_width_default() -> u16 {
-    DEFAULT_REFS_WIDTH
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct GraphConfig {
-    #[serde(default)]
+    #[nested]
     pub color: GraphColorConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
 pub struct GraphColorConfig {
-    #[serde(default = "graph_color_branches_default")]
+    #[default(vec![
+        "#E06C76".into(),
+        "#98C379".into(),
+        "#E5C07B".into(),
+        "#61AFEF".into(),
+        "#C678DD".into(),
+        "#56B6C2".into(),
+    ])]
     pub branches: Vec<String>,
-    #[serde(default = "graph_color_edge_default")]
+    #[default = "#00000000"]
     pub edge: String,
-    #[serde(default = "graph_color_background_default")]
+    #[default = "#00000000"]
     pub background: String,
-}
-
-impl Default for GraphColorConfig {
-    fn default() -> Self {
-        Self {
-            branches: graph_color_branches_default(),
-            edge: graph_color_edge_default(),
-            background: graph_color_background_default(),
-        }
-    }
-}
-
-fn graph_color_branches_default() -> Vec<String> {
-    DEFAULT_GRAPH_COLOR_BRANCHES
-        .iter()
-        .map(|s| s.to_string())
-        .collect()
-}
-
-fn graph_color_edge_default() -> String {
-    DEFAULT_GRAPH_COLOR_EDGE.into()
-}
-
-fn graph_color_background_default() -> String {
-    DEFAULT_GRAPH_COLOR_BACKGROUND.into()
 }
 
 #[cfg(test)]
@@ -281,7 +191,7 @@ mod tests {
             edge = "#000000"
             background = "#ffffff"
         "##;
-        let actual: Config = toml::from_str(toml).unwrap();
+        let actual: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
         let expected = Config {
             ui: UiConfig {
                 list: UiListConfig {
@@ -316,7 +226,7 @@ mod tests {
             [ui.list]
             date_format = "%Y/%m/%d"
         "#;
-        let actual: Config = toml::from_str(toml).unwrap();
+        let actual: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
         let expected = Config {
             ui: UiConfig {
                 list: UiListConfig {
