@@ -177,6 +177,7 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 | <kbd>g/G</kbd>                    | Go to top/bottom                                   | `go_to_top` `go_to_bottom`                   |
 | <kbd>Ctrl-f/b</kbd>               | Scroll page down/up                                | `page_down` `page_up`                        |
 | <kbd>Ctrl-d/u</kbd>               | Scroll half page down/up                           | `half_page_down` `half_page_up`              |
+| <kbd>Ctrl-e/y</kbd>               | Scroll down/up                                     | `scroll_down` `scroll_up`                    |
 | <kbd>H/M/L</kbd>                  | Select top/middle/bottom of the screen             | `select_top` `select_middle` `select_bottom` |
 | <kbd>Enter</kbd>                  | Show commit details<br>Apply search (if searching) | `confirm`                                    |
 | <kbd>Tab</kbd>                    | Open refs list                                     | `ref_list_toggle`                            |
