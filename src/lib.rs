@@ -125,8 +125,8 @@ pub fn run() -> std::io::Result<()> {
         image_protocol,
         tx,
     );
-    app.run(&mut terminal, rx)?;
+    let ret = app.run(&mut terminal, rx);
 
     ratatui::restore();
-    Ok(())
+    ret
 }
