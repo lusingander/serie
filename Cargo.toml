@@ -18,7 +18,7 @@ exclude = ["/.github", "/img"]
 arboard = "3.4.1"
 base64 = "0.22.1"
 chrono = "0.4.39"
-clap = { version = "4.5.26", features = ["derive"] }
+clap = { version = "4.5.27", features = ["derive"] }
 color-eyre = "0.6.3"
 console = "0.15.10"
 fxhash = "0.2.1"
@@ -26,9 +26,9 @@ image = "0.25.5"
 laurier = "0.1.0"
 ratatui = "0.29.0"
 rayon = "1.10.0"
-semver = "1.0.24"
+semver = "1.0.25"
 serde = { version = "1.0.217", features = ["derive"] }
-serde_json = "1.0.135"
+serde_json = "1.0.137"
 smart-default = "0.7.1"
 toml = "0.8.19"
 tui-input = "0.11.1"
