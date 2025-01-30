@@ -171,20 +171,21 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 
 #### Commit List
 
-| Key                               | Description                                        | Corresponding keybind                        |
-| --------------------------------- | -------------------------------------------------- | -------------------------------------------- |
-| <kbd>Down/Up</kbd> <kbd>j/k</kbd> | Move down/up                                       | `navigate_down` `navigate_up`                |
-| <kbd>g/G</kbd>                    | Go to top/bottom                                   | `go_to_top` `go_to_bottom`                   |
-| <kbd>Ctrl-f/b</kbd>               | Scroll page down/up                                | `page_down` `page_up`                        |
-| <kbd>Ctrl-d/u</kbd>               | Scroll half page down/up                           | `half_page_down` `half_page_up`              |
-| <kbd>Ctrl-e/y</kbd>               | Scroll down/up                                     | `scroll_down` `scroll_up`                    |
-| <kbd>H/M/L</kbd>                  | Select top/middle/bottom of the screen             | `select_top` `select_middle` `select_bottom` |
-| <kbd>Enter</kbd>                  | Show commit details<br>Apply search (if searching) | `confirm`                                    |
-| <kbd>Tab</kbd>                    | Open refs list                                     | `ref_list_toggle`                            |
-| <kbd>/</kbd>                      | Start search                                       | `search`                                     |
-| <kbd>Esc</kbd>                    | Cancel search                                      | `cancel`                                     |
-| <kbd>n/N</kbd>                    | Go to next/previous search match                   | `go_to_next` `go_to_previous`                |
-| <kbd>c/C</kbd>                    | Copy commit short/full hash                        | `short_copy` `full_copy`                     |
+| Key                                  | Description                                        | Corresponding keybind                        |
+| ------------------------------------ | -------------------------------------------------- | -------------------------------------------- |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd>    | Move down/up                                       | `navigate_down` `navigate_up`                |
+| <kbd>Alt-Down</kbd> <kbd>Alt-j</kbd> | Move to parent commit                              | `go_to_parent`                               |
+| <kbd>g/G</kbd>                       | Go to top/bottom                                   | `go_to_top` `go_to_bottom`                   |
+| <kbd>Ctrl-f/b</kbd>                  | Scroll page down/up                                | `page_down` `page_up`                        |
+| <kbd>Ctrl-d/u</kbd>                  | Scroll half page down/up                           | `half_page_down` `half_page_up`              |
+| <kbd>Ctrl-e/y</kbd>                  | Scroll down/up                                     | `scroll_down` `scroll_up`                    |
+| <kbd>H/M/L</kbd>                     | Select top/middle/bottom of the screen             | `select_top` `select_middle` `select_bottom` |
+| <kbd>Enter</kbd>                     | Show commit details<br>Apply search (if searching) | `confirm`                                    |
+| <kbd>Tab</kbd>                       | Open refs list                                     | `ref_list_toggle`                            |
+| <kbd>/</kbd>                         | Start search                                       | `search`                                     |
+| <kbd>Esc</kbd>                       | Cancel search                                      | `cancel`                                     |
+| <kbd>n/N</kbd>                       | Go to next/previous search match                   | `go_to_next` `go_to_previous`                |
+| <kbd>c/C</kbd>                       | Copy commit short/full hash                        | `short_copy` `full_copy`                     |
 
 #### Commit Detail
 

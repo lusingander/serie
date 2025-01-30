@@ -96,6 +96,7 @@ pub enum UserEvent {
     NavigateLeft,
     GoToTop,
     GoToBottom,
+    GoToParent,
     ScrollUp,
     ScrollDown,
     PageUp,

@@ -173,6 +173,7 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
         &[
             (&[UserEvent::NavigateDown], "Move down"),
             (&[UserEvent::NavigateUp], "Move up"),
+            (&[UserEvent::GoToParent], "Go to parent"),
             (&[UserEvent::GoToTop], "Go to top"),
             (&[UserEvent::GoToBottom], "Go to bottom"),
             (&[UserEvent::PageDown], "Scroll page down"),
