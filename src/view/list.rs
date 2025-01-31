@@ -55,6 +55,9 @@ impl<'a> ListView<'a> {
                 UserEvent::NavigateUp => {
                     self.as_mut_list_state().select_prev();
                 }
+                UserEvent::GoToParent => {
+                    self.as_mut_list_state().select_parent();
+                }
                 UserEvent::GoToTop => {
                     self.as_mut_list_state().select_first();
                 }

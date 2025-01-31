@@ -165,6 +165,23 @@ impl<'a> CommitListState<'a> {
         }
     }
 
+    pub fn select_parent(&mut self) {
+        let target_commit = self.selected_commit_parent_hash().clone();
+        while target_commit.as_str() != self.selected_commit_hash().as_str() {
+            self.select_next();
+        }
+    }
+
+    pub fn selected_commit_parent_hash(&self) -> &CommitHash {
+        let selected_commit_hash = self.selected_commit_hash();
+
+        self.commits[self.current_selected_index()]
+            .commit
+            .parent_commit_hashes
+            .first()
+            .unwrap_or(selected_commit_hash)
+    }
+
     pub fn select_prev(&mut self) {
         if self.selected > 0 {
             self.selected -= 1;
