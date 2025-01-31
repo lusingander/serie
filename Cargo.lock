@@ -1883,18 +1883,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_json"
-version = "1.0.137"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "930cfb6e6abf99298aaad7d29abbef7a9999a9a8806a40088f55f0dcec03146b"
-dependencies = [
- "itoa",
- "memchr",
- "ryu",
- "serde",
-]
-
-[[package]]
 name = "serde_spanned"
 version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1922,7 +1910,6 @@ dependencies = [
  "rstest",
  "semver",
  "serde",
- "serde_json",
  "smart-default",
  "tempfile",
  "text-to-png",
