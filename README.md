@@ -331,7 +331,7 @@ The terminals on which each has been confirmed to work are listed below.
 ### Unsupported environments
 
 - Sixel graphics is not supported.
-- Terminal multiplexers (tmux, Zellij, etc.) are not supported.
+- Terminal multiplexers (screen, tmux, Zellij, etc.) are not supported.
 
 ## Contributing
 
