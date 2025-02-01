@@ -227,7 +227,7 @@ fn check_git_repository(path: &Path) {
         .current_dir(path)
         .output()
         .unwrap();
-    if !output.status.success() {
+    if !output.status.success() || output.stdout == b"false\n" {
         panic!("not a git repository (or any of the parent directories)");
     }
 }
