@@ -11,7 +11,7 @@ use ratatui::{
 
 use crate::{
     color::ColorSet,
-    config::UiConfig,
+    config::{CursorType, UiConfig},
     event::{AppEvent, Receiver, Sender, UserEvent},
     external::copy_to_clipboard,
     git::Repository,
@@ -28,6 +28,7 @@ const SUCCESS_STATUS_COLOR: Color = Color::Green;
 const WARN_STATUS_COLOR: Color = Color::Yellow;
 const ERROR_STATUS_COLOR: Color = Color::Red;
 
+const VIRTUAL_CURSOR_COLOR: Color = Color::Reset;
 const DIVIDER_COLOR: Color = Color::DarkGray;
 
 #[derive(Debug)]
@@ -236,7 +237,16 @@ impl App<'_> {
         f.render_widget(paragraph, area);
 
         if let StatusLine::Input(_, Some(cursor_pos)) = &self.status_line {
-            f.set_cursor_position((area.x + cursor_pos + 1, area.y + 1));
+            let (x, y) = (area.x + cursor_pos + 1, area.y + 1);
+            match &self.ui_config.common.cursor_type {
+                CursorType::Native => {
+                    f.set_cursor_position((x, y));
+                }
+                CursorType::Virtual(cursor) => {
+                    let style = Style::default().fg(VIRTUAL_CURSOR_COLOR);
+                    f.buffer_mut().set_string(x, y, cursor, style);
+                }
+            }
         }
     }
 }
