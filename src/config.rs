@@ -64,11 +64,26 @@ struct Config {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct UiConfig {
     #[nested]
+    pub common: UiCommonConfig,
+    #[nested]
     pub list: UiListConfig,
     #[nested]
     pub detail: UiDetailConfig,
     #[nested]
     pub refs: UiRefsConfig,
+}
+
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+pub struct UiCommonConfig {
+    #[default(CursorType::Native)]
+    pub cursor_type: CursorType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub enum CursorType {
+    Native,
+    Virtual(String),
 }
 
 #[optional(derives = [Deserialize])]
@@ -138,6 +153,9 @@ mod tests {
         let actual = Config::default();
         let expected = Config {
             ui: UiConfig {
+                common: UiCommonConfig {
+                    cursor_type: CursorType::Native,
+                },
                 list: UiListConfig {
                     subject_min_width: 20,
                     date_format: "%Y-%m-%d".into(),
@@ -174,6 +192,8 @@ mod tests {
     #[test]
     fn test_config_complete_toml() {
         let toml = r##"
+            [ui.common]
+            cursor_type = { Virtual = "|" }
             [ui.list]
             subject_min_width = 40
             date_format = "%Y/%m/%d"
@@ -194,6 +214,9 @@ mod tests {
         let actual: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
         let expected = Config {
             ui: UiConfig {
+                common: UiCommonConfig {
+                    cursor_type: CursorType::Virtual("|".into()),
+                },
                 list: UiListConfig {
                     subject_min_width: 40,
                     date_format: "%Y/%m/%d".into(),
@@ -229,6 +252,9 @@ mod tests {
         let actual: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
         let expected = Config {
             ui: UiConfig {
+                common: UiCommonConfig {
+                    cursor_type: CursorType::Native,
+                },
                 list: UiListConfig {
                     subject_min_width: 20,
                     date_format: "%Y/%m/%d".into(),
