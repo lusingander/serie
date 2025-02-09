@@ -236,6 +236,13 @@ If the config file exists but some items are not set, the default values will be
 The values set in this example are the default values.
 
 ```toml
+[ui.common]
+# The type of a cursor to display in the input.
+# If `cursor_type = "Native"` is set, the terminal native cursor is used.
+# If `cursor_type = { "Virtual" = "|" }` is set, a virtual cursor with the specified string will be used.
+# type: enum
+cursor_type = "Native"
+
 [ui.list]
 # The minimum width of a subject in the commit list.
 # type: u16
