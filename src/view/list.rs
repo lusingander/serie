@@ -27,7 +27,7 @@ impl<'a> ListView<'a> {
         }
     }
 
-    pub fn handle_event(&mut self, event: &UserEvent, key: KeyEvent) {
+    pub fn handle_event(&mut self, event: UserEvent, key: KeyEvent) {
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
             match event {
                 UserEvent::Confirm => {

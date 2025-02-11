@@ -21,7 +21,7 @@ pub enum View<'a> {
 }
 
 impl<'a> View<'a> {
-    pub fn handle_event(&mut self, user_event: &UserEvent, key_event: KeyEvent) {
+    pub fn handle_event(&mut self, user_event: UserEvent, key_event: KeyEvent) {
         match self {
             View::Default => {}
             View::List(view) => view.handle_event(user_event, key_event),

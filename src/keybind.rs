@@ -38,17 +38,14 @@ impl KeyBind {
         keybind
     }
 
-    pub fn keys_for_event(&self, user_event: &UserEvent) -> Vec<String> {
-        let mut key_events: Vec<&KeyEvent> = self
+    pub fn keys_for_event(&self, user_event: UserEvent) -> Vec<String> {
+        let mut key_events: Vec<KeyEvent> = self
             .iter()
-            .filter(|(_, ue)| *ue == user_event)
-            .map(|(ke, _)| ke)
+            .filter(|(_, ue)| **ue == user_event)
+            .map(|(ke, _)| *ke)
             .collect();
         key_events.sort_by(|a, b| a.partial_cmp(b).unwrap()); // At least when used for key bindings, it doesn't seem to be a problem...
-        key_events
-            .iter()
-            .map(|ke| key_event_to_string(ke))
-            .collect()
+        key_events.into_iter().map(key_event_to_string).collect()
     }
 }
 
@@ -67,7 +64,7 @@ impl<'de> Deserialize<'de> for KeyBind {
                         panic!("{key_event_str:?} is not a valid key event: {s:}");
                     }
                 };
-                if let Some(conflict_user_event) = key_map.insert(key_event, user_event.clone()) {
+                if let Some(conflict_user_event) = key_map.insert(key_event, user_event) {
                     panic!(
                         "{:?} map to multiple events: {:?}, {:?}",
                         key_event, user_event, conflict_user_event
@@ -161,7 +158,7 @@ fn parse_key_code_with_modifiers(
     Ok(KeyEvent::new(c, modifiers))
 }
 
-fn key_event_to_string(key_event: &KeyEvent) -> String {
+fn key_event_to_string(key_event: KeyEvent) -> String {
     if let KeyCode::Char(c) = key_event.code {
         if key_event.modifiers == KeyModifiers::SHIFT {
             return c.to_ascii_uppercase().into();
@@ -301,39 +298,39 @@ mod tests {
     #[test]
     fn test_key_event_to_string() {
         let key_event = KeyEvent::new(KeyCode::Char('k'), KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "k");
+        assert_eq!(key_event_to_string(key_event), "k");
 
         let key_event = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "j");
+        assert_eq!(key_event_to_string(key_event), "j");
 
         let key_event = KeyEvent::new(KeyCode::Down, KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "Down");
+        assert_eq!(key_event_to_string(key_event), "Down");
 
         let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::CONTROL);
-        assert_eq!(key_event_to_string(&key_event), "Ctrl-h");
+        assert_eq!(key_event_to_string(key_event), "Ctrl-h");
 
         let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_string(&key_event), "H");
+        assert_eq!(key_event_to_string(key_event), "H");
 
         let key_event = KeyEvent::new(KeyCode::Char('H'), KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_string(&key_event), "H");
+        assert_eq!(key_event_to_string(key_event), "H");
 
         let key_event = KeyEvent::new(KeyCode::Left, KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_string(&key_event), "Shift-Left");
+        assert_eq!(key_event_to_string(key_event), "Shift-Left");
 
         let key_event = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::ALT);
-        assert_eq!(key_event_to_string(&key_event), "Alt-h");
+        assert_eq!(key_event_to_string(key_event), "Alt-h");
 
         let key_event = KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_string(&key_event), "Ctrl-Shift-l");
+        assert_eq!(key_event_to_string(key_event), "Ctrl-Shift-l");
 
         let key_event = KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL | KeyModifiers::SHIFT | KeyModifiers::ALT);
-        assert_eq!(key_event_to_string(&key_event), "Ctrl-Shift-Alt-l");
+        assert_eq!(key_event_to_string(key_event), "Ctrl-Shift-Alt-l");
 
         let key_event = KeyEvent::new(KeyCode::Esc, KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "Esc");
+        assert_eq!(key_event_to_string(key_event), "Esc");
 
         let key_event = KeyEvent::new(KeyCode::F(12), KeyModifiers::empty());
-        assert_eq!(key_event_to_string(&key_event), "F12");
+        assert_eq!(key_event_to_string(key_event), "F12");
     }
 }

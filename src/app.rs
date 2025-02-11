@@ -139,10 +139,10 @@ impl App<'_> {
                             self.tx.send(AppEvent::Quit);
                         }
                         Some(ue) => {
-                            self.view.handle_event(ue, key);
+                            self.view.handle_event(*ue, key);
                         }
                         None => {
-                            self.view.handle_event(&UserEvent::Unknown, key);
+                            self.view.handle_event(UserEvent::Unknown, key);
                         }
                     }
                 }

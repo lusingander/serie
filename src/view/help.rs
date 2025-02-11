@@ -50,7 +50,7 @@ impl HelpView<'_> {
         }
     }
 
-    pub fn handle_event(&mut self, event: &UserEvent, _: KeyEvent) {
+    pub fn handle_event(&mut self, event: UserEvent, _: KeyEvent) {
         match event {
             UserEvent::Quit => {
                 self.tx.send(AppEvent::Quit);
@@ -260,7 +260,7 @@ fn build_block_lines(
             join_span_groups_with_space(
                 events
                     .iter()
-                    .flat_map(|event| keybind.keys_for_event(event))
+                    .flat_map(|event| keybind.keys_for_event(*event))
                     .map(|key| vec!["<".into(), key.fg(KEY_COLOR), ">".into()])
                     .collect(),
             )

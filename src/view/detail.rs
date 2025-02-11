@@ -54,7 +54,7 @@ impl<'a> DetailView<'a> {
         }
     }
 
-    pub fn handle_event(&mut self, event: &UserEvent, _: KeyEvent) {
+    pub fn handle_event(&mut self, event: UserEvent, _: KeyEvent) {
         match event {
             UserEvent::NavigateDown => {
                 self.commit_detail_state.scroll_down();

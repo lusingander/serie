@@ -41,7 +41,7 @@ impl<'a> RefsView<'a> {
         }
     }
 
-    pub fn handle_event(&mut self, event: &UserEvent, _: KeyEvent) {
+    pub fn handle_event(&mut self, event: UserEvent, _: KeyEvent) {
         match event {
             UserEvent::Quit => {
                 self.tx.send(AppEvent::Quit);
