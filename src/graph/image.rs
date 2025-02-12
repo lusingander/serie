@@ -7,7 +7,7 @@ use fxhash::{FxHashMap, FxHashSet};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::{
-    color::ColorSet,
+    color::GraphColorSet,
     git::CommitHash,
     graph::{Edge, EdgeType, Graph},
     protocol::ImageProtocol,
@@ -27,12 +27,12 @@ pub struct GraphImageManager<'a> {
 impl<'a> GraphImageManager<'a> {
     pub fn new(
         graph: &'a Graph,
-        color_set: &ColorSet,
+        graph_color_set: &GraphColorSet,
         cell_width_type: CellWidthType,
         image_protocol: ImageProtocol,
         preload: bool,
     ) -> Self {
-        let image_params = ImageParams::new(color_set, cell_width_type);
+        let image_params = ImageParams::new(graph_color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         let mut m = GraphImageManager {
@@ -134,19 +134,19 @@ pub enum CellWidthType {
 }
 
 impl ImageParams {
-    pub fn new(color_set: &ColorSet, cell_width_type: CellWidthType) -> Self {
+    pub fn new(graph_color_set: &GraphColorSet, cell_width_type: CellWidthType) -> Self {
         let (width, height, line_width, circle_inner_radius, circle_outer_radius) =
             match cell_width_type {
                 CellWidthType::Double => (50, 50, 5, 10, 13),
                 CellWidthType::Single => (25, 50, 3, 7, 10),
             };
-        let edge_colors = color_set
+        let edge_colors = graph_color_set
             .colors
             .iter()
             .map(|c| c.to_image_color())
             .collect();
-        let circle_edge_color = color_set.edge_color.to_image_color();
-        let background_color = color_set.background_color.to_image_color();
+        let circle_edge_color = graph_color_set.edge_color.to_image_color();
+        let background_color = graph_color_set.background_color.to_image_color();
         Self {
             width,
             height,
@@ -697,9 +697,9 @@ mod tests {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
-        let color_set = ColorSet::new(&graph_color_config);
+        let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let image_params = ImageParams::new(&color_set, cell_width_type);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "default_params";
 
@@ -711,9 +711,9 @@ mod tests {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
-        let color_set = ColorSet::new(&graph_color_config);
+        let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
         image_params.width = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "wide_image";
@@ -726,9 +726,9 @@ mod tests {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
-        let color_set = ColorSet::new(&graph_color_config);
+        let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
         image_params.height = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "tall_image";
@@ -741,9 +741,9 @@ mod tests {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
-        let color_set = ColorSet::new(&graph_color_config);
+        let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Single;
-        let image_params = ImageParams::new(&color_set, cell_width_type);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "single_cell_width";
 
@@ -755,9 +755,9 @@ mod tests {
         let params = straight_test_params();
         let cell_count = 2;
         let graph_color_config = GraphColorConfig::default();
-        let color_set = ColorSet::new(&graph_color_config);
+        let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
         image_params.circle_inner_radius = 5;
         image_params.circle_outer_radius = 12;
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -771,9 +771,9 @@ mod tests {
         let params = straight_test_params();
         let cell_count = 2;
         let graph_color_config = GraphColorConfig::default();
-        let color_set = ColorSet::new(&graph_color_config);
+        let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
         image_params.line_width = 1;
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "line_width";
@@ -795,9 +795,9 @@ mod tests {
             edge: "#ffffff".into(),
             background: "#00ff0070".into(),
         };
-        let color_set = ColorSet::new(&graph_color_config);
+        let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let image_params = ImageParams::new(&color_set, cell_width_type);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
         let file_name = "color";
 

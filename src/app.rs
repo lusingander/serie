@@ -10,7 +10,7 @@ use ratatui::{
 };
 
 use crate::{
-    color::ColorSet,
+    color::GraphColorSet,
     config::{CursorType, UiConfig},
     event::{AppEvent, Receiver, Sender, UserEvent},
     external::copy_to_clipboard,
@@ -61,7 +61,7 @@ impl<'a> App<'a> {
         graph: &'a Graph,
         keybind: &'a KeyBind,
         ui_config: &'a UiConfig,
-        color_set: &'a ColorSet,
+        graph_color_set: &'a GraphColorSet,
         cell_width_type: CellWidthType,
         image_protocol: ImageProtocol,
         tx: Sender,
@@ -77,7 +77,7 @@ impl<'a> App<'a> {
                     ref_name_to_commit_index_map.insert(r.name(), i);
                 }
                 let (pos_x, _) = graph.commit_pos_map[&commit.commit_hash];
-                let graph_color = color_set.get(pos_x).to_ratatui_color();
+                let graph_color = graph_color_set.get(pos_x).to_ratatui_color();
                 CommitInfo::new(commit, refs, graph_color)
             })
             .collect();

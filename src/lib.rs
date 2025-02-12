@@ -92,7 +92,7 @@ pub fn run() -> std::io::Result<()> {
     let (ui_config, graph_config, key_bind_patch) = config::load();
     let key_bind = keybind::KeyBind::new(key_bind_patch);
 
-    let color_set = color::ColorSet::new(&graph_config.color);
+    let graph_color_set = color::GraphColorSet::new(&graph_config.color);
     let image_protocol = args.protocol.into();
 
     let repository = git::Repository::load(Path::new("."), args.order.into());
@@ -104,7 +104,7 @@ pub fn run() -> std::io::Result<()> {
 
     let graph_image_manager = GraphImageManager::new(
         &graph,
-        &color_set,
+        &graph_color_set,
         cell_width_type,
         image_protocol,
         args.preload,
@@ -120,7 +120,7 @@ pub fn run() -> std::io::Result<()> {
         &graph,
         &key_bind,
         &ui_config,
-        &color_set,
+        &graph_color_set,
         cell_width_type,
         image_protocol,
         tx,
