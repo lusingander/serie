@@ -1,4 +1,106 @@
+use ratatui::style::Color as RatatuiColor;
+
 use crate::config::GraphColorConfig;
+
+pub struct ColorTheme {
+    pub fg: RatatuiColor,
+    pub bg: RatatuiColor,
+
+    pub list_selected_fg: RatatuiColor,
+    pub list_selected_bg: RatatuiColor,
+    pub list_ref_paren_fg: RatatuiColor,
+    pub list_ref_branch_fg: RatatuiColor,
+    pub list_ref_remote_branch_fg: RatatuiColor,
+    pub list_ref_tag_fg: RatatuiColor,
+    pub list_ref_stash_fg: RatatuiColor,
+    pub list_head_fg: RatatuiColor,
+    pub list_subject_fg: RatatuiColor,
+    pub list_name_fg: RatatuiColor,
+    pub list_hash_fg: RatatuiColor,
+    pub list_date_fg: RatatuiColor,
+    pub list_match_fg: RatatuiColor,
+    pub list_match_bg: RatatuiColor,
+
+    pub detail_email_fg: RatatuiColor,
+    pub detail_divider_fg: RatatuiColor,
+    pub detail_default_fg: RatatuiColor,
+    pub detail_ref_branch_fg: RatatuiColor,
+    pub detail_ref_remote_branch_fg: RatatuiColor,
+    pub detail_ref_tag_fg: RatatuiColor,
+    pub detail_file_change_add_fg: RatatuiColor,
+    pub detail_file_change_modify_fg: RatatuiColor,
+    pub detail_file_change_delete_fg: RatatuiColor,
+    pub detail_file_change_move_fg: RatatuiColor,
+
+    pub ref_selected_fg: RatatuiColor,
+    pub ref_selected_bg: RatatuiColor,
+    pub ref_default_fg: RatatuiColor,
+    pub ref_divider_fg: RatatuiColor,
+
+    pub help_block_title_fg: RatatuiColor,
+    pub help_key_fg: RatatuiColor,
+
+    pub virtual_cursor_fg: RatatuiColor,
+    pub status_input_fg: RatatuiColor,
+    pub status_info_fg: RatatuiColor,
+    pub status_success_fg: RatatuiColor,
+    pub status_warn_fg: RatatuiColor,
+    pub status_error_fg: RatatuiColor,
+
+    pub divider_fg: RatatuiColor,
+}
+
+impl Default for ColorTheme {
+    fn default() -> Self {
+        Self {
+            fg: RatatuiColor::Reset,
+            bg: RatatuiColor::Reset,
+
+            list_selected_fg: RatatuiColor::White,
+            list_selected_bg: RatatuiColor::DarkGray,
+            list_ref_paren_fg: RatatuiColor::Yellow,
+            list_ref_branch_fg: RatatuiColor::Green,
+            list_ref_remote_branch_fg: RatatuiColor::Red,
+            list_ref_tag_fg: RatatuiColor::Yellow,
+            list_ref_stash_fg: RatatuiColor::Magenta,
+            list_head_fg: RatatuiColor::Cyan,
+            list_subject_fg: RatatuiColor::Reset,
+            list_name_fg: RatatuiColor::Cyan,
+            list_hash_fg: RatatuiColor::Yellow,
+            list_date_fg: RatatuiColor::Magenta,
+            list_match_fg: RatatuiColor::Black,
+            list_match_bg: RatatuiColor::Yellow,
+
+            detail_email_fg: RatatuiColor::Blue,
+            detail_divider_fg: RatatuiColor::DarkGray,
+            detail_default_fg: RatatuiColor::Reset,
+            detail_ref_branch_fg: RatatuiColor::Green,
+            detail_ref_remote_branch_fg: RatatuiColor::Red,
+            detail_ref_tag_fg: RatatuiColor::Yellow,
+            detail_file_change_add_fg: RatatuiColor::Green,
+            detail_file_change_modify_fg: RatatuiColor::Yellow,
+            detail_file_change_delete_fg: RatatuiColor::Red,
+            detail_file_change_move_fg: RatatuiColor::Magenta,
+
+            ref_default_fg: RatatuiColor::Reset,
+            ref_divider_fg: RatatuiColor::DarkGray,
+            ref_selected_fg: RatatuiColor::White,
+            ref_selected_bg: RatatuiColor::DarkGray,
+
+            help_block_title_fg: RatatuiColor::Green,
+            help_key_fg: RatatuiColor::Yellow,
+
+            virtual_cursor_fg: RatatuiColor::Reset,
+            status_input_fg: RatatuiColor::Reset,
+            status_info_fg: RatatuiColor::Cyan,
+            status_success_fg: RatatuiColor::Green,
+            status_warn_fg: RatatuiColor::Yellow,
+            status_error_fg: RatatuiColor::Red,
+
+            divider_fg: RatatuiColor::DarkGray,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GraphColor {
@@ -21,8 +123,8 @@ impl GraphColor {
         image::Rgba([self.r, self.g, self.b, self.a])
     }
 
-    pub fn to_ratatui_color(self) -> ratatui::style::Color {
-        ratatui::style::Color::Rgb(self.r, self.g, self.b)
+    pub fn to_ratatui_color(self) -> RatatuiColor {
+        RatatuiColor::Rgb(self.r, self.g, self.b)
     }
 
     fn transparent() -> Self {
