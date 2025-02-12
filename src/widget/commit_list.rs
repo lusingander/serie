@@ -607,7 +607,8 @@ impl CommitList<'_> {
                 buf[(area.left(), area.top() + i as u16)]
                     .set_symbol(state.encoded_image(commit_info));
 
-                for w in 1..area.width {
+                // width - 1 for right pad
+                for w in 1..area.width - 1 {
                     buf[(area.left() + w, area.top() + i as u16)].set_skip(true);
                 }
             });
