@@ -3,14 +3,14 @@ use std::collections::HashMap;
 use ratatui::{
     backend::Backend,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Modifier, Style, Stylize},
     text::Span,
     widgets::{Block, Borders, Padding, Paragraph},
     Frame, Terminal,
 };
 
 use crate::{
-    color::GraphColorSet,
+    color::{ColorTheme, GraphColorSet},
     config::{CursorType, UiConfig},
     event::{AppEvent, Receiver, Sender, UserEvent},
     external::copy_to_clipboard,
@@ -21,15 +21,6 @@ use crate::{
     view::View,
     widget::commit_list::{CommitInfo, CommitListState},
 };
-
-const MESSAGE_STATUTS_COLOR: Color = Color::Reset;
-const INFO_STATUS_COLOR: Color = Color::Cyan;
-const SUCCESS_STATUS_COLOR: Color = Color::Green;
-const WARN_STATUS_COLOR: Color = Color::Yellow;
-const ERROR_STATUS_COLOR: Color = Color::Red;
-
-const VIRTUAL_CURSOR_COLOR: Color = Color::Reset;
-const DIVIDER_COLOR: Color = Color::DarkGray;
 
 #[derive(Debug)]
 enum StatusLine {
@@ -49,6 +40,7 @@ pub struct App<'a> {
 
     keybind: &'a KeyBind,
     ui_config: &'a UiConfig,
+    color_theme: &'a ColorTheme,
     image_protocol: ImageProtocol,
     tx: Sender,
 }
@@ -61,6 +53,7 @@ impl<'a> App<'a> {
         graph: &'a Graph,
         keybind: &'a KeyBind,
         ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
         graph_color_set: &'a GraphColorSet,
         cell_width_type: CellWidthType,
         image_protocol: ImageProtocol,
@@ -93,7 +86,7 @@ impl<'a> App<'a> {
             head,
             ref_name_to_commit_index_map,
         );
-        let view = View::of_list(commit_list_state, ui_config, tx.clone());
+        let view = View::of_list(commit_list_state, ui_config, color_theme, tx.clone());
 
         Self {
             repository,
@@ -101,6 +94,7 @@ impl<'a> App<'a> {
             view,
             keybind,
             ui_config,
+            color_theme,
             image_protocol,
             tx,
         }
@@ -202,6 +196,11 @@ impl App<'_> {
     }
 
     fn render(&mut self, f: &mut Frame) {
+        let base = Block::default()
+            .fg(self.color_theme.fg)
+            .bg(self.color_theme.bg);
+        f.render_widget(base, f.area());
+
         let [view_area, status_line_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(f.area());
 
@@ -214,24 +213,24 @@ impl App<'_> {
     fn render_status_line(&self, f: &mut Frame, area: Rect) {
         let text: Span = match &self.status_line {
             StatusLine::None => "".into(),
-            StatusLine::Input(msg, _) => msg.as_str().fg(MESSAGE_STATUTS_COLOR),
-            StatusLine::NotificationInfo(msg) => msg.as_str().fg(INFO_STATUS_COLOR),
+            StatusLine::Input(msg, _) => msg.as_str().fg(self.color_theme.status_input_fg),
+            StatusLine::NotificationInfo(msg) => msg.as_str().fg(self.color_theme.status_info_fg),
             StatusLine::NotificationSuccess(msg) => msg
                 .as_str()
                 .add_modifier(Modifier::BOLD)
-                .fg(SUCCESS_STATUS_COLOR),
+                .fg(self.color_theme.status_success_fg),
             StatusLine::NotificationWarn(msg) => msg
                 .as_str()
                 .add_modifier(Modifier::BOLD)
-                .fg(WARN_STATUS_COLOR),
+                .fg(self.color_theme.status_warn_fg),
             StatusLine::NotificationError(msg) => format!("ERROR: {}", msg)
                 .add_modifier(Modifier::BOLD)
-                .fg(ERROR_STATUS_COLOR),
+                .fg(self.color_theme.status_error_fg),
         };
         let paragraph = Paragraph::new(text).block(
             Block::default()
                 .borders(Borders::TOP)
-                .style(Style::default().fg(DIVIDER_COLOR))
+                .style(Style::default().fg(self.color_theme.divider_fg))
                 .padding(Padding::horizontal(1)),
         );
         f.render_widget(paragraph, area);
@@ -243,7 +242,7 @@ impl App<'_> {
                     f.set_cursor_position((x, y));
                 }
                 CursorType::Virtual(cursor) => {
-                    let style = Style::default().fg(VIRTUAL_CURSOR_COLOR);
+                    let style = Style::default().fg(self.color_theme.virtual_cursor_fg);
                     f.buffer_mut().set_string(x, y, cursor, style);
                 }
             }
@@ -269,6 +268,7 @@ impl App<'_> {
                 changes,
                 refs,
                 self.ui_config,
+                self.color_theme,
                 self.image_protocol,
                 self.tx.clone(),
             );
@@ -278,7 +278,12 @@ impl App<'_> {
     fn close_detail(&mut self) {
         if let View::Detail(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            self.view = View::of_list(commit_list_state, self.ui_config, self.tx.clone());
+            self.view = View::of_list(
+                commit_list_state,
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
         }
     }
 
@@ -292,14 +297,25 @@ impl App<'_> {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
             let refs = self.repository.all_refs().into_iter().cloned().collect();
-            self.view = View::of_refs(commit_list_state, refs, self.ui_config, self.tx.clone());
+            self.view = View::of_refs(
+                commit_list_state,
+                refs,
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
         }
     }
 
     fn close_refs(&mut self) {
         if let View::Refs(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            self.view = View::of_list(commit_list_state, self.ui_config, self.tx.clone());
+            self.view = View::of_list(
+                commit_list_state,
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
         }
     }
 
@@ -307,6 +323,7 @@ impl App<'_> {
         let before_view = std::mem::take(&mut self.view);
         self.view = View::of_help(
             before_view,
+            self.color_theme,
             self.image_protocol,
             self.tx.clone(),
             self.keybind,

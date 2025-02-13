@@ -92,6 +92,7 @@ pub fn run() -> std::io::Result<()> {
     let (ui_config, graph_config, key_bind_patch) = config::load();
     let key_bind = keybind::KeyBind::new(key_bind_patch);
 
+    let color_theme = color::ColorTheme::default();
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
     let image_protocol = args.protocol.into();
 
@@ -120,6 +121,7 @@ pub fn run() -> std::io::Result<()> {
         &graph,
         &key_bind,
         &ui_config,
+        &color_theme,
         &graph_color_set,
         cell_width_type,
         image_protocol,

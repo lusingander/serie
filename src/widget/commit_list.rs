@@ -12,27 +12,11 @@ use ratatui::{
 use tui_input::{backend::crossterm::EventHandler, Input};
 
 use crate::{
+    color::ColorTheme,
     config::UiListConfig,
     git::{Commit, CommitHash, Head, Ref},
     graph::GraphImageManager,
 };
-
-const SELECTED_BACKGROUND_COLOR: Color = Color::DarkGray;
-const SELECTED_FOREGROUND_COLOR: Color = Color::White;
-
-const REF_PAREN_COLOR: Color = Color::Yellow;
-const REF_BRANCH_COLOR: Color = Color::Green;
-const REF_REMOTE_BRANCH_COLOR: Color = Color::Red;
-const REF_TAG_COLOR: Color = Color::Yellow;
-const REF_STASH_COLOR: Color = Color::Magenta;
-const HEAD_COLOR: Color = Color::Cyan;
-
-const SUBJECT_COLOR: Color = Color::Reset;
-const NAME_COLOR: Color = Color::Cyan;
-const HASH_COLOR: Color = Color::Yellow;
-const DATE_COLOR: Color = Color::Magenta;
-const MATCH_FOREGROUND_COLOR: Color = Color::Black;
-const MATCH_BACKGROUND_COLOR: Color = Color::Yellow;
 
 const ELLIPSIS: &str = "...";
 
@@ -484,11 +468,15 @@ impl<'a> CommitListState<'a> {
 
 pub struct CommitList<'a> {
     config: &'a UiListConfig,
+    color_theme: &'a ColorTheme,
 }
 
 impl<'a> CommitList<'a> {
-    pub fn new(config: &'a UiListConfig) -> Self {
-        Self { config }
+    pub fn new(config: &'a UiListConfig, color_theme: &'a ColorTheme) -> Self {
+        Self {
+            config,
+            color_theme,
+        }
     }
 }
 
@@ -630,7 +618,7 @@ impl CommitList<'_> {
         let items: Vec<ListItem> = self
             .rendering_commit_info_iter(state)
             .map(|(i, commit_info)| {
-                let mut spans = refs_spans(commit_info, state.head);
+                let mut spans = refs_spans(commit_info, state.head, self.color_theme);
                 let ref_spans_width: usize = spans.iter().map(|s| s.width()).sum();
                 let max_width = max_width.saturating_sub(ref_spans_width);
                 let commit = commit_info.commit;
@@ -644,7 +632,13 @@ impl CommitList<'_> {
 
                     let sub_spans =
                         if let Some(pos) = state.search_matches[state.offset + i].subject {
-                            highlighted_spans(subject, pos, SUBJECT_COLOR, truncate)
+                            highlighted_spans(
+                                subject,
+                                pos,
+                                self.color_theme.list_subject_fg,
+                                self.color_theme,
+                                truncate,
+                            )
                         } else {
                             vec![subject.into()]
                         };
@@ -672,9 +666,15 @@ impl CommitList<'_> {
                     commit.author_name.to_string()
                 };
                 let spans = if let Some(pos) = state.search_matches[state.offset + i].author_name {
-                    highlighted_spans(name, pos, NAME_COLOR, truncate)
+                    highlighted_spans(
+                        name,
+                        pos,
+                        self.color_theme.list_name_fg,
+                        self.color_theme,
+                        truncate,
+                    )
                 } else {
-                    vec![name.fg(NAME_COLOR)]
+                    vec![name.fg(self.color_theme.list_name_fg)]
                 };
                 self.to_commit_list_item(i, spans, state)
             })
@@ -691,9 +691,15 @@ impl CommitList<'_> {
             .map(|(i, commit)| {
                 let hash = commit.commit_hash.as_short_hash();
                 let spans = if let Some(pos) = state.search_matches[state.offset + i].commit_hash {
-                    highlighted_spans(hash, pos, HASH_COLOR, false)
+                    highlighted_spans(
+                        hash,
+                        pos,
+                        self.color_theme.list_hash_fg,
+                        self.color_theme,
+                        false,
+                    )
                 } else {
-                    vec![hash.fg(HASH_COLOR)]
+                    vec![hash.fg(self.color_theme.list_hash_fg)]
                 };
                 self.to_commit_list_item(i, spans, state)
             })
@@ -715,7 +721,7 @@ impl CommitList<'_> {
                 } else {
                     date.format(&self.config.date_format).to_string()
                 };
-                self.to_commit_list_item(i, vec![date_str.fg(DATE_COLOR)], state)
+                self.to_commit_list_item(i, vec![date_str.fg(self.color_theme.list_date_fg)], state)
             })
             .collect();
         Widget::render(List::new(items), area, buf);
@@ -753,41 +759,52 @@ impl CommitList<'_> {
         let mut line = Line::from(spans);
         if i == state.selected {
             line = line
-                .bg(SELECTED_BACKGROUND_COLOR)
-                .fg(SELECTED_FOREGROUND_COLOR);
+                .bg(self.color_theme.list_selected_bg)
+                .fg(self.color_theme.list_selected_fg);
         }
         ListItem::new(line)
     }
 }
 
-fn refs_spans<'a>(commit_info: &'a CommitInfo, head: &'a Head) -> Vec<Span<'a>> {
+fn refs_spans<'a>(
+    commit_info: &'a CommitInfo,
+    head: &'a Head,
+    color_theme: &'a ColorTheme,
+) -> Vec<Span<'a>> {
     let refs = &commit_info.refs;
 
     if refs.len() == 1 {
         if let Ref::Stash { name, .. } = refs[0] {
-            return vec![Span::raw(name).fg(REF_STASH_COLOR).bold(), Span::raw(" ")];
+            return vec![
+                Span::raw(name).fg(color_theme.list_ref_stash_fg).bold(),
+                Span::raw(" "),
+            ];
         }
     }
 
     let ref_spans: Vec<Span> = refs
         .iter()
         .filter_map(|r| match r {
-            Ref::Branch { name, .. } => Some(Span::raw(name).fg(REF_BRANCH_COLOR).bold()),
-            Ref::RemoteBranch { name, .. } => {
-                Some(Span::raw(name).fg(REF_REMOTE_BRANCH_COLOR).bold())
+            Ref::Branch { name, .. } => {
+                Some(Span::raw(name).fg(color_theme.list_ref_branch_fg).bold())
             }
-            Ref::Tag { name, .. } => Some(Span::raw(name).fg(REF_TAG_COLOR).bold()),
+            Ref::RemoteBranch { name, .. } => Some(
+                Span::raw(name)
+                    .fg(color_theme.list_ref_remote_branch_fg)
+                    .bold(),
+            ),
+            Ref::Tag { name, .. } => Some(Span::raw(name).fg(color_theme.list_ref_tag_fg).bold()),
             Ref::Stash { .. } => None,
         })
         .collect();
 
-    let mut spans = vec![Span::raw("(").fg(REF_PAREN_COLOR).bold()];
+    let mut spans = vec![Span::raw("(").fg(color_theme.list_ref_paren_fg).bold()];
 
     if let Head::Detached { target } = head {
         if commit_info.commit.commit_hash == *target {
-            spans.push(Span::raw("HEAD").fg(HEAD_COLOR).bold());
+            spans.push(Span::raw("HEAD").fg(color_theme.list_head_fg).bold());
             if !ref_spans.is_empty() {
-                spans.push(Span::raw(", ").fg(REF_PAREN_COLOR).bold());
+                spans.push(Span::raw(", ").fg(color_theme.list_ref_paren_fg).bold());
             }
         }
     }
@@ -795,16 +812,16 @@ fn refs_spans<'a>(commit_info: &'a CommitInfo, head: &'a Head) -> Vec<Span<'a>> 
     for (i, s) in ref_spans.into_iter().enumerate() {
         if let Head::Branch { name } = head {
             if s.content == std::borrow::Cow::Borrowed(name) {
-                spans.push(Span::raw("HEAD -> ").fg(HEAD_COLOR).bold());
+                spans.push(Span::raw("HEAD -> ").fg(color_theme.list_head_fg).bold());
             }
         }
         spans.push(s);
         if i < refs.len() - 1 {
-            spans.push(Span::raw(", ").fg(REF_PAREN_COLOR).bold());
+            spans.push(Span::raw(", ").fg(color_theme.list_ref_paren_fg).bold());
         }
     }
 
-    spans.push(Span::raw(") ").fg(REF_PAREN_COLOR).bold());
+    spans.push(Span::raw(") ").fg(color_theme.list_ref_paren_fg).bold());
 
     if spans.len() == 2 {
         spans.clear(); // contains only "(" and ")", so clear it
@@ -817,6 +834,7 @@ fn highlighted_spans(
     s: String,
     pos: SearchMatchPosition,
     base_fg: Color,
+    color_theme: &ColorTheme,
     truncate: bool,
 ) -> Vec<Span<'static>> {
     let mut hm = highlight_matched_text(s)
@@ -824,8 +842,8 @@ fn highlighted_spans(
         .not_matched_style(Style::default().fg(base_fg))
         .matched_style(
             Style::default()
-                .fg(MATCH_FOREGROUND_COLOR)
-                .bg(MATCH_BACKGROUND_COLOR),
+                .fg(color_theme.list_match_fg)
+                .bg(color_theme.list_match_bg),
         );
     if truncate {
         hm = hm.ellipsis(ELLIPSIS);

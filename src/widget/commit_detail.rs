@@ -2,28 +2,16 @@ use chrono::{DateTime, FixedOffset};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Padding, Paragraph, StatefulWidget, Widget},
 };
 
 use crate::{
+    color::ColorTheme,
     config::UiDetailConfig,
     git::{Commit, FileChange, Ref},
 };
-
-const EMAIL_TEXT_COLOR: Color = Color::Blue;
-const DIVIDER_COLOR: Color = Color::DarkGray;
-const DEFAULT_TEXT_COLOR: Color = Color::Reset;
-
-const REF_BRANCH_COLOR: Color = Color::Green;
-const REF_REMOTE_BRANCH_COLOR: Color = Color::Red;
-const REF_TAG_COLOR: Color = Color::Yellow;
-
-const FILE_CHANGE_ADD_COLOR: Color = Color::Green;
-const FILE_CHANGE_MODIFY_COLOR: Color = Color::Yellow;
-const FILE_CHANGE_DELETE_COLOR: Color = Color::Red;
-const FILE_CHANGE_MOVE_COLOR: Color = Color::Magenta;
 
 #[derive(Debug, Default)]
 pub struct CommitDetailState {
@@ -53,6 +41,7 @@ pub struct CommitDetail<'a> {
     changes: &'a Vec<FileChange>,
     refs: &'a Vec<Ref>,
     config: &'a UiDetailConfig,
+    color_theme: &'a ColorTheme,
 }
 
 impl<'a> CommitDetail<'a> {
@@ -61,12 +50,14 @@ impl<'a> CommitDetail<'a> {
         changes: &'a Vec<FileChange>,
         refs: &'a Vec<Ref>,
         config: &'a UiDetailConfig,
+        color_theme: &'a ColorTheme,
     ) -> Self {
         Self {
             commit,
             changes,
             refs,
             config,
+            color_theme,
         }
     }
 }
@@ -94,11 +85,11 @@ impl StatefulWidget for CommitDetail<'_> {
 impl CommitDetail<'_> {
     fn render_labels_paragraph(&self, lines: Vec<Line>, area: Rect, buf: &mut Buffer) {
         let paragraph = Paragraph::new(lines)
-            .style(Style::default().fg(DEFAULT_TEXT_COLOR))
+            .style(Style::default().fg(self.color_theme.fg))
             .block(
                 Block::default()
                     .borders(Borders::TOP)
-                    .style(Style::default().fg(DIVIDER_COLOR))
+                    .style(Style::default().fg(self.color_theme.divider_fg))
                     .padding(Padding::left(2)),
             );
         paragraph.render(area, buf);
@@ -106,11 +97,11 @@ impl CommitDetail<'_> {
 
     fn render_value_paragraph(&self, lines: Vec<Line>, area: Rect, buf: &mut Buffer) {
         let paragraph = Paragraph::new(lines)
-            .style(Style::default().fg(DEFAULT_TEXT_COLOR))
+            .style(Style::default().fg(self.color_theme.fg))
             .block(
                 Block::default()
                     .borders(Borders::TOP)
-                    .style(Style::default().fg(DIVIDER_COLOR))
+                    .style(Style::default().fg(self.color_theme.divider_fg))
                     .padding(Padding::new(1, 2, 0, 0)),
             );
         paragraph.render(area, buf);
@@ -184,7 +175,7 @@ impl CommitDetail<'_> {
             Line::from(vec![
                 name.into(),
                 " <".into(),
-                email.fg(EMAIL_TEXT_COLOR),
+                email.fg(self.color_theme.detail_email_fg),
                 "> ".into(),
             ]),
             Line::raw(date_str),
@@ -215,17 +206,17 @@ impl CommitDetail<'_> {
         let ref_spans = self.refs.iter().filter_map(|r| match r {
             Ref::Branch { name, .. } => Some(
                 Span::raw(name)
-                    .fg(REF_BRANCH_COLOR)
+                    .fg(self.color_theme.detail_ref_branch_fg)
                     .add_modifier(Modifier::BOLD),
             ),
             Ref::RemoteBranch { name, .. } => Some(
                 Span::raw(name)
-                    .fg(REF_REMOTE_BRANCH_COLOR)
+                    .fg(self.color_theme.detail_ref_remote_branch_fg)
                     .add_modifier(Modifier::BOLD),
             ),
             Ref::Tag { name, .. } => Some(
                 Span::raw(name)
-                    .fg(REF_TAG_COLOR)
+                    .fg(self.color_theme.detail_ref_tag_fg)
                     .add_modifier(Modifier::BOLD),
             ),
             Ref::Stash { .. } => None,
@@ -262,21 +253,23 @@ impl CommitDetail<'_> {
         self.changes
             .iter()
             .map(|c| match c {
-                FileChange::Add { path } => {
-                    Line::from(vec!["A".fg(FILE_CHANGE_ADD_COLOR), " ".into(), path.into()])
-                }
+                FileChange::Add { path } => Line::from(vec![
+                    "A".fg(self.color_theme.detail_file_change_add_fg),
+                    " ".into(),
+                    path.into(),
+                ]),
                 FileChange::Modify { path } => Line::from(vec![
-                    "M".fg(FILE_CHANGE_MODIFY_COLOR),
+                    "M".fg(self.color_theme.detail_file_change_modify_fg),
                     " ".into(),
                     path.into(),
                 ]),
                 FileChange::Delete { path } => Line::from(vec![
-                    "D".fg(FILE_CHANGE_DELETE_COLOR),
+                    "D".fg(self.color_theme.detail_file_change_delete_fg),
                     " ".into(),
                     path.into(),
                 ]),
                 FileChange::Move { from, to } => Line::from(vec![
-                    "R".fg(FILE_CHANGE_MOVE_COLOR),
+                    "R".fg(self.color_theme.detail_file_change_move_fg),
                     " ".into(),
                     from.into(),
                     " -> ".into(),
@@ -291,7 +284,7 @@ impl CommitDetail<'_> {
     }
 
     fn divider_line(&self, width: usize) -> Line {
-        Line::from("─".repeat(width).fg(DIVIDER_COLOR))
+        Line::from("─".repeat(width).fg(self.color_theme.divider_fg))
     }
 
     fn update_state(&self, state: &mut CommitDetailState, line_count: usize, area_height: usize) {

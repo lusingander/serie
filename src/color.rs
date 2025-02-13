@@ -2,6 +2,7 @@ use ratatui::style::Color as RatatuiColor;
 
 use crate::config::GraphColorConfig;
 
+#[derive(Debug)]
 pub struct ColorTheme {
     pub fg: RatatuiColor,
     pub bg: RatatuiColor,
@@ -22,8 +23,6 @@ pub struct ColorTheme {
     pub list_match_bg: RatatuiColor,
 
     pub detail_email_fg: RatatuiColor,
-    pub detail_divider_fg: RatatuiColor,
-    pub detail_default_fg: RatatuiColor,
     pub detail_ref_branch_fg: RatatuiColor,
     pub detail_ref_remote_branch_fg: RatatuiColor,
     pub detail_ref_tag_fg: RatatuiColor,
@@ -34,8 +33,6 @@ pub struct ColorTheme {
 
     pub ref_selected_fg: RatatuiColor,
     pub ref_selected_bg: RatatuiColor,
-    pub ref_default_fg: RatatuiColor,
-    pub ref_divider_fg: RatatuiColor,
 
     pub help_block_title_fg: RatatuiColor,
     pub help_key_fg: RatatuiColor,
@@ -72,8 +69,6 @@ impl Default for ColorTheme {
             list_match_bg: RatatuiColor::Yellow,
 
             detail_email_fg: RatatuiColor::Blue,
-            detail_divider_fg: RatatuiColor::DarkGray,
-            detail_default_fg: RatatuiColor::Reset,
             detail_ref_branch_fg: RatatuiColor::Green,
             detail_ref_remote_branch_fg: RatatuiColor::Red,
             detail_ref_tag_fg: RatatuiColor::Yellow,
@@ -82,8 +77,6 @@ impl Default for ColorTheme {
             detail_file_change_delete_fg: RatatuiColor::Red,
             detail_file_change_move_fg: RatatuiColor::Magenta,
 
-            ref_default_fg: RatatuiColor::Reset,
-            ref_divider_fg: RatatuiColor::DarkGray,
             ref_selected_fg: RatatuiColor::White,
             ref_selected_bg: RatatuiColor::DarkGray,
 
