@@ -18,7 +18,7 @@ exclude = ["/.github", "/img"]
 arboard = "3.4.1"
 base64 = "0.22.1"
 chrono = "0.4.39"
-clap = { version = "4.5.27", features = ["derive"] }
+clap = { version = "4.5.29", features = ["derive"] }
 color-eyre = "0.6.3"
 console = "0.15.10"
 fxhash = "0.2.1"
@@ -29,7 +29,7 @@ rayon = "1.10.0"
 semver = "1.0.25"
 serde = { version = "1.0.217", features = ["derive"] }
 smart-default = "0.7.1"
-toml = "0.8.19"
+toml = "0.8.20"
 tui-input = "0.11.1"
 tui-tree-widget = "0.23.0"
 umbra = "0.3.0"
@@ -38,5 +38,5 @@ xdg = "2.5.2"
 [dev-dependencies]
 dircpy = "0.3.19"
 rstest = "0.24.0"
-tempfile = "3.15.0"
+tempfile = "3.16.0"
 text-to-png = "0.2.0"
