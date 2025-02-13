@@ -56,7 +56,6 @@ impl<'a> View<'a> {
         )))
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn of_detail(
         commit_list_state: CommitListState<'a>,
         commit: Commit,

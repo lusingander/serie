@@ -34,7 +34,6 @@ pub struct DetailView<'a> {
 }
 
 impl<'a> DetailView<'a> {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         commit_list_state: CommitListState<'a>,
         commit: Commit,
