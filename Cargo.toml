@@ -40,3 +40,7 @@ dircpy = "0.3.19"
 rstest = "0.24.0"
 tempfile = "3.16.0"
 text-to-png = "0.2.0"
+
+[profile.release]
+codegen-units = 1
+lto = true
