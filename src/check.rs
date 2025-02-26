@@ -5,11 +5,9 @@ use crate::graph::{CellWidthType, Graph};
 pub fn decide_cell_width_type(
     graph: &Graph,
     cell_width_type: Option<CellWidthType>,
-) -> std::io::Result<CellWidthType> {
+) -> Result<CellWidthType, Box<dyn std::error::Error>> {
     let (w, h) = terminal::size()?;
-    let cell_width_type =
-        decide_cell_width_type_from(graph.max_pos_x, w as usize, h as usize, cell_width_type);
-    Ok(cell_width_type)
+    decide_cell_width_type_from(graph.max_pos_x, w as usize, h as usize, cell_width_type)
 }
 
 fn decide_cell_width_type_from(
@@ -17,7 +15,7 @@ fn decide_cell_width_type_from(
     term_width: usize,
     term_height: usize,
     cell_width_type: Option<CellWidthType>,
-) -> CellWidthType {
+) -> Result<CellWidthType, Box<dyn std::error::Error>> {
     let single_image_cell_width = max_pos_x + 1;
     let double_image_cell_width = single_image_cell_width * 2;
 
@@ -25,29 +23,30 @@ fn decide_cell_width_type_from(
         Some(CellWidthType::Double) => {
             let required_width = double_image_cell_width + 2;
             if required_width > term_width {
-                panic!("Terminal size {term_width}x{term_height} is too small. Required width is {required_width} (graph_width = double).");
+                let msg = format!("Terminal size {term_width}x{term_height} is too small. Required width is {required_width} (graph_width = double).");
+                return Err(msg.into());
             }
-            CellWidthType::Double
+            Ok(CellWidthType::Double)
         }
         Some(CellWidthType::Single) => {
             let required_width = single_image_cell_width + 2;
             if required_width > term_width {
-                panic!("Terminal size {term_width}x{term_height} is too small. Required width is {required_width} (graph_width = single).");
+                let msg = format!("Terminal size {term_width}x{term_height} is too small. Required width is {required_width} (graph_width = single).");
+                return Err(msg.into());
             }
-            CellWidthType::Single
+            Ok(CellWidthType::Single)
         }
         None => {
             let double_required_width = double_image_cell_width + 2;
             if double_required_width <= term_width {
-                return CellWidthType::Double;
+                return Ok(CellWidthType::Double);
             }
             let single_required_width = single_image_cell_width + 2;
             if single_required_width <= term_width {
-                return CellWidthType::Single;
+                return Ok(CellWidthType::Single);
             }
-            panic!(
-                "Terminal size {term_width}x{term_height} is too small. Required width is {single_required_width} (graph_width = single) or {double_required_width} (graph_width = double)."
-            );
+            let msg = format!("Terminal size {term_width}x{term_height} is too small. Required width is {single_required_width} (graph_width = single) or {double_required_width} (graph_width = double).");
+            Err(msg.into())
         }
     }
 }
