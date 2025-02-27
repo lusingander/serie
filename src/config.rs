@@ -27,10 +27,10 @@ pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>), Box<dyn std::e
             if default_path.exists() {
                 read_config_from_path(&default_path)
             } else {
-                Config::default()
+                Ok(Config::default())
             }
         }
-    };
+    }?;
     Ok((config.ui, config.graph, config.keybind))
 }
 
@@ -44,10 +44,10 @@ fn xdg_config_file_path() -> PathBuf {
         .get_config_file(CONFIG_FILE_NAME)
 }
 
-fn read_config_from_path(path: &Path) -> Config {
-    let content = std::fs::read_to_string(path).unwrap();
-    let config: OptionalConfig = toml::from_str(&content).unwrap();
-    config.into()
+fn read_config_from_path(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
+    let content = std::fs::read_to_string(path)?;
+    let config: OptionalConfig = toml::from_str(&content)?;
+    Ok(config.into())
 }
 
 #[optional(derives = [Deserialize])]

@@ -61,14 +61,16 @@ impl<'de> Deserialize<'de> for KeyBind {
                 let key_event = match parse_key_event(&key_event_str) {
                     Ok(e) => e,
                     Err(s) => {
-                        panic!("{key_event_str:?} is not a valid key event: {s:}");
+                        let msg = format!("{key_event_str:?} is not a valid key event: {s:}");
+                        return Err(serde::de::Error::custom(msg));
                     }
                 };
                 if let Some(conflict_user_event) = key_map.insert(key_event, user_event) {
-                    panic!(
+                    let msg = format!(
                         "{:?} map to multiple events: {:?}, {:?}",
                         key_event, user_event, conflict_user_event
                     );
+                    return Err(serde::de::Error::custom(msg));
                 }
             }
         }
