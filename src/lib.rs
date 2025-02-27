@@ -86,7 +86,9 @@ impl From<GraphWidthType> for graph::CellWidthType {
     }
 }
 
-pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+pub fn run() -> Result<()> {
     color_eyre::install().unwrap();
     let args = Args::parse();
     let (ui_config, graph_config, key_bind_patch) = config::load()?;

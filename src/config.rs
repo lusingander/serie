@@ -7,13 +7,13 @@ use serde::Deserialize;
 use smart_default::SmartDefault;
 use umbra::optional;
 
-use crate::keybind::KeyBind;
+use crate::{keybind::KeyBind, Result};
 
 const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
 const CONFIG_FILE_ENV_NAME: &str = "SERIE_CONFIG_FILE";
 
-pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>), Box<dyn std::error::Error>> {
+pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>)> {
     let config = match config_file_path_from_env() {
         Some(user_path) => {
             if !user_path.exists() {
@@ -44,7 +44,7 @@ fn xdg_config_file_path() -> PathBuf {
         .get_config_file(CONFIG_FILE_NAME)
 }
 
-fn read_config_from_path(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
+fn read_config_from_path(path: &Path) -> Result<Config> {
     let content = std::fs::read_to_string(path)?;
     let config: OptionalConfig = toml::from_str(&content)?;
     Ok(config.into())

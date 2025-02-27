@@ -1,11 +1,14 @@
 use ratatui::crossterm::terminal;
 
-use crate::graph::{CellWidthType, Graph};
+use crate::{
+    graph::{CellWidthType, Graph},
+    Result,
+};
 
 pub fn decide_cell_width_type(
     graph: &Graph,
     cell_width_type: Option<CellWidthType>,
-) -> Result<CellWidthType, Box<dyn std::error::Error>> {
+) -> Result<CellWidthType> {
     let (w, h) = terminal::size()?;
     decide_cell_width_type_from(graph.max_pos_x, w as usize, h as usize, cell_width_type)
 }
@@ -15,7 +18,7 @@ fn decide_cell_width_type_from(
     term_width: usize,
     term_height: usize,
     cell_width_type: Option<CellWidthType>,
-) -> Result<CellWidthType, Box<dyn std::error::Error>> {
+) -> Result<CellWidthType> {
     let single_image_cell_width = max_pos_x + 1;
     let double_image_cell_width = single_image_cell_width * 2;
 

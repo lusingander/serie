@@ -1,3 +1,3 @@
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> serie::Result<()> {
     serie::run()
 }

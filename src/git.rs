@@ -8,6 +8,8 @@ use std::{
 
 use chrono::{DateTime, FixedOffset};
 
+use crate::Result;
+
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CommitHash(String);
 
@@ -122,7 +124,7 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn load(path: &Path, sort: SortCommit) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn load(path: &Path, sort: SortCommit) -> Result<Self> {
         check_git_repository(path)?;
 
         let commits = load_all_commits(path, sort);
@@ -220,7 +222,7 @@ impl Repository {
     }
 }
 
-fn check_git_repository(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn check_git_repository(path: &Path) -> Result<()> {
     let output = Command::new("git")
         .arg("rev-parse")
         .arg("--is-inside-work-tree")

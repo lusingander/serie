@@ -1,9 +1,10 @@
-use crate::event::UserEvent;
-use serde::{de::Deserializer, Deserialize};
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use serde::{de::Deserializer, Deserialize};
+
+use crate::event::UserEvent;
 
 const DEFAULT_KEY_BIND: &str = include_str!("../assets/default-keybind.toml");
 
