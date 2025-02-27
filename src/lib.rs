@@ -96,7 +96,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
     let image_protocol = args.protocol.into();
 
-    let repository = git::Repository::load(Path::new("."), args.order.into());
+    let repository = git::Repository::load(Path::new("."), args.order.into())?;
 
     let graph = graph::calc_graph(&repository);
 
