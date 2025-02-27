@@ -89,7 +89,7 @@ impl From<GraphWidthType> for graph::CellWidthType {
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     color_eyre::install().unwrap();
     let args = Args::parse();
-    let (ui_config, graph_config, key_bind_patch) = config::load();
+    let (ui_config, graph_config, key_bind_patch) = config::load()?;
     let key_bind = keybind::KeyBind::new(key_bind_patch);
 
     let color_theme = color::ColorTheme::default();

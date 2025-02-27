@@ -13,11 +13,12 @@ const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
 const CONFIG_FILE_ENV_NAME: &str = "SERIE_CONFIG_FILE";
 
-pub fn load() -> (UiConfig, GraphConfig, Option<KeyBind>) {
+pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>), Box<dyn std::error::Error>> {
     let config = match config_file_path_from_env() {
         Some(user_path) => {
             if !user_path.exists() {
-                panic!("Config file not found: {:?}", user_path);
+                let msg = format!("Config file not found: {:?}", user_path);
+                return Err(msg.into());
             }
             read_config_from_path(&user_path)
         }
@@ -30,7 +31,7 @@ pub fn load() -> (UiConfig, GraphConfig, Option<KeyBind>) {
             }
         }
     };
-    (config.ui, config.graph, config.keybind)
+    Ok((config.ui, config.graph, config.keybind))
 }
 
 fn config_file_path_from_env() -> Option<PathBuf> {
