@@ -7,17 +7,18 @@ use serde::Deserialize;
 use smart_default::SmartDefault;
 use umbra::optional;
 
-use crate::keybind::KeyBind;
+use crate::{keybind::KeyBind, Result};
 
 const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
 const CONFIG_FILE_ENV_NAME: &str = "SERIE_CONFIG_FILE";
 
-pub fn load() -> (UiConfig, GraphConfig, Option<KeyBind>) {
+pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>)> {
     let config = match config_file_path_from_env() {
         Some(user_path) => {
             if !user_path.exists() {
-                panic!("Config file not found: {:?}", user_path);
+                let msg = format!("Config file not found: {:?}", user_path);
+                return Err(msg.into());
             }
             read_config_from_path(&user_path)
         }
@@ -26,11 +27,11 @@ pub fn load() -> (UiConfig, GraphConfig, Option<KeyBind>) {
             if default_path.exists() {
                 read_config_from_path(&default_path)
             } else {
-                Config::default()
+                Ok(Config::default())
             }
         }
-    };
-    (config.ui, config.graph, config.keybind)
+    }?;
+    Ok((config.ui, config.graph, config.keybind))
 }
 
 fn config_file_path_from_env() -> Option<PathBuf> {
@@ -43,10 +44,10 @@ fn xdg_config_file_path() -> PathBuf {
         .get_config_file(CONFIG_FILE_NAME)
 }
 
-fn read_config_from_path(path: &Path) -> Config {
-    let content = std::fs::read_to_string(path).unwrap();
-    let config: OptionalConfig = toml::from_str(&content).unwrap();
-    config.into()
+fn read_config_from_path(path: &Path) -> Result<Config> {
+    let content = std::fs::read_to_string(path)?;
+    let config: OptionalConfig = toml::from_str(&content)?;
+    Ok(config.into())
 }
 
 #[optional(derives = [Deserialize])]

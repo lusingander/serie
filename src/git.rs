@@ -8,6 +8,8 @@ use std::{
 
 use chrono::{DateTime, FixedOffset};
 
+use crate::Result;
+
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CommitHash(String);
 
@@ -122,8 +124,8 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn load(path: &Path, sort: SortCommit) -> Self {
-        check_git_repository(path);
+    pub fn load(path: &Path, sort: SortCommit) -> Result<Self> {
+        check_git_repository(path)?;
 
         let commits = load_all_commits(path, sort);
         let stashes = load_all_stashes(path);
@@ -138,7 +140,7 @@ impl Repository {
         let stash_ref_map = load_stashes_as_refs(path);
         merge_ref_maps(&mut ref_map, stash_ref_map);
 
-        Self::new(
+        Ok(Self::new(
             path.to_path_buf(),
             commit_map,
             parents_map,
@@ -146,7 +148,7 @@ impl Repository {
             ref_map,
             head,
             commit_hashes,
-        )
+        ))
     }
 
     pub fn new(
@@ -220,7 +222,7 @@ impl Repository {
     }
 }
 
-fn check_git_repository(path: &Path) {
+fn check_git_repository(path: &Path) -> Result<()> {
     let output = Command::new("git")
         .arg("rev-parse")
         .arg("--is-inside-work-tree")
@@ -228,8 +230,10 @@ fn check_git_repository(path: &Path) {
         .output()
         .unwrap();
     if !output.status.success() || output.stdout == b"false\n" {
-        panic!("not a git repository (or any of the parent directories)");
+        let msg = "not a git repository (or any of the parent directories)";
+        return Err(msg.into());
     }
+    Ok(())
 }
 
 fn load_all_commits(path: &Path, sort: SortCommit) -> Vec<Commit> {

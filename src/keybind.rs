@@ -1,9 +1,10 @@
-use crate::event::UserEvent;
-use serde::{de::Deserializer, Deserialize};
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use serde::{de::Deserializer, Deserialize};
+
+use crate::event::UserEvent;
 
 const DEFAULT_KEY_BIND: &str = include_str!("../assets/default-keybind.toml");
 
@@ -61,14 +62,16 @@ impl<'de> Deserialize<'de> for KeyBind {
                 let key_event = match parse_key_event(&key_event_str) {
                     Ok(e) => e,
                     Err(s) => {
-                        panic!("{key_event_str:?} is not a valid key event: {s:}");
+                        let msg = format!("{key_event_str:?} is not a valid key event: {s:}");
+                        return Err(serde::de::Error::custom(msg));
                     }
                 };
                 if let Some(conflict_user_event) = key_map.insert(key_event, user_event) {
-                    panic!(
+                    let msg = format!(
                         "{:?} map to multiple events: {:?}, {:?}",
                         key_event, user_event, conflict_user_event
                     );
+                    return Err(serde::de::Error::custom(msg));
                 }
             }
         }
