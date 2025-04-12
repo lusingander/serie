@@ -127,8 +127,8 @@ impl Repository {
     pub fn load(path: &Path, sort: SortCommit) -> Result<Self> {
         check_git_repository(path)?;
 
-        let commits = load_all_commits(path, sort);
         let stashes = load_all_stashes(path);
+        let commits = load_all_commits(path, sort, &stashes);
 
         let commits = merge_stashes_to_commits(commits, stashes);
         let commit_hashes = commits.iter().map(|c| c.commit_hash.clone()).collect();
@@ -236,26 +236,31 @@ fn check_git_repository(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn load_all_commits(path: &Path, sort: SortCommit) -> Vec<Commit> {
-    let mut cmd = Command::new("git")
-        .arg("log")
-        // exclude stashes and other refs
-        .arg("--branches")
-        .arg("--remotes")
-        .arg("--tags")
-        .arg(match sort {
-            SortCommit::Chronological => "--date-order",
-            SortCommit::Topological => "--topo-order",
-        })
-        .arg(format!("--pretty={}", load_commits_format()))
-        .arg("--date=iso-strict")
-        .arg("-z") // use NUL as a delimiter
-        .current_dir(path)
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
+fn load_all_commits(path: &Path, sort: SortCommit, stashes: &[Commit]) -> Vec<Commit> {
+    let mut cmd = Command::new("git");
+    cmd.arg("log");
 
-    let stdout = cmd.stdout.take().expect("failed to open stdout");
+    cmd.arg(match sort {
+        SortCommit::Chronological => "--date-order",
+        SortCommit::Topological => "--topo-order",
+    })
+    .arg(format!("--pretty={}", load_commits_format()))
+    .arg("--date=iso-strict")
+    .arg("-z"); // use NUL as a delimiter
+
+    // exclude stashes and other refs
+    cmd.arg("--branches").arg("--remotes").arg("--tags");
+
+    // commits that are reachable from the stashes
+    stashes.iter().for_each(|stash| {
+        cmd.arg(stash.parent_commit_hashes[0].as_str());
+    });
+
+    cmd.current_dir(path).stdout(Stdio::piped());
+
+    let mut process = cmd.spawn().unwrap();
+
+    let stdout = process.stdout.take().expect("failed to open stdout");
 
     let reader = BufReader::new(stdout);
 
@@ -287,7 +292,7 @@ fn load_all_commits(path: &Path, sort: SortCommit) -> Vec<Commit> {
         commits.push(commit);
     }
 
-    cmd.wait().unwrap();
+    process.wait().unwrap();
 
     commits
 }
