@@ -896,6 +896,47 @@ fn orphan_002() -> TestResult {
 }
 
 #[test]
+fn head_001() -> TestResult {
+    // Test case for detached HEAD
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+
+    git.commit("001", "2024-01-01");
+    git.commit("002", "2024-01-02");
+
+    git.checkout_b("10");
+    git.commit("011", "2024-01-03");
+    git.commit("012", "2024-01-04");
+
+    let hash = git.rev_parse_head();
+
+    git.checkout("master");
+    git.commit("003", "2024-01-05");
+    git.commit("004", "2024-01-06");
+
+    git.checkout(hash.as_str());
+    git.branch_d("10");
+
+    git.log();
+
+    let options = &[
+        GenerateGraphOption::new("head_001_chrono", git::SortCommit::Chronological),
+        GenerateGraphOption::new("head_001_topo", git::SortCommit::Topological),
+    ];
+
+    copy_git_dir(repo_path, "head_001");
+
+    generate_and_output_graph_images(repo_path, options);
+    assert_graph_images(options);
+
+    Ok(())
+}
+
+#[test]
 fn complex_001() -> TestResult {
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
@@ -1027,13 +1068,18 @@ impl GitRepository<'_> {
         self.run(&["stash", "--include-untracked"], &datetime_str);
     }
 
+    fn rev_parse_head(&self) -> String {
+        let output = self.run(&["rev-parse", "HEAD"], "");
+        String::from_utf8(output.stdout).unwrap().trim().to_string()
+    }
+
     fn log(&self) {
         let output = self.run(&["log", "--pretty=format:%h %s", "--graph", "--all"], "");
         println!("{}", String::from_utf8(output.stdout).unwrap())
     }
 
     fn run(&self, args: &[&str], datetime_str: &str) -> std::process::Output {
-        Command::new("git")
+        let out = Command::new("git")
             .args(args)
             .current_dir(self.path)
             .env("GIT_AUTHOR_NAME", "Author Name")
@@ -1045,7 +1091,9 @@ impl GitRepository<'_> {
             .env("GIT_CONFIG_NOSYSTEM", "true")
             .env("HOME", "/dev/null")
             .output()
-            .unwrap_or_else(|_| panic!("failed to execute git {}", args.join(" ")))
+            .unwrap_or_else(|_| panic!("failed to execute git {}", args.join(" ")));
+        println!("git {}: returned {}", args.join(" "), out.status,);
+        out
     }
 }
 
