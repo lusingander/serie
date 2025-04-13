@@ -255,6 +255,7 @@ fn load_all_commits(path: &Path, sort: SortCommit, stashes: &[Commit]) -> Vec<Co
     stashes.iter().for_each(|stash| {
         cmd.arg(stash.parent_commit_hashes[0].as_str());
     });
+    cmd.arg("HEAD");
 
     cmd.current_dir(path).stdout(Stdio::piped());
 
