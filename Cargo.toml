@@ -15,18 +15,18 @@ rust-version = "1.79.0"
 exclude = ["/.github", "/img"]
 
 [dependencies]
-arboard = "3.4.1"
+arboard = "3.5.0"
 base64 = "0.22.1"
 chrono = "0.4.40"
-clap = { version = "4.5.31", features = ["derive"] }
+clap = { version = "4.5.36", features = ["derive"] }
 console = "0.15.11"
 fxhash = "0.2.1"
-image = "0.25.5"
+image = "0.25.6"
 laurier = "0.1.0"
 ratatui = "0.29.0"
 rayon = "1.10.0"
 semver = "1.0.26"
-serde = { version = "1.0.218", features = ["derive"] }
+serde = { version = "1.0.219", features = ["derive"] }
 smart-default = "0.7.1"
 toml = "0.8.20"
 tui-input = "0.11.1"
@@ -37,7 +37,7 @@ xdg = "2.5.2"
 [dev-dependencies]
 dircpy = "0.3.19"
 rstest = "0.25.0"
-tempfile = "3.18.0"
+tempfile = "3.19.1"
 text-to-png = "0.2.0"
 
 [profile.release]
