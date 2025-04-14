@@ -45,7 +45,6 @@ pub enum SearchState {
         match_index: usize,
     },
     Applied {
-        start_index: usize,
         match_index: usize,
         total_match: usize,
     },
@@ -328,17 +327,12 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn apply_search(&mut self) {
-        if let SearchState::Searching {
-            start_index,
-            match_index,
-        } = self.search_state
-        {
+        if let SearchState::Searching { match_index, .. } = self.search_state {
             if self.search_input.value().is_empty() {
                 self.search_state = SearchState::Inactive;
             } else {
                 let total_match = self.search_matches.iter().filter(|m| m.matched()).count();
                 self.search_state = SearchState::Applied {
-                    start_index,
                     match_index,
                     total_match,
                 };
