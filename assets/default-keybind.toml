@@ -27,6 +27,7 @@ go_to_previous = ["shift-n"]
 confirm = ["enter"]
 ref_list_toggle = ["tab"]
 search = ["/"]
+ignore_case_toggle = ["ctrl-g"]
 
 # copy part of information, ex: copy the short commit hash not all
 short_copy = ["c"]

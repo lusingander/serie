@@ -111,6 +111,7 @@ pub enum UserEvent {
     Confirm,
     RefListToggle,
     Search,
+    IgnoreCaseToggle,
     ShortCopy,
     FullCopy,
     Unknown,
