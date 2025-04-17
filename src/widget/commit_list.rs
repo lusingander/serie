@@ -44,6 +44,7 @@ pub enum SearchState {
         start_index: usize,
         match_index: usize,
         ignore_case: bool,
+        transient_message: TransientMessage,
     },
     Applied {
         match_index: usize,
@@ -59,6 +60,13 @@ impl SearchState {
             _ => {}
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransientMessage {
+    None,
+    IgnoreCaseOff,
+    IgnoreCaseOn,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -335,6 +343,7 @@ impl<'a> CommitListState<'a> {
                 start_index: self.current_selected_index(),
                 match_index: 0,
                 ignore_case: false,
+                transient_message: TransientMessage::None,
             };
             self.search_input.reset();
             self.clear_search_matches();
@@ -342,6 +351,13 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn handle_search_input(&mut self, key: KeyEvent) {
+        if let SearchState::Searching {
+            transient_message, ..
+        } = &mut self.search_state
+        {
+            *transient_message = TransientMessage::None;
+        }
+
         if let SearchState::Searching {
             start_index,
             ignore_case,
@@ -377,8 +393,18 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn toggle_ignore_case(&mut self) {
-        if let SearchState::Searching { ignore_case, .. } = &mut self.search_state {
+        if let SearchState::Searching {
+            ignore_case,
+            transient_message,
+            ..
+        } = &mut self.search_state
+        {
             *ignore_case = !*ignore_case;
+            *transient_message = if *ignore_case {
+                TransientMessage::IgnoreCaseOn
+            } else {
+                TransientMessage::IgnoreCaseOff
+            };
         }
 
         if let SearchState::Searching {
@@ -426,6 +452,21 @@ impl<'a> CommitListState<'a> {
 
     pub fn search_query_cursor_position(&self) -> u16 {
         self.search_input.visual_cursor() as u16 + 1 // add 1 for "/"
+    }
+
+    pub fn transient_message_string(&self) -> Option<String> {
+        if let SearchState::Searching {
+            transient_message, ..
+        } = self.search_state
+        {
+            match transient_message {
+                TransientMessage::IgnoreCaseOn => Some("Ignore case: ON ".to_string()),
+                TransientMessage::IgnoreCaseOff => Some("Ignore case: OFF".to_string()),
+                _ => None,
+            }
+        } else {
+            None
+        }
     }
 
     fn update_search_matches(&mut self, ignore_case: bool) {

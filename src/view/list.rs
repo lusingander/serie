@@ -162,11 +162,17 @@ impl<'a> ListView<'a> {
     }
 
     fn update_search_query(&self) {
-        let list_state = self.as_list_state();
-        if let Some(query) = list_state.search_query_string() {
-            let cursor_pos = list_state.search_query_cursor_position();
-            self.tx
-                .send(AppEvent::UpdateStatusInput(query, Some(cursor_pos)));
+        if let SearchState::Searching { .. } = self.as_list_state().search_state() {
+            let list_state = self.as_list_state();
+            if let Some(query) = list_state.search_query_string() {
+                let cursor_pos = list_state.search_query_cursor_position();
+                let transient_msg = list_state.transient_message_string();
+                self.tx.send(AppEvent::UpdateStatusInput(
+                    query,
+                    Some(cursor_pos),
+                    transient_msg,
+                ));
+            }
         }
     }
 

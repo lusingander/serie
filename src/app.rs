@@ -4,7 +4,7 @@ use ratatui::{
     backend::Backend,
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
-    text::Span,
+    text::Line,
     widgets::{Block, Borders, Padding, Paragraph},
     Frame, Terminal,
 };
@@ -25,7 +25,7 @@ use crate::{
 #[derive(Debug)]
 enum StatusLine {
     None,
-    Input(String, Option<u16>),
+    Input(String, Option<u16>, Option<String>),
     NotificationInfo(String),
     NotificationSuccess(String),
     NotificationWarn(String),
@@ -111,7 +111,7 @@ impl App<'_> {
             match rx.recv() {
                 AppEvent::Key(key) => {
                     match self.status_line {
-                        StatusLine::None | StatusLine::Input(_, _) => {
+                        StatusLine::None | StatusLine::Input(_, _, _) => {
                             // do nothing
                         }
                         StatusLine::NotificationInfo(_)
@@ -175,8 +175,8 @@ impl App<'_> {
                 AppEvent::ClearStatusLine => {
                     self.clear_status_line();
                 }
-                AppEvent::UpdateStatusInput(msg, cursor_pos) => {
-                    self.update_status_input(msg, cursor_pos);
+                AppEvent::UpdateStatusInput(msg, cursor_pos, msg_r) => {
+                    self.update_status_input(msg, cursor_pos, msg_r);
                 }
                 AppEvent::NotifyInfo(msg) => {
                     self.info_notification(msg);
@@ -210,19 +210,30 @@ impl App<'_> {
 
 impl App<'_> {
     fn render_status_line(&self, f: &mut Frame, area: Rect) {
-        let text: Span = match &self.status_line {
+        let text: Line = match &self.status_line {
             StatusLine::None => "".into(),
-            StatusLine::Input(msg, _) => msg.as_str().fg(self.color_theme.status_input_fg),
-            StatusLine::NotificationInfo(msg) => msg.as_str().fg(self.color_theme.status_info_fg),
-            StatusLine::NotificationSuccess(msg) => msg
-                .as_str()
+            StatusLine::Input(msg, _, transient_msg) => {
+                let msg_w = console::measure_text_width(msg.as_str());
+                if let Some(t_msg) = transient_msg {
+                    let t_msg_w = console::measure_text_width(t_msg.as_str());
+                    let pad_w = area.width as usize - msg_w - t_msg_w - 2 /* pad */;
+                    Line::from(vec![
+                        msg.as_str().fg(self.color_theme.status_input_fg),
+                        " ".repeat(pad_w).into(),
+                        t_msg.as_str().fg(self.color_theme.status_input_fg),
+                    ])
+                } else {
+                    Line::raw(msg).fg(self.color_theme.status_input_fg)
+                }
+            }
+            StatusLine::NotificationInfo(msg) => Line::raw(msg).fg(self.color_theme.status_info_fg),
+            StatusLine::NotificationSuccess(msg) => Line::raw(msg)
                 .add_modifier(Modifier::BOLD)
                 .fg(self.color_theme.status_success_fg),
-            StatusLine::NotificationWarn(msg) => msg
-                .as_str()
+            StatusLine::NotificationWarn(msg) => Line::raw(msg)
                 .add_modifier(Modifier::BOLD)
                 .fg(self.color_theme.status_warn_fg),
-            StatusLine::NotificationError(msg) => format!("ERROR: {}", msg)
+            StatusLine::NotificationError(msg) => Line::raw(format!("ERROR: {}", msg))
                 .add_modifier(Modifier::BOLD)
                 .fg(self.color_theme.status_error_fg),
         };
@@ -234,7 +245,7 @@ impl App<'_> {
         );
         f.render_widget(paragraph, area);
 
-        if let StatusLine::Input(_, Some(cursor_pos)) = &self.status_line {
+        if let StatusLine::Input(_, Some(cursor_pos), _) = &self.status_line {
             let (x, y) = (area.x + cursor_pos + 1, area.y + 1);
             match &self.ui_config.common.cursor_type {
                 CursorType::Native => {
@@ -345,8 +356,13 @@ impl App<'_> {
         self.status_line = StatusLine::None;
     }
 
-    fn update_status_input(&mut self, msg: String, cursor_pos: Option<u16>) {
-        self.status_line = StatusLine::Input(msg, cursor_pos);
+    fn update_status_input(
+        &mut self,
+        msg: String,
+        cursor_pos: Option<u16>,
+        transient_msg: Option<String>,
+    ) {
+        self.status_line = StatusLine::Input(msg, cursor_pos, transient_msg);
     }
 
     fn info_notification(&mut self, msg: String) {

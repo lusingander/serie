@@ -21,7 +21,7 @@ pub enum AppEvent {
     ClearHelp,
     CopyToClipboard { name: String, value: String },
     ClearStatusLine,
-    UpdateStatusInput(String, Option<u16>),
+    UpdateStatusInput(String, Option<u16>, Option<String>),
     NotifyInfo(String),
     NotifySuccess(String),
     NotifyWarn(String),
