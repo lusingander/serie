@@ -69,7 +69,7 @@ pub enum TransientMessage {
     IgnoreCaseOn,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone)]
 struct SearchMatch {
     subject: Option<SearchMatchPosition>,
     author_name: Option<SearchMatchPosition>,
@@ -110,15 +110,15 @@ fn find_match_position(s: &str, query: &str, ignore_case: bool) -> Option<Search
     pos_opt.map(|pos| SearchMatchPosition::new(pos, pos + query.len()))
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone)]
 struct SearchMatchPosition {
-    start: usize,
-    end: usize,
+    matched_indices: Vec<usize>,
 }
 
 impl SearchMatchPosition {
     fn new(start: usize, end: usize) -> Self {
-        Self { start, end }
+        let matched_indices = (start..end).collect();
+        Self { matched_indices }
     }
 }
 
@@ -705,7 +705,7 @@ impl CommitList<'_> {
                     };
 
                     let sub_spans =
-                        if let Some(pos) = state.search_matches[state.offset + i].subject {
+                        if let Some(pos) = state.search_matches[state.offset + i].subject.clone() {
                             highlighted_spans(
                                 subject,
                                 pos,
@@ -739,17 +739,18 @@ impl CommitList<'_> {
                 } else {
                     commit.author_name.to_string()
                 };
-                let spans = if let Some(pos) = state.search_matches[state.offset + i].author_name {
-                    highlighted_spans(
-                        name,
-                        pos,
-                        self.color_theme.list_name_fg,
-                        self.color_theme,
-                        truncate,
-                    )
-                } else {
-                    vec![name.fg(self.color_theme.list_name_fg)]
-                };
+                let spans =
+                    if let Some(pos) = state.search_matches[state.offset + i].author_name.clone() {
+                        highlighted_spans(
+                            name,
+                            pos,
+                            self.color_theme.list_name_fg,
+                            self.color_theme,
+                            truncate,
+                        )
+                    } else {
+                        vec![name.fg(self.color_theme.list_name_fg)]
+                    };
                 self.to_commit_list_item(i, spans, state)
             })
             .collect();
@@ -764,17 +765,18 @@ impl CommitList<'_> {
             .rendering_commit_iter(state)
             .map(|(i, commit)| {
                 let hash = commit.commit_hash.as_short_hash();
-                let spans = if let Some(pos) = state.search_matches[state.offset + i].commit_hash {
-                    highlighted_spans(
-                        hash,
-                        pos,
-                        self.color_theme.list_hash_fg,
-                        self.color_theme,
-                        false,
-                    )
-                } else {
-                    vec![hash.fg(self.color_theme.list_hash_fg)]
-                };
+                let spans =
+                    if let Some(pos) = state.search_matches[state.offset + i].commit_hash.clone() {
+                        highlighted_spans(
+                            hash,
+                            pos,
+                            self.color_theme.list_hash_fg,
+                            self.color_theme,
+                            false,
+                        )
+                    } else {
+                        vec![hash.fg(self.color_theme.list_hash_fg)]
+                    };
                 self.to_commit_list_item(i, spans, state)
             })
             .collect();
@@ -912,7 +914,7 @@ fn highlighted_spans(
     truncate: bool,
 ) -> Vec<Span<'static>> {
     let mut hm = highlight_matched_text(s)
-        .matched_range(pos.start, pos.end)
+        .matched_indices(pos.matched_indices)
         .not_matched_style(Style::default().fg(base_fg))
         .matched_style(
             Style::default()
