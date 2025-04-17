@@ -43,6 +43,7 @@ pub enum SearchState {
     Searching {
         start_index: usize,
         match_index: usize,
+        ignore_case: bool,
     },
     Applied {
         match_index: usize,
@@ -69,6 +70,18 @@ struct SearchMatch {
 }
 
 impl SearchMatch {
+    fn new(c: &Commit, q: &str, ignore_case: bool) -> Self {
+        let subject = find_match_position(&c.subject, q, ignore_case);
+        let author_name = find_match_position(&c.author_name, q, ignore_case);
+        let commit_hash = find_match_position(&c.commit_hash.as_short_hash(), q, ignore_case);
+        Self {
+            subject,
+            author_name,
+            commit_hash,
+            match_index: 0,
+        }
+    }
+
     fn matched(&self) -> bool {
         self.subject.is_some() || self.author_name.is_some() || self.commit_hash.is_some()
     }
@@ -78,6 +91,15 @@ impl SearchMatch {
         self.author_name = None;
         self.commit_hash = None;
     }
+}
+
+fn find_match_position(s: &str, query: &str, ignore_case: bool) -> Option<SearchMatchPosition> {
+    let pos_opt = if ignore_case {
+        s.to_lowercase().find(query)
+    } else {
+        s.find(query)
+    };
+    pos_opt.map(|pos| SearchMatchPosition::new(pos, pos + query.len()))
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -312,6 +334,7 @@ impl<'a> CommitListState<'a> {
             self.search_state = SearchState::Searching {
                 start_index: self.current_selected_index(),
                 match_index: 0,
+                ignore_case: false,
             };
             self.search_input.reset();
             self.clear_search_matches();
@@ -319,9 +342,14 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn handle_search_input(&mut self, key: KeyEvent) {
-        if let SearchState::Searching { start_index, .. } = self.search_state {
+        if let SearchState::Searching {
+            start_index,
+            ignore_case,
+            ..
+        } = self.search_state
+        {
             self.search_input.handle_event(&Event::Key(key));
-            self.update_search_matches();
+            self.update_search_matches(ignore_case);
             self.select_current_or_next_match_index(start_index);
         }
     }
@@ -345,6 +373,22 @@ impl<'a> CommitListState<'a> {
             self.search_state = SearchState::Inactive;
             self.search_input.reset();
             self.clear_search_matches();
+        }
+    }
+
+    pub fn toggle_ignore_case(&mut self) {
+        if let SearchState::Searching { ignore_case, .. } = &mut self.search_state {
+            *ignore_case = !*ignore_case;
+        }
+
+        if let SearchState::Searching {
+            start_index,
+            ignore_case,
+            ..
+        } = self.search_state
+        {
+            self.update_search_matches(ignore_case);
+            self.select_current_or_next_match_index(start_index);
         }
     }
 
@@ -384,20 +428,15 @@ impl<'a> CommitListState<'a> {
         self.search_input.visual_cursor() as u16 + 1 // add 1 for "/"
     }
 
-    fn update_search_matches(&mut self) {
-        let query = self.search_input.value();
+    fn update_search_matches(&mut self, ignore_case: bool) {
+        let q = if ignore_case {
+            self.search_input.value().to_lowercase()
+        } else {
+            self.search_input.value().to_string()
+        };
         let mut match_index = 1;
         for (i, commit_info) in self.commits.iter().enumerate() {
-            let mut m = SearchMatch::default();
-            if let Some(pos) = commit_info.commit.subject.find(query) {
-                m.subject = Some(SearchMatchPosition::new(pos, pos + query.len()));
-            }
-            if let Some(pos) = commit_info.commit.author_name.find(query) {
-                m.author_name = Some(SearchMatchPosition::new(pos, pos + query.len()));
-            }
-            if let Some(pos) = commit_info.commit.commit_hash.as_short_hash().find(query) {
-                m.commit_hash = Some(SearchMatchPosition::new(pos, pos + query.len()));
-            }
+            let mut m = SearchMatch::new(commit_info.commit, &q, ignore_case);
             if m.matched() {
                 m.match_index = match_index;
                 match_index += 1;

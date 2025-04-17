@@ -42,6 +42,10 @@ impl<'a> ListView<'a> {
                     self.as_mut_list_state().cancel_search();
                     self.clear_search_query();
                 }
+                UserEvent::IgnoreCaseToggle => {
+                    self.as_mut_list_state().toggle_ignore_case();
+                    self.update_search_query();
+                }
                 _ => {
                     self.as_mut_list_state().handle_search_input(key);
                     self.update_search_query();
