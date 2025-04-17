@@ -39,6 +39,7 @@ pub struct ColorTheme {
 
     pub virtual_cursor_fg: RatatuiColor,
     pub status_input_fg: RatatuiColor,
+    pub status_input_transient_fg: RatatuiColor,
     pub status_info_fg: RatatuiColor,
     pub status_success_fg: RatatuiColor,
     pub status_warn_fg: RatatuiColor,
@@ -85,6 +86,7 @@ impl Default for ColorTheme {
 
             virtual_cursor_fg: RatatuiColor::Reset,
             status_input_fg: RatatuiColor::Reset,
+            status_input_transient_fg: RatatuiColor::DarkGray,
             status_info_fg: RatatuiColor::Cyan,
             status_success_fg: RatatuiColor::Green,
             status_warn_fg: RatatuiColor::Yellow,

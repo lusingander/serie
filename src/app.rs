@@ -220,7 +220,9 @@ impl App<'_> {
                     Line::from(vec![
                         msg.as_str().fg(self.color_theme.status_input_fg),
                         " ".repeat(pad_w).into(),
-                        t_msg.as_str().fg(self.color_theme.status_input_fg),
+                        t_msg
+                            .as_str()
+                            .fg(self.color_theme.status_input_transient_fg),
                     ])
                 } else {
                     Line::raw(msg).fg(self.color_theme.status_input_fg)
