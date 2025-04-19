@@ -20,6 +20,7 @@ base64 = "0.22.1"
 chrono = "0.4.40"
 clap = { version = "4.5.36", features = ["derive"] }
 console = "0.15.11"
+directories = "6.0.0"
 fuzzy-matcher = "0.3.7"
 fxhash = "0.2.1"
 image = "0.25.6"

@@ -1089,7 +1089,8 @@ impl GitRepository<'_> {
             .env("GIT_COMMITTER_EMAIL", "committer@example.com")
             .env("GIT_COMMITTER_DATE", datetime_str)
             .env("GIT_CONFIG_NOSYSTEM", "true")
-            .env("HOME", "/dev/null")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            // .env("HOME", "/dev/null")
             .output()
             .unwrap_or_else(|_| panic!("failed to execute git {}", args.join(" ")));
         println!("git {}: returned {}", args.join(" "), out.status,);
