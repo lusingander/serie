@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use laurier::highlight::highlight_matched_text;
+use once_cell::sync::Lazy;
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{Event, KeyEvent},
@@ -17,6 +19,8 @@ use crate::{
     git::{Commit, CommitHash, Head, Ref},
     graph::GraphImageManager,
 };
+
+static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(SkimMatcherV2::default);
 
 const ELLIPSIS: &str = "...";
 
@@ -44,6 +48,7 @@ pub enum SearchState {
         start_index: usize,
         match_index: usize,
         ignore_case: bool,
+        fuzzy: bool,
         transient_message: TransientMessage,
     },
     Applied {
@@ -67,6 +72,8 @@ pub enum TransientMessage {
     None,
     IgnoreCaseOff,
     IgnoreCaseOn,
+    FuzzyOff,
+    FuzzyOn,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -78,10 +85,11 @@ struct SearchMatch {
 }
 
 impl SearchMatch {
-    fn new(c: &Commit, q: &str, ignore_case: bool) -> Self {
-        let subject = find_match_position(&c.subject, q, ignore_case);
-        let author_name = find_match_position(&c.author_name, q, ignore_case);
-        let commit_hash = find_match_position(&c.commit_hash.as_short_hash(), q, ignore_case);
+    fn new(c: &Commit, q: &str, ignore_case: bool, fuzzy: bool) -> Self {
+        let subject = find_match_position(&c.subject, q, ignore_case, fuzzy);
+        let author_name = find_match_position(&c.author_name, q, ignore_case, fuzzy);
+        let commit_hash =
+            find_match_position(&c.commit_hash.as_short_hash(), q, ignore_case, fuzzy);
         Self {
             subject,
             author_name,
@@ -101,13 +109,28 @@ impl SearchMatch {
     }
 }
 
-fn find_match_position(s: &str, query: &str, ignore_case: bool) -> Option<SearchMatchPosition> {
-    let pos_opt = if ignore_case {
-        s.to_lowercase().find(query)
+fn find_match_position(
+    s: &str,
+    query: &str,
+    ignore_case: bool,
+    fuzzy: bool,
+) -> Option<SearchMatchPosition> {
+    let ps_opt = if fuzzy {
+        let result = if ignore_case {
+            FUZZY_MATCHER.fuzzy_indices(&s.to_lowercase(), query)
+        } else {
+            FUZZY_MATCHER.fuzzy_indices(s, query)
+        };
+        result.map(|(_, indices)| indices)
     } else {
-        s.find(query)
+        let result = if ignore_case {
+            s.to_lowercase().find(query)
+        } else {
+            s.find(query)
+        };
+        result.map(|p| (p..(p + query.len())).collect())
     };
-    pos_opt.map(|pos| SearchMatchPosition::new(pos, pos + query.len()))
+    ps_opt.map(SearchMatchPosition::new)
 }
 
 #[derive(Debug, Default, Clone)]
@@ -116,8 +139,7 @@ struct SearchMatchPosition {
 }
 
 impl SearchMatchPosition {
-    fn new(start: usize, end: usize) -> Self {
-        let matched_indices = (start..end).collect();
+    fn new(matched_indices: Vec<usize>) -> Self {
         Self { matched_indices }
     }
 }
@@ -343,6 +365,7 @@ impl<'a> CommitListState<'a> {
                 start_index: self.current_selected_index(),
                 match_index: 0,
                 ignore_case: false,
+                fuzzy: false,
                 transient_message: TransientMessage::None,
             };
             self.search_input.reset();
@@ -361,11 +384,12 @@ impl<'a> CommitListState<'a> {
         if let SearchState::Searching {
             start_index,
             ignore_case,
+            fuzzy,
             ..
         } = self.search_state
         {
             self.search_input.handle_event(&Event::Key(key));
-            self.update_search_matches(ignore_case);
+            self.update_search_matches(ignore_case, fuzzy);
             self.select_current_or_next_match_index(start_index);
         }
     }
@@ -410,10 +434,38 @@ impl<'a> CommitListState<'a> {
         if let SearchState::Searching {
             start_index,
             ignore_case,
+            fuzzy,
             ..
         } = self.search_state
         {
-            self.update_search_matches(ignore_case);
+            self.update_search_matches(ignore_case, fuzzy);
+            self.select_current_or_next_match_index(start_index);
+        }
+    }
+
+    pub fn toggle_fuzzy(&mut self) {
+        if let SearchState::Searching {
+            fuzzy,
+            transient_message,
+            ..
+        } = &mut self.search_state
+        {
+            *fuzzy = !*fuzzy;
+            *transient_message = if *fuzzy {
+                TransientMessage::FuzzyOn
+            } else {
+                TransientMessage::FuzzyOff
+            };
+        }
+
+        if let SearchState::Searching {
+            start_index,
+            ignore_case,
+            fuzzy,
+            ..
+        } = self.search_state
+        {
+            self.update_search_matches(ignore_case, fuzzy);
             self.select_current_or_next_match_index(start_index);
         }
     }
@@ -460,16 +512,18 @@ impl<'a> CommitListState<'a> {
         } = self.search_state
         {
             match transient_message {
+                TransientMessage::None => None,
                 TransientMessage::IgnoreCaseOn => Some("Ignore case: ON ".to_string()),
                 TransientMessage::IgnoreCaseOff => Some("Ignore case: OFF".to_string()),
-                _ => None,
+                TransientMessage::FuzzyOn => Some("Fuzzy match: ON ".to_string()),
+                TransientMessage::FuzzyOff => Some("Fuzzy match: OFF".to_string()),
             }
         } else {
             None
         }
     }
 
-    fn update_search_matches(&mut self, ignore_case: bool) {
+    fn update_search_matches(&mut self, ignore_case: bool, fuzzy: bool) {
         let q = if ignore_case {
             self.search_input.value().to_lowercase()
         } else {
@@ -477,7 +531,7 @@ impl<'a> CommitListState<'a> {
         };
         let mut match_index = 1;
         for (i, commit_info) in self.commits.iter().enumerate() {
-            let mut m = SearchMatch::new(commit_info.commit, &q, ignore_case);
+            let mut m = SearchMatch::new(commit_info.commit, &q, ignore_case, fuzzy);
             if m.matched() {
                 m.match_index = match_index;
                 match_index += 1;

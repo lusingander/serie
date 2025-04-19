@@ -46,6 +46,10 @@ impl<'a> ListView<'a> {
                     self.as_mut_list_state().toggle_ignore_case();
                     self.update_search_query();
                 }
+                UserEvent::FuzzyToggle => {
+                    self.as_mut_list_state().toggle_fuzzy();
+                    self.update_search_query();
+                }
                 _ => {
                     self.as_mut_list_state().handle_search_input(key);
                     self.update_search_query();
