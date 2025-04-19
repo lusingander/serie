@@ -940,54 +940,26 @@ fn refs_spans<'a>(
 
     let ref_spans: Vec<Vec<Span>> = refs
         .iter()
-        .filter_map(|r| {
-            let pos_opt = refs_matches.get(r.name());
-            match r {
-                Ref::Branch { name, .. } => {
-                    if let Some(pos) = pos_opt {
-                        Some(highlighted_spans(
-                            name.to_string(),
-                            pos.clone(),
-                            color_theme.list_ref_branch_fg,
-                            color_theme,
-                            false,
-                        ))
-                    } else {
-                        Some(vec![Span::raw(name)
-                            .fg(color_theme.list_ref_branch_fg)
-                            .bold()])
-                    }
-                }
-                Ref::RemoteBranch { name, .. } => {
-                    if let Some(pos) = pos_opt {
-                        Some(highlighted_spans(
-                            name.to_string(),
-                            pos.clone(),
-                            color_theme.list_ref_remote_branch_fg,
-                            color_theme,
-                            false,
-                        ))
-                    } else {
-                        Some(vec![Span::raw(name)
-                            .fg(color_theme.list_ref_remote_branch_fg)
-                            .bold()])
-                    }
-                }
-                Ref::Tag { name, .. } => {
-                    if let Some(pos) = pos_opt {
-                        Some(highlighted_spans(
-                            name.to_string(),
-                            pos.clone(),
-                            color_theme.list_ref_tag_fg,
-                            color_theme,
-                            false,
-                        ))
-                    } else {
-                        Some(vec![Span::raw(name).fg(color_theme.list_ref_tag_fg).bold()])
-                    }
-                }
-                Ref::Stash { .. } => None,
+        .filter_map(|r| match r {
+            Ref::Branch { name, .. } => {
+                let fg = color_theme.list_ref_branch_fg;
+                Some((name, fg))
             }
+            Ref::RemoteBranch { name, .. } => {
+                let fg = color_theme.list_ref_remote_branch_fg;
+                Some((name, fg))
+            }
+            Ref::Tag { name, .. } => {
+                let fg = color_theme.list_ref_tag_fg;
+                Some((name, fg))
+            }
+            Ref::Stash { .. } => None,
+        })
+        .map(|(name, fg)| {
+            refs_matches
+                .get(name)
+                .map(|pos| highlighted_spans(name.to_string(), pos.clone(), fg, color_theme, false))
+                .unwrap_or_else(|| vec![Span::raw(name).fg(fg).bold()])
         })
         .collect();
 
