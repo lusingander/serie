@@ -6,6 +6,7 @@ use ratatui::{
 };
 
 use crate::{
+    color::ColorTheme,
     config::UiConfig,
     event::{AppEvent, Sender, UserEvent},
     git::{Commit, FileChange, Ref},
@@ -26,6 +27,7 @@ pub struct DetailView<'a> {
     refs: Vec<Ref>,
 
     ui_config: &'a UiConfig,
+    color_theme: &'a ColorTheme,
     image_protocol: ImageProtocol,
     tx: Sender,
     clear: bool,
@@ -38,6 +40,7 @@ impl<'a> DetailView<'a> {
         changes: Vec<FileChange>,
         refs: Vec<Ref>,
         ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
         image_protocol: ImageProtocol,
         tx: Sender,
     ) -> DetailView<'a> {
@@ -48,13 +51,14 @@ impl<'a> DetailView<'a> {
             changes,
             refs,
             ui_config,
+            color_theme,
             image_protocol,
             tx,
             clear: false,
         }
     }
 
-    pub fn handle_event(&mut self, event: &UserEvent, _: KeyEvent) {
+    pub fn handle_event(&mut self, event: UserEvent, _: KeyEvent) {
         match event {
             UserEvent::NavigateDown => {
                 self.commit_detail_state.scroll_down();
@@ -90,7 +94,7 @@ impl<'a> DetailView<'a> {
         let [list_area, detail_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(detail_height)]).areas(area);
 
-        let commit_list = CommitList::new(&self.ui_config.list);
+        let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
 
         if self.clear {
@@ -103,6 +107,7 @@ impl<'a> DetailView<'a> {
             &self.changes,
             &self.refs,
             &self.ui_config.detail,
+            self.color_theme,
         );
         f.render_stateful_widget(commit_detail, detail_area, &mut self.commit_detail_state);
 

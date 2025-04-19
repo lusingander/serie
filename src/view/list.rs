@@ -1,6 +1,7 @@
 use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
 use crate::{
+    color::ColorTheme,
     config::UiConfig,
     event::{AppEvent, Sender, UserEvent},
     widget::commit_list::{CommitList, CommitListState, SearchState},
@@ -11,6 +12,7 @@ pub struct ListView<'a> {
     commit_list_state: Option<CommitListState<'a>>,
 
     ui_config: &'a UiConfig,
+    color_theme: &'a ColorTheme,
     tx: Sender,
 }
 
@@ -18,16 +20,18 @@ impl<'a> ListView<'a> {
     pub fn new(
         commit_list_state: CommitListState<'a>,
         ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
         tx: Sender,
     ) -> ListView<'a> {
         ListView {
             commit_list_state: Some(commit_list_state),
             ui_config,
+            color_theme,
             tx,
         }
     }
 
-    pub fn handle_event(&mut self, event: &UserEvent, key: KeyEvent) {
+    pub fn handle_event(&mut self, event: UserEvent, key: KeyEvent) {
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
             match event {
                 UserEvent::Confirm => {
@@ -37,6 +41,14 @@ impl<'a> ListView<'a> {
                 UserEvent::Cancel => {
                     self.as_mut_list_state().cancel_search();
                     self.clear_search_query();
+                }
+                UserEvent::IgnoreCaseToggle => {
+                    self.as_mut_list_state().toggle_ignore_case();
+                    self.update_search_query();
+                }
+                UserEvent::FuzzyToggle => {
+                    self.as_mut_list_state().toggle_fuzzy();
+                    self.update_search_query();
                 }
                 _ => {
                     self.as_mut_list_state().handle_search_input(key);
@@ -54,6 +66,9 @@ impl<'a> ListView<'a> {
                 }
                 UserEvent::NavigateUp => {
                     self.as_mut_list_state().select_prev();
+                }
+                UserEvent::GoToParent => {
+                    self.as_mut_list_state().select_parent();
                 }
                 UserEvent::GoToTop => {
                     self.as_mut_list_state().select_first();
@@ -132,7 +147,7 @@ impl<'a> ListView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        let commit_list = CommitList::new(&self.ui_config.list);
+        let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
         f.render_stateful_widget(commit_list, area, self.as_mut_list_state());
     }
 }
@@ -151,11 +166,17 @@ impl<'a> ListView<'a> {
     }
 
     fn update_search_query(&self) {
-        let list_state = self.as_list_state();
-        if let Some(query) = list_state.search_query_string() {
-            let cursor_pos = list_state.search_query_cursor_position();
-            self.tx
-                .send(AppEvent::UpdateStatusInput(query, Some(cursor_pos)));
+        if let SearchState::Searching { .. } = self.as_list_state().search_state() {
+            let list_state = self.as_list_state();
+            if let Some(query) = list_state.search_query_string() {
+                let cursor_pos = list_state.search_query_cursor_position();
+                let transient_msg = list_state.transient_message_string();
+                self.tx.send(AppEvent::UpdateStatusInput(
+                    query,
+                    Some(cursor_pos),
+                    transient_msg,
+                ));
+            }
         }
     }
 

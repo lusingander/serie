@@ -1,3 +1,3 @@
-fn main() -> std::io::Result<()> {
+fn main() -> serie::Result<()> {
     serie::run()
 }

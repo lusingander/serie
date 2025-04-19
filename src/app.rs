@@ -3,15 +3,15 @@ use std::collections::HashMap;
 use ratatui::{
     backend::Backend,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style, Stylize},
-    text::Span,
+    style::{Modifier, Style, Stylize},
+    text::Line,
     widgets::{Block, Borders, Padding, Paragraph},
     Frame, Terminal,
 };
 
 use crate::{
-    color::ColorSet,
-    config::UiConfig,
+    color::{ColorTheme, GraphColorSet},
+    config::{CursorType, UiConfig},
     event::{AppEvent, Receiver, Sender, UserEvent},
     external::copy_to_clipboard,
     git::Repository,
@@ -22,18 +22,10 @@ use crate::{
     widget::commit_list::{CommitInfo, CommitListState},
 };
 
-const MESSAGE_STATUTS_COLOR: Color = Color::Reset;
-const INFO_STATUS_COLOR: Color = Color::Cyan;
-const SUCCESS_STATUS_COLOR: Color = Color::Green;
-const WARN_STATUS_COLOR: Color = Color::Yellow;
-const ERROR_STATUS_COLOR: Color = Color::Red;
-
-const DIVIDER_COLOR: Color = Color::DarkGray;
-
 #[derive(Debug)]
 enum StatusLine {
     None,
-    Input(String, Option<u16>),
+    Input(String, Option<u16>, Option<String>),
     NotificationInfo(String),
     NotificationSuccess(String),
     NotificationWarn(String),
@@ -48,19 +40,20 @@ pub struct App<'a> {
 
     keybind: &'a KeyBind,
     ui_config: &'a UiConfig,
+    color_theme: &'a ColorTheme,
     image_protocol: ImageProtocol,
     tx: Sender,
 }
 
 impl<'a> App<'a> {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         repository: &'a Repository,
         graph_image_manager: GraphImageManager<'a>,
         graph: &'a Graph,
         keybind: &'a KeyBind,
         ui_config: &'a UiConfig,
-        color_set: &'a ColorSet,
+        color_theme: &'a ColorTheme,
+        graph_color_set: &'a GraphColorSet,
         cell_width_type: CellWidthType,
         image_protocol: ImageProtocol,
         tx: Sender,
@@ -76,7 +69,7 @@ impl<'a> App<'a> {
                     ref_name_to_commit_index_map.insert(r.name(), i);
                 }
                 let (pos_x, _) = graph.commit_pos_map[&commit.commit_hash];
-                let graph_color = color_set.get(pos_x).to_ratatui_color();
+                let graph_color = graph_color_set.get(pos_x).to_ratatui_color();
                 CommitInfo::new(commit, refs, graph_color)
             })
             .collect();
@@ -92,7 +85,7 @@ impl<'a> App<'a> {
             head,
             ref_name_to_commit_index_map,
         );
-        let view = View::of_list(commit_list_state, ui_config, tx.clone());
+        let view = View::of_list(commit_list_state, ui_config, color_theme, tx.clone());
 
         Self {
             repository,
@@ -100,6 +93,7 @@ impl<'a> App<'a> {
             view,
             keybind,
             ui_config,
+            color_theme,
             image_protocol,
             tx,
         }
@@ -117,7 +111,7 @@ impl App<'_> {
             match rx.recv() {
                 AppEvent::Key(key) => {
                     match self.status_line {
-                        StatusLine::None | StatusLine::Input(_, _) => {
+                        StatusLine::None | StatusLine::Input(_, _, _) => {
                             // do nothing
                         }
                         StatusLine::NotificationInfo(_)
@@ -138,10 +132,10 @@ impl App<'_> {
                             self.tx.send(AppEvent::Quit);
                         }
                         Some(ue) => {
-                            self.view.handle_event(ue, key);
+                            self.view.handle_event(*ue, key);
                         }
                         None => {
-                            self.view.handle_event(&UserEvent::Unknown, key);
+                            self.view.handle_event(UserEvent::Unknown, key);
                         }
                     }
                 }
@@ -181,8 +175,8 @@ impl App<'_> {
                 AppEvent::ClearStatusLine => {
                     self.clear_status_line();
                 }
-                AppEvent::UpdateStatusInput(msg, cursor_pos) => {
-                    self.update_status_input(msg, cursor_pos);
+                AppEvent::UpdateStatusInput(msg, cursor_pos, msg_r) => {
+                    self.update_status_input(msg, cursor_pos, msg_r);
                 }
                 AppEvent::NotifyInfo(msg) => {
                     self.info_notification(msg);
@@ -201,6 +195,11 @@ impl App<'_> {
     }
 
     fn render(&mut self, f: &mut Frame) {
+        let base = Block::default()
+            .fg(self.color_theme.fg)
+            .bg(self.color_theme.bg);
+        f.render_widget(base, f.area());
+
         let [view_area, status_line_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(f.area());
 
@@ -211,32 +210,54 @@ impl App<'_> {
 
 impl App<'_> {
     fn render_status_line(&self, f: &mut Frame, area: Rect) {
-        let text: Span = match &self.status_line {
+        let text: Line = match &self.status_line {
             StatusLine::None => "".into(),
-            StatusLine::Input(msg, _) => msg.as_str().fg(MESSAGE_STATUTS_COLOR),
-            StatusLine::NotificationInfo(msg) => msg.as_str().fg(INFO_STATUS_COLOR),
-            StatusLine::NotificationSuccess(msg) => msg
-                .as_str()
+            StatusLine::Input(msg, _, transient_msg) => {
+                let msg_w = console::measure_text_width(msg.as_str());
+                if let Some(t_msg) = transient_msg {
+                    let t_msg_w = console::measure_text_width(t_msg.as_str());
+                    let pad_w = area.width as usize - msg_w - t_msg_w - 2 /* pad */;
+                    Line::from(vec![
+                        msg.as_str().fg(self.color_theme.status_input_fg),
+                        " ".repeat(pad_w).into(),
+                        t_msg
+                            .as_str()
+                            .fg(self.color_theme.status_input_transient_fg),
+                    ])
+                } else {
+                    Line::raw(msg).fg(self.color_theme.status_input_fg)
+                }
+            }
+            StatusLine::NotificationInfo(msg) => Line::raw(msg).fg(self.color_theme.status_info_fg),
+            StatusLine::NotificationSuccess(msg) => Line::raw(msg)
                 .add_modifier(Modifier::BOLD)
-                .fg(SUCCESS_STATUS_COLOR),
-            StatusLine::NotificationWarn(msg) => msg
-                .as_str()
+                .fg(self.color_theme.status_success_fg),
+            StatusLine::NotificationWarn(msg) => Line::raw(msg)
                 .add_modifier(Modifier::BOLD)
-                .fg(WARN_STATUS_COLOR),
-            StatusLine::NotificationError(msg) => format!("ERROR: {}", msg)
+                .fg(self.color_theme.status_warn_fg),
+            StatusLine::NotificationError(msg) => Line::raw(format!("ERROR: {}", msg))
                 .add_modifier(Modifier::BOLD)
-                .fg(ERROR_STATUS_COLOR),
+                .fg(self.color_theme.status_error_fg),
         };
         let paragraph = Paragraph::new(text).block(
             Block::default()
                 .borders(Borders::TOP)
-                .style(Style::default().fg(DIVIDER_COLOR))
+                .style(Style::default().fg(self.color_theme.divider_fg))
                 .padding(Padding::horizontal(1)),
         );
         f.render_widget(paragraph, area);
 
-        if let StatusLine::Input(_, Some(cursor_pos)) = &self.status_line {
-            f.set_cursor_position((area.x + cursor_pos + 1, area.y + 1));
+        if let StatusLine::Input(_, Some(cursor_pos), _) = &self.status_line {
+            let (x, y) = (area.x + cursor_pos + 1, area.y + 1);
+            match &self.ui_config.common.cursor_type {
+                CursorType::Native => {
+                    f.set_cursor_position((x, y));
+                }
+                CursorType::Virtual(cursor) => {
+                    let style = Style::default().fg(self.color_theme.virtual_cursor_fg);
+                    f.buffer_mut().set_string(x, y, cursor, style);
+                }
+            }
         }
     }
 }
@@ -259,6 +280,7 @@ impl App<'_> {
                 changes,
                 refs,
                 self.ui_config,
+                self.color_theme,
                 self.image_protocol,
                 self.tx.clone(),
             );
@@ -268,7 +290,12 @@ impl App<'_> {
     fn close_detail(&mut self) {
         if let View::Detail(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            self.view = View::of_list(commit_list_state, self.ui_config, self.tx.clone());
+            self.view = View::of_list(
+                commit_list_state,
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
         }
     }
 
@@ -282,14 +309,25 @@ impl App<'_> {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
             let refs = self.repository.all_refs().into_iter().cloned().collect();
-            self.view = View::of_refs(commit_list_state, refs, self.ui_config, self.tx.clone());
+            self.view = View::of_refs(
+                commit_list_state,
+                refs,
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
         }
     }
 
     fn close_refs(&mut self) {
         if let View::Refs(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            self.view = View::of_list(commit_list_state, self.ui_config, self.tx.clone());
+            self.view = View::of_list(
+                commit_list_state,
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
         }
     }
 
@@ -297,6 +335,7 @@ impl App<'_> {
         let before_view = std::mem::take(&mut self.view);
         self.view = View::of_help(
             before_view,
+            self.color_theme,
             self.image_protocol,
             self.tx.clone(),
             self.keybind,
@@ -319,8 +358,13 @@ impl App<'_> {
         self.status_line = StatusLine::None;
     }
 
-    fn update_status_input(&mut self, msg: String, cursor_pos: Option<u16>) {
-        self.status_line = StatusLine::Input(msg, cursor_pos);
+    fn update_status_input(
+        &mut self,
+        msg: String,
+        cursor_pos: Option<u16>,
+        transient_msg: Option<String>,
+    ) {
+        self.status_line = StatusLine::Input(msg, cursor_pos, transient_msg);
     }
 
     fn info_notification(&mut self, msg: String) {

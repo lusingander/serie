@@ -1,6 +1,6 @@
 [package]
 name = "serie"
-version = "0.4.2"
+version = "0.4.5"
 description = "A rich git commit graph in your terminal, like magic"
 authors = ["Kyosuke Fujimoto <kyoro.f@gmail.com>"]
 homepage = "https://github.com/lusingander/serie"
@@ -15,28 +15,33 @@ rust-version = "1.79.0"
 exclude = ["/.github", "/img"]
 
 [dependencies]
-arboard = "3.4.1"
+arboard = "3.5.0"
 base64 = "0.22.1"
-chrono = "0.4.39"
-clap = { version = "4.5.26", features = ["derive"] }
-color-eyre = "0.6.3"
-console = "0.15.10"
-directories = "6.0.0"
+chrono = "0.4.40"
+clap = { version = "4.5.36", features = ["derive"] }
+console = "0.15.11"
+fuzzy-matcher = "0.3.7"
 fxhash = "0.2.1"
-image = "0.25.5"
+image = "0.25.6"
 laurier = "0.1.0"
+once_cell = "1.21.3"
 ratatui = "0.29.0"
 rayon = "1.10.0"
-semver = "1.0.24"
-serde = { version = "1.0.217", features = ["derive"] }
-serde_json = "1.0.135"
-toml = "0.8.19"
+semver = "1.0.26"
+serde = { version = "1.0.219", features = ["derive"] }
+smart-default = "0.7.1"
+toml = "0.8.20"
 tui-input = "0.11.1"
 tui-tree-widget = "0.23.0"
+umbra = "0.4.0"
 xdg = "2.5.2"
 
 [dev-dependencies]
 dircpy = "0.3.19"
-rstest = "0.24.0"
-tempfile = "3.15.0"
+rstest = "0.25.0"
+tempfile = "3.19.1"
 text-to-png = "0.2.0"
+
+[profile.release]
+codegen-units = 1
+lto = true

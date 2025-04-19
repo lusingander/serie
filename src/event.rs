@@ -21,7 +21,7 @@ pub enum AppEvent {
     ClearHelp,
     CopyToClipboard { name: String, value: String },
     ClearStatusLine,
-    UpdateStatusInput(String, Option<u16>),
+    UpdateStatusInput(String, Option<u16>, Option<String>),
     NotifyInfo(String),
     NotifySuccess(String),
     NotifyWarn(String),
@@ -82,7 +82,7 @@ pub fn init() -> (Sender, Receiver) {
 }
 
 // The event triggered by user's key input
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum UserEvent {
     ForceQuit,
@@ -96,6 +96,7 @@ pub enum UserEvent {
     NavigateLeft,
     GoToTop,
     GoToBottom,
+    GoToParent,
     ScrollUp,
     ScrollDown,
     PageUp,
@@ -110,6 +111,8 @@ pub enum UserEvent {
     Confirm,
     RefListToggle,
     Search,
+    IgnoreCaseToggle,
+    FuzzyToggle,
     ShortCopy,
     FullCopy,
     Unknown,

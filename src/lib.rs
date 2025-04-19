@@ -86,16 +86,18 @@ impl From<GraphWidthType> for graph::CellWidthType {
     }
 }
 
-pub fn run() -> std::io::Result<()> {
-    color_eyre::install().unwrap();
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+pub fn run() -> Result<()> {
     let args = Args::parse();
-    let (ui_config, graph_config, key_bind_patch) = config::load();
+    let (ui_config, graph_config, key_bind_patch) = config::load()?;
     let key_bind = keybind::KeyBind::new(key_bind_patch);
 
-    let color_set = color::ColorSet::new(&graph_config.color);
+    let color_theme = color::ColorTheme::default();
+    let graph_color_set = color::GraphColorSet::new(&graph_config.color);
     let image_protocol = args.protocol.into();
 
-    let repository = git::Repository::load(Path::new("."), args.order.into());
+    let repository = git::Repository::load(Path::new("."), args.order.into())?;
 
     let graph = graph::calc_graph(&repository);
 
@@ -104,7 +106,7 @@ pub fn run() -> std::io::Result<()> {
 
     let graph_image_manager = GraphImageManager::new(
         &graph,
-        &color_set,
+        &graph_color_set,
         cell_width_type,
         image_protocol,
         args.preload,
@@ -120,13 +122,14 @@ pub fn run() -> std::io::Result<()> {
         &graph,
         &key_bind,
         &ui_config,
-        &color_set,
+        &color_theme,
+        &graph_color_set,
         cell_width_type,
         image_protocol,
         tx,
     );
-    app.run(&mut terminal, rx)?;
+    let ret = app.run(&mut terminal, rx);
 
     ratatui::restore();
-    Ok(())
+    ret.map_err(Into::into)
 }

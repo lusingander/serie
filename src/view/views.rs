@@ -1,6 +1,7 @@
 use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
 use crate::{
+    color::ColorTheme,
     config::UiConfig,
     event::{Sender, UserEvent},
     git::{Commit, FileChange, Ref},
@@ -21,7 +22,7 @@ pub enum View<'a> {
 }
 
 impl<'a> View<'a> {
-    pub fn handle_event(&mut self, user_event: &UserEvent, key_event: KeyEvent) {
+    pub fn handle_event(&mut self, user_event: UserEvent, key_event: KeyEvent) {
         match self {
             View::Default => {}
             View::List(view) => view.handle_event(user_event, key_event),
@@ -44,9 +45,15 @@ impl<'a> View<'a> {
     pub fn of_list(
         commit_list_state: CommitListState<'a>,
         ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
         tx: Sender,
     ) -> Self {
-        View::List(Box::new(ListView::new(commit_list_state, ui_config, tx)))
+        View::List(Box::new(ListView::new(
+            commit_list_state,
+            ui_config,
+            color_theme,
+            tx,
+        )))
     }
 
     pub fn of_detail(
@@ -55,6 +62,7 @@ impl<'a> View<'a> {
         changes: Vec<FileChange>,
         refs: Vec<Ref>,
         ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
         image_protocol: ImageProtocol,
         tx: Sender,
     ) -> Self {
@@ -64,6 +72,7 @@ impl<'a> View<'a> {
             changes,
             refs,
             ui_config,
+            color_theme,
             image_protocol,
             tx,
         )))
@@ -73,22 +82,31 @@ impl<'a> View<'a> {
         commit_list_state: CommitListState<'a>,
         refs: Vec<Ref>,
         ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
         tx: Sender,
     ) -> Self {
         View::Refs(Box::new(RefsView::new(
             commit_list_state,
             refs,
             ui_config,
+            color_theme,
             tx,
         )))
     }
 
     pub fn of_help(
         before: View<'a>,
+        color_theme: &'a ColorTheme,
         image_protocol: ImageProtocol,
         tx: Sender,
         keybind: &'a KeyBind,
     ) -> Self {
-        View::Help(Box::new(HelpView::new(before, image_protocol, tx, keybind)))
+        View::Help(Box::new(HelpView::new(
+            before,
+            color_theme,
+            image_protocol,
+            tx,
+            keybind,
+        )))
     }
 }

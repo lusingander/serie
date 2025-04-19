@@ -1,21 +1,19 @@
 use ratatui::{
     crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Stylize},
+    style::{Modifier, Stylize},
     text::{Line, Span},
     widgets::{Block, Clear, Padding, Paragraph},
     Frame,
 };
 
 use crate::{
+    color::ColorTheme,
     event::{AppEvent, Sender, UserEvent},
     keybind::KeyBind,
     protocol::ImageProtocol,
     view::View,
 };
-
-const BLOCK_TITLE_COLOR: Color = Color::Green;
-const KEY_COLOR: Color = Color::Yellow;
 
 #[derive(Debug)]
 pub struct HelpView<'a> {
@@ -34,11 +32,12 @@ pub struct HelpView<'a> {
 impl HelpView<'_> {
     pub fn new<'a>(
         before: View<'a>,
+        color_theme: &'a ColorTheme,
         image_protocol: ImageProtocol,
         tx: Sender,
         keybind: &'a KeyBind,
     ) -> HelpView<'a> {
-        let (help_key_lines, help_value_lines) = build_lines(keybind);
+        let (help_key_lines, help_value_lines) = build_lines(color_theme, keybind);
         HelpView {
             before,
             help_key_lines,
@@ -50,7 +49,7 @@ impl HelpView<'_> {
         }
     }
 
-    pub fn handle_event(&mut self, event: &UserEvent, _: KeyEvent) {
+    pub fn handle_event(&mut self, event: UserEvent, _: KeyEvent) {
         match event {
             UserEvent::Quit => {
                 self.tx.send(AppEvent::Quit);
@@ -148,13 +147,14 @@ impl<'a> HelpView<'a> {
 }
 
 #[rustfmt::skip]
-fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
+fn build_lines(color_theme: &ColorTheme, keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
     let (common_key_lines, common_value_lines) = build_block_lines(
         "Common:",
         &[
             (&[UserEvent::ForceQuit, UserEvent::Quit], "Quit app"),
             (&[UserEvent::HelpToggle], "Open help"),
         ],
+        color_theme,
         keybind,
     );
     let (help_key_lines, help_value_lines) = build_block_lines(
@@ -166,6 +166,7 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
             (&[UserEvent::GoToTop], "Go to top"),
             (&[UserEvent::GoToBottom], "Go to bottom"),
         ],
+        color_theme,
         keybind,
     );
     let (list_key_lines, list_value_lines) = build_block_lines(
@@ -173,12 +174,15 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
         &[
             (&[UserEvent::NavigateDown], "Move down"),
             (&[UserEvent::NavigateUp], "Move up"),
+            (&[UserEvent::GoToParent], "Go to parent"),
             (&[UserEvent::GoToTop], "Go to top"),
             (&[UserEvent::GoToBottom], "Go to bottom"),
             (&[UserEvent::PageDown], "Scroll page down"),
             (&[UserEvent::PageUp], "Scroll page up"),
             (&[UserEvent::HalfPageDown], "Scroll half page down"),
             (&[UserEvent::HalfPageUp], "Scroll half page up"),
+            (&[UserEvent::ScrollDown], "Scroll down"),
+            (&[UserEvent::ScrollUp], "Scroll up"),
             (&[UserEvent::SelectTop], "Select top of the screen"),
             (&[UserEvent::SelectMiddle], "Select middle of the screen"),
             (&[UserEvent::SelectBottom], "Select bottom of the screen"),
@@ -188,9 +192,12 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
             (&[UserEvent::Cancel], "Cancel search"),
             (&[UserEvent::GoToNext], "Go to next search match"),
             (&[UserEvent::GoToPrevious], "Go to previous search match"),
+            (&[UserEvent::IgnoreCaseToggle], "Toggle ignore case"),
+            (&[UserEvent::FuzzyToggle], "Toggle fuzzy match"),
             (&[UserEvent::ShortCopy], "Copy commit short hash"),
             (&[UserEvent::FullCopy], "Copy commit hash"),
         ],
+        color_theme,
         keybind,
     );
     let (detail_key_lines, detail_value_lines) = build_block_lines(
@@ -204,6 +211,7 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
             (&[UserEvent::ShortCopy], "Copy commit short hash"),
             (&[UserEvent::FullCopy], "Copy commit hash"),
         ],
+        color_theme,
         keybind,
     );
     let (refs_key_lines, refs_value_lines) = build_block_lines(
@@ -218,6 +226,7 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
             (&[UserEvent::NavigateLeft], "Close node"),
             (&[UserEvent::ShortCopy], "Copy ref name"),
         ],
+        color_theme,
         keybind,
     );
 
@@ -242,13 +251,14 @@ fn build_lines(keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
 fn build_block_lines(
     title: &'static str,
     helps: &[(&[UserEvent], &'static str)],
+    color_theme: &ColorTheme,
     keybind: &KeyBind,
 ) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
     let mut key_lines = Vec::new();
     let mut value_lines = Vec::new();
 
     let key_title_lines = vec![Line::from(title)
-        .fg(BLOCK_TITLE_COLOR)
+        .fg(color_theme.help_block_title_fg)
         .add_modifier(Modifier::BOLD)];
     let value_title_lines = vec![Line::from("")];
     let key_binding_lines: Vec<Line> = helps
@@ -257,8 +267,8 @@ fn build_block_lines(
             join_span_groups_with_space(
                 events
                     .iter()
-                    .flat_map(|event| keybind.keys_for_event(event))
-                    .map(|key| vec!["<".into(), key.fg(KEY_COLOR), ">".into()])
+                    .flat_map(|event| keybind.keys_for_event(*event))
+                    .map(|key| vec!["<".into(), key.fg(color_theme.help_key_fg), ">".into()])
                     .collect(),
             )
         })

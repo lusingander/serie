@@ -8,6 +8,8 @@ use std::{
 
 use chrono::{DateTime, FixedOffset};
 
+use crate::Result;
+
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CommitHash(String);
 
@@ -122,11 +124,11 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn load(path: &Path, sort: SortCommit) -> Self {
-        check_git_repository(path);
+    pub fn load(path: &Path, sort: SortCommit) -> Result<Self> {
+        check_git_repository(path)?;
 
-        let commits = load_all_commits(path, sort);
         let stashes = load_all_stashes(path);
+        let commits = load_all_commits(path, sort, &stashes);
 
         let commits = merge_stashes_to_commits(commits, stashes);
         let commit_hashes = commits.iter().map(|c| c.commit_hash.clone()).collect();
@@ -138,7 +140,7 @@ impl Repository {
         let stash_ref_map = load_stashes_as_refs(path);
         merge_ref_maps(&mut ref_map, stash_ref_map);
 
-        Self::new(
+        Ok(Self::new(
             path.to_path_buf(),
             commit_map,
             parents_map,
@@ -146,7 +148,7 @@ impl Repository {
             ref_map,
             head,
             commit_hashes,
-        )
+        ))
     }
 
     pub fn new(
@@ -220,38 +222,46 @@ impl Repository {
     }
 }
 
-fn check_git_repository(path: &Path) {
+fn check_git_repository(path: &Path) -> Result<()> {
     let output = Command::new("git")
         .arg("rev-parse")
         .arg("--is-inside-work-tree")
         .current_dir(path)
         .output()
         .unwrap();
-    if !output.status.success() {
-        panic!("not a git repository (or any of the parent directories)");
+    if !output.status.success() || output.stdout == b"false\n" {
+        let msg = "not a git repository (or any of the parent directories)";
+        return Err(msg.into());
     }
+    Ok(())
 }
 
-fn load_all_commits(path: &Path, sort: SortCommit) -> Vec<Commit> {
-    let mut cmd = Command::new("git")
-        .arg("log")
-        // exclude stashes and other refs
-        .arg("--branches")
-        .arg("--remotes")
-        .arg("--tags")
-        .arg(match sort {
-            SortCommit::Chronological => "--date-order",
-            SortCommit::Topological => "--topo-order",
-        })
-        .arg(format!("--pretty={}", load_commits_format()))
-        .arg("--date=iso-strict")
-        .arg("-z") // use NUL as a delimiter
-        .current_dir(path)
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
+fn load_all_commits(path: &Path, sort: SortCommit, stashes: &[Commit]) -> Vec<Commit> {
+    let mut cmd = Command::new("git");
+    cmd.arg("log");
 
-    let stdout = cmd.stdout.take().expect("failed to open stdout");
+    cmd.arg(match sort {
+        SortCommit::Chronological => "--date-order",
+        SortCommit::Topological => "--topo-order",
+    })
+    .arg(format!("--pretty={}", load_commits_format()))
+    .arg("--date=iso-strict")
+    .arg("-z"); // use NUL as a delimiter
+
+    // exclude stashes and other refs
+    cmd.arg("--branches").arg("--remotes").arg("--tags");
+
+    // commits that are reachable from the stashes
+    stashes.iter().for_each(|stash| {
+        cmd.arg(stash.parent_commit_hashes[0].as_str());
+    });
+    cmd.arg("HEAD");
+
+    cmd.current_dir(path).stdout(Stdio::piped());
+
+    let mut process = cmd.spawn().unwrap();
+
+    let stdout = process.stdout.take().expect("failed to open stdout");
 
     let reader = BufReader::new(stdout);
 
@@ -283,7 +293,7 @@ fn load_all_commits(path: &Path, sort: SortCommit) -> Vec<Commit> {
         commits.push(commit);
     }
 
-    cmd.wait().unwrap();
+    process.wait().unwrap();
 
     commits
 }

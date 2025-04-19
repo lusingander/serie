@@ -5,6 +5,7 @@ use ratatui::{
 };
 
 use crate::{
+    color::ColorTheme,
     config::UiConfig,
     event::{AppEvent, Sender, UserEvent},
     git::Ref,
@@ -22,6 +23,7 @@ pub struct RefsView<'a> {
     refs: Vec<Ref>,
 
     ui_config: &'a UiConfig,
+    color_theme: &'a ColorTheme,
     tx: Sender,
 }
 
@@ -30,6 +32,7 @@ impl<'a> RefsView<'a> {
         commit_list_state: CommitListState<'a>,
         refs: Vec<Ref>,
         ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
         tx: Sender,
     ) -> RefsView<'a> {
         RefsView {
@@ -37,11 +40,12 @@ impl<'a> RefsView<'a> {
             ref_list_state: RefListState::new(),
             refs,
             ui_config,
+            color_theme,
             tx,
         }
     }
 
-    pub fn handle_event(&mut self, event: &UserEvent, _: KeyEvent) {
+    pub fn handle_event(&mut self, event: UserEvent, _: KeyEvent) {
         match event {
             UserEvent::Quit => {
                 self.tx.send(AppEvent::Quit);
@@ -90,10 +94,10 @@ impl<'a> RefsView<'a> {
         let [list_area, refs_area] =
             Layout::horizontal([Constraint::Min(0), Constraint::Length(refs_width)]).areas(area);
 
-        let commit_list = CommitList::new(&self.ui_config.list);
+        let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
 
-        let ref_list = RefList::new(&self.refs);
+        let ref_list = RefList::new(&self.refs, self.color_theme);
         f.render_stateful_widget(ref_list, refs_area, &mut self.ref_list_state);
     }
 }
