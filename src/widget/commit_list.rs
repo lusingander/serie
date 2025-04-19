@@ -938,7 +938,7 @@ fn refs_spans<'a>(
         }
     }
 
-    let ref_spans: Vec<Vec<Span>> = refs
+    let ref_spans: Vec<(Vec<Span>, &String)> = refs
         .iter()
         .filter_map(|r| match r {
             Ref::Branch { name, .. } => {
@@ -956,10 +956,11 @@ fn refs_spans<'a>(
             Ref::Stash { .. } => None,
         })
         .map(|(name, fg)| {
-            refs_matches
+            let spans = refs_matches
                 .get(name)
                 .map(|pos| highlighted_spans(name.to_string(), pos.clone(), fg, color_theme, false))
-                .unwrap_or_else(|| vec![Span::raw(name).fg(fg).bold()])
+                .unwrap_or_else(|| vec![Span::raw(name).fg(fg).bold()]);
+            (spans, name)
         })
         .collect();
 
@@ -975,17 +976,13 @@ fn refs_spans<'a>(
     }
 
     for (i, ss) in ref_spans.into_iter().enumerate() {
+        let (ref_spans, ref_name) = ss;
         if let Head::Branch { name } = head {
-            let ref_name = ss
-                .iter()
-                .map(|s| s.content.to_string())
-                .collect::<Vec<_>>()
-                .join("");
-            if ref_name == *name {
+            if ref_name == name {
                 spans.push(Span::raw("HEAD -> ").fg(color_theme.list_head_fg).bold());
             }
         }
-        spans.extend(ss);
+        spans.extend(ref_spans);
         if i < refs.len() - 1 {
             spans.push(Span::raw(", ").fg(color_theme.list_ref_paren_fg).bold());
         }
