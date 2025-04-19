@@ -78,6 +78,7 @@ pub enum TransientMessage {
 
 #[derive(Debug, Default, Clone)]
 struct SearchMatch {
+    refs: HashMap<String, SearchMatchPosition>,
     subject: Option<SearchMatchPosition>,
     author_name: Option<SearchMatchPosition>,
     commit_hash: Option<SearchMatchPosition>,
@@ -85,12 +86,21 @@ struct SearchMatch {
 }
 
 impl SearchMatch {
-    fn new(c: &Commit, q: &str, ignore_case: bool, fuzzy: bool) -> Self {
+    fn new(c: &Commit, refs: &[&Ref], q: &str, ignore_case: bool, fuzzy: bool) -> Self {
+        let refs = refs
+            .iter()
+            .filter(|r| !matches!(*r, Ref::Stash { .. }))
+            .filter_map(|r| {
+                find_match_position(r.name(), q, ignore_case, fuzzy)
+                    .map(|pos| (r.name().into(), pos))
+            })
+            .collect();
         let subject = find_match_position(&c.subject, q, ignore_case, fuzzy);
         let author_name = find_match_position(&c.author_name, q, ignore_case, fuzzy);
         let commit_hash =
             find_match_position(&c.commit_hash.as_short_hash(), q, ignore_case, fuzzy);
         Self {
+            refs,
             subject,
             author_name,
             commit_hash,
@@ -99,10 +109,14 @@ impl SearchMatch {
     }
 
     fn matched(&self) -> bool {
-        self.subject.is_some() || self.author_name.is_some() || self.commit_hash.is_some()
+        !self.refs.is_empty()
+            || self.subject.is_some()
+            || self.author_name.is_some()
+            || self.commit_hash.is_some()
     }
 
     fn clear(&mut self) {
+        self.refs.clear();
         self.subject = None;
         self.author_name = None;
         self.commit_hash = None;
@@ -531,7 +545,13 @@ impl<'a> CommitListState<'a> {
         };
         let mut match_index = 1;
         for (i, commit_info) in self.commits.iter().enumerate() {
-            let mut m = SearchMatch::new(commit_info.commit, &q, ignore_case, fuzzy);
+            let mut m = SearchMatch::new(
+                commit_info.commit,
+                commit_info.refs.as_slice(),
+                &q,
+                ignore_case,
+                fuzzy,
+            );
             if m.matched() {
                 m.match_index = match_index;
                 match_index += 1;
@@ -746,7 +766,12 @@ impl CommitList<'_> {
         let items: Vec<ListItem> = self
             .rendering_commit_info_iter(state)
             .map(|(i, commit_info)| {
-                let mut spans = refs_spans(commit_info, state.head, self.color_theme);
+                let mut spans = refs_spans(
+                    commit_info,
+                    state.head,
+                    &state.search_matches[state.offset + i].refs,
+                    self.color_theme,
+                );
                 let ref_spans_width: usize = spans.iter().map(|s| s.width()).sum();
                 let max_width = max_width.saturating_sub(ref_spans_width);
                 let commit = commit_info.commit;
@@ -899,6 +924,7 @@ impl CommitList<'_> {
 fn refs_spans<'a>(
     commit_info: &'a CommitInfo,
     head: &'a Head,
+    refs_matches: &'a HashMap<String, SearchMatchPosition>,
     color_theme: &'a ColorTheme,
 ) -> Vec<Span<'a>> {
     let refs = &commit_info.refs;
@@ -912,19 +938,56 @@ fn refs_spans<'a>(
         }
     }
 
-    let ref_spans: Vec<Span> = refs
+    let ref_spans: Vec<Vec<Span>> = refs
         .iter()
-        .filter_map(|r| match r {
-            Ref::Branch { name, .. } => {
-                Some(Span::raw(name).fg(color_theme.list_ref_branch_fg).bold())
+        .filter_map(|r| {
+            let pos_opt = refs_matches.get(r.name());
+            match r {
+                Ref::Branch { name, .. } => {
+                    if let Some(pos) = pos_opt {
+                        Some(highlighted_spans(
+                            name.to_string(),
+                            pos.clone(),
+                            color_theme.list_ref_branch_fg,
+                            color_theme,
+                            false,
+                        ))
+                    } else {
+                        Some(vec![Span::raw(name)
+                            .fg(color_theme.list_ref_branch_fg)
+                            .bold()])
+                    }
+                }
+                Ref::RemoteBranch { name, .. } => {
+                    if let Some(pos) = pos_opt {
+                        Some(highlighted_spans(
+                            name.to_string(),
+                            pos.clone(),
+                            color_theme.list_ref_remote_branch_fg,
+                            color_theme,
+                            false,
+                        ))
+                    } else {
+                        Some(vec![Span::raw(name)
+                            .fg(color_theme.list_ref_remote_branch_fg)
+                            .bold()])
+                    }
+                }
+                Ref::Tag { name, .. } => {
+                    if let Some(pos) = pos_opt {
+                        Some(highlighted_spans(
+                            name.to_string(),
+                            pos.clone(),
+                            color_theme.list_ref_tag_fg,
+                            color_theme,
+                            false,
+                        ))
+                    } else {
+                        Some(vec![Span::raw(name).fg(color_theme.list_ref_tag_fg).bold()])
+                    }
+                }
+                Ref::Stash { .. } => None,
             }
-            Ref::RemoteBranch { name, .. } => Some(
-                Span::raw(name)
-                    .fg(color_theme.list_ref_remote_branch_fg)
-                    .bold(),
-            ),
-            Ref::Tag { name, .. } => Some(Span::raw(name).fg(color_theme.list_ref_tag_fg).bold()),
-            Ref::Stash { .. } => None,
         })
         .collect();
 
@@ -939,13 +1002,18 @@ fn refs_spans<'a>(
         }
     }
 
-    for (i, s) in ref_spans.into_iter().enumerate() {
+    for (i, ss) in ref_spans.into_iter().enumerate() {
         if let Head::Branch { name } = head {
-            if s.content == std::borrow::Cow::Borrowed(name) {
+            let ref_name = ss
+                .iter()
+                .map(|s| s.content.to_string())
+                .collect::<Vec<_>>()
+                .join("");
+            if ref_name == *name {
                 spans.push(Span::raw("HEAD -> ").fg(color_theme.list_head_fg).bold());
             }
         }
-        spans.push(s);
+        spans.extend(ss);
         if i < refs.len() - 1 {
             spans.push(Span::raw(", ").fg(color_theme.list_ref_paren_fg).bold());
         }
