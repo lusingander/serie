@@ -193,6 +193,7 @@ fn build_lines(color_theme: &ColorTheme, keybind: &KeyBind) -> (Vec<Line<'static
             (&[UserEvent::GoToNext], "Go to next search match"),
             (&[UserEvent::GoToPrevious], "Go to previous search match"),
             (&[UserEvent::IgnoreCaseToggle], "Toggle ignore case"),
+            (&[UserEvent::FuzzyToggle], "Toggle fuzzy match"),
             (&[UserEvent::ShortCopy], "Copy commit short hash"),
             (&[UserEvent::FullCopy], "Copy commit hash"),
         ],
