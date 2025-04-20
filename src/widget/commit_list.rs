@@ -20,7 +20,7 @@ use crate::{
     graph::GraphImageManager,
 };
 
-static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(SkimMatcherV2::default);
+static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(|| SkimMatcherV2::default().respect_case());
 
 const ELLIPSIS: &str = "...";
 
@@ -87,18 +87,19 @@ struct SearchMatch {
 
 impl SearchMatch {
     fn new(c: &Commit, refs: &[&Ref], q: &str, ignore_case: bool, fuzzy: bool) -> Self {
+        let matcher = SearchMatcher::new(q, ignore_case, fuzzy);
         let refs = refs
             .iter()
             .filter(|r| !matches!(*r, Ref::Stash { .. }))
             .filter_map(|r| {
-                find_match_position(r.name(), q, ignore_case, fuzzy)
+                matcher
+                    .matched_position(r.name())
                     .map(|pos| (r.name().into(), pos))
             })
             .collect();
-        let subject = find_match_position(&c.subject, q, ignore_case, fuzzy);
-        let author_name = find_match_position(&c.author_name, q, ignore_case, fuzzy);
-        let commit_hash =
-            find_match_position(&c.commit_hash.as_short_hash(), q, ignore_case, fuzzy);
+        let subject = matcher.matched_position(&c.subject);
+        let author_name = matcher.matched_position(&c.author_name);
+        let commit_hash = matcher.matched_position(&c.commit_hash.as_short_hash());
         Self {
             refs,
             subject,
@@ -123,30 +124,6 @@ impl SearchMatch {
     }
 }
 
-fn find_match_position(
-    s: &str,
-    query: &str,
-    ignore_case: bool,
-    fuzzy: bool,
-) -> Option<SearchMatchPosition> {
-    let ps_opt = if fuzzy {
-        let result = if ignore_case {
-            FUZZY_MATCHER.fuzzy_indices(&s.to_lowercase(), query)
-        } else {
-            FUZZY_MATCHER.fuzzy_indices(s, query)
-        };
-        result.map(|(_, indices)| indices)
-    } else {
-        let result = if ignore_case {
-            s.to_lowercase().find(query)
-        } else {
-            s.find(query)
-        };
-        result.map(|p| (p..(p + query.len())).collect())
-    };
-    ps_opt.map(SearchMatchPosition::new)
-}
-
 #[derive(Debug, Default, Clone)]
 struct SearchMatchPosition {
     matched_indices: Vec<usize>,
@@ -155,6 +132,49 @@ struct SearchMatchPosition {
 impl SearchMatchPosition {
     fn new(matched_indices: Vec<usize>) -> Self {
         Self { matched_indices }
+    }
+}
+
+struct SearchMatcher {
+    query: String,
+    ignore_case: bool,
+    fuzzy: bool,
+}
+
+impl SearchMatcher {
+    fn new(query: &str, ignore_case: bool, fuzzy: bool) -> Self {
+        let query = if ignore_case {
+            query.to_lowercase()
+        } else {
+            query.into()
+        };
+        Self {
+            query,
+            ignore_case,
+            fuzzy,
+        }
+    }
+
+    fn matched_position(&self, s: &str) -> Option<SearchMatchPosition> {
+        if self.fuzzy {
+            let result = if self.ignore_case {
+                FUZZY_MATCHER.fuzzy_indices(&s.to_lowercase(), &self.query)
+            } else {
+                FUZZY_MATCHER.fuzzy_indices(s, &self.query)
+            };
+            result
+                .map(|(_, indices)| indices)
+                .map(SearchMatchPosition::new)
+        } else {
+            let result = if self.ignore_case {
+                s.to_lowercase().find(&self.query)
+            } else {
+                s.find(&self.query)
+            };
+            result
+                .map(|p| (p..(p + self.query.len())).collect())
+                .map(SearchMatchPosition::new)
+        }
     }
 }
 
@@ -538,17 +558,13 @@ impl<'a> CommitListState<'a> {
     }
 
     fn update_search_matches(&mut self, ignore_case: bool, fuzzy: bool) {
-        let q = if ignore_case {
-            self.search_input.value().to_lowercase()
-        } else {
-            self.search_input.value().to_string()
-        };
+        let q = self.search_input.value();
         let mut match_index = 1;
         for (i, commit_info) in self.commits.iter().enumerate() {
             let mut m = SearchMatch::new(
                 commit_info.commit,
                 commit_info.refs.as_slice(),
-                &q,
+                q,
                 ignore_case,
                 fuzzy,
             );
