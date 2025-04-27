@@ -23,7 +23,7 @@ pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>)> {
             read_config_from_path(&user_path)
         }
         None => {
-            let default_path = xdg_config_file_path();
+            let default_path = config_file_path();
             if default_path.exists() {
                 read_config_from_path(&default_path)
             } else {
@@ -38,10 +38,14 @@ fn config_file_path_from_env() -> Option<PathBuf> {
     env::var(CONFIG_FILE_ENV_NAME).ok().map(PathBuf::from)
 }
 
-fn xdg_config_file_path() -> PathBuf {
-    xdg::BaseDirectories::with_prefix(APP_DIR_NAME)
-        .unwrap()
-        .get_config_file(CONFIG_FILE_NAME)
+fn config_file_path() -> PathBuf {
+    use directories::BaseDirs;
+
+    BaseDirs::new()
+        .expect("Couldn't get the base user directories!")
+        .config_dir()
+        .join(APP_DIR_NAME)
+        .join(CONFIG_FILE_NAME)
 }
 
 fn read_config_from_path(path: &Path) -> Result<Config> {
