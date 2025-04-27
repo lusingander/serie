@@ -18,7 +18,7 @@ exclude = ["/.github", "/img"]
 arboard = "3.5.0"
 base64 = "0.22.1"
 chrono = "0.4.40"
-clap = { version = "4.5.36", features = ["derive"] }
+clap = { version = "4.5.37", features = ["derive"] }
 console = "0.15.11"
 fuzzy-matcher = "0.3.7"
 fxhash = "0.2.1"
@@ -30,7 +30,7 @@ rayon = "1.10.0"
 semver = "1.0.26"
 serde = { version = "1.0.219", features = ["derive"] }
 smart-default = "0.7.1"
-toml = "0.8.20"
+toml = "0.8.21"
 tui-input = "0.11.1"
 tui-tree-widget = "0.23.0"
 umbra = "0.4.0"
