@@ -477,7 +477,7 @@ fn load_stashes_as_refs(path: &Path) -> RefMap {
     let mut cmd = Command::new("git")
         .arg("stash")
         .arg("list")
-        .arg(format!("--format={}", format))
+        .arg(format!("--format={format}"))
         .current_dir(path)
         .stdout(Stdio::piped())
         .spawn()

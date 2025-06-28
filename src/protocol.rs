@@ -67,7 +67,7 @@ fn kitty_encode(bytes: &[u8], cell_width: usize, cell_height: usize) -> String {
     for (i, chunk) in chunks.enumerate() {
         s.push_str("\x1b_G");
         if i == 0 {
-            s.push_str(&format!("a=T,f=100,c={},r={},", cell_width, cell_height));
+            s.push_str(&format!("a=T,f=100,c={cell_width},r={cell_height},"));
         }
         if i < total_chunks - 1 {
             s.push_str("m=1;");

@@ -73,7 +73,7 @@ pub fn init() -> (Sender, Receiver) {
                 _ => {}
             },
             Err(e) => {
-                panic!("Failed to read event: {}", e);
+                panic!("Failed to read event: {e}");
             }
         }
     });

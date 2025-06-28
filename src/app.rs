@@ -235,7 +235,7 @@ impl App<'_> {
             StatusLine::NotificationWarn(msg) => Line::raw(msg)
                 .add_modifier(Modifier::BOLD)
                 .fg(self.color_theme.status_warn_fg),
-            StatusLine::NotificationError(msg) => Line::raw(format!("ERROR: {}", msg))
+            StatusLine::NotificationError(msg) => Line::raw(format!("ERROR: {msg}"))
                 .add_modifier(Modifier::BOLD)
                 .fg(self.color_theme.status_error_fg),
         };
@@ -386,7 +386,7 @@ impl App<'_> {
     fn copy_to_clipboard(&self, name: String, value: String) {
         match copy_to_clipboard(value) {
             Ok(_) => {
-                let msg = format!("Copied {} to clipboard successfully", name);
+                let msg = format!("Copied {name} to clipboard successfully");
                 self.tx.send(AppEvent::NotifySuccess(msg));
             }
             Err(msg) => {

@@ -17,7 +17,7 @@ pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>)> {
     let config = match config_file_path_from_env() {
         Some(user_path) => {
             if !user_path.exists() {
-                let msg = format!("Config file not found: {:?}", user_path);
+                let msg = format!("Config file not found: {user_path:?}");
                 return Err(msg.into());
             }
             read_config_from_path(&user_path)

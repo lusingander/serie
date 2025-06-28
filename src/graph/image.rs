@@ -890,7 +890,7 @@ mod tests {
         }
 
         create_output_dirs(OUTPUT_DIR);
-        let file_name = format!("{}/{}.png", OUTPUT_DIR, file_name);
+        let file_name = format!("{OUTPUT_DIR}/{file_name}.png");
         image::save_buffer(
             file_name,
             &img_buf,

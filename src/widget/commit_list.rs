@@ -507,7 +507,7 @@ impl<'a> CommitListState<'a> {
     pub fn search_query_string(&self) -> Option<String> {
         if let SearchState::Searching { .. } = self.search_state {
             let query = self.search_input.value();
-            Some(format!("/{}", query))
+            Some(format!("/{query}"))
         } else {
             None
         }
@@ -522,13 +522,10 @@ impl<'a> CommitListState<'a> {
         {
             let query = self.search_input.value();
             if total_match == 0 {
-                let msg = format!("No matches found (query: \"{}\")", query);
+                let msg = format!("No matches found (query: \"{query}\")");
                 Some((msg, false))
             } else {
-                let msg = format!(
-                    "Match {} of {} (query: \"{}\")",
-                    match_index, total_match, query
-                );
+                let msg = format!("Match {match_index} of {total_match} (query: \"{query}\")");
                 Some((msg, true))
             }
         } else {

@@ -20,7 +20,7 @@ fn straight_001() -> TestResult {
 
     let mut base_date = Utc.with_ymd_and_hms(2024, 1, 1, 1, 2, 3).unwrap();
     for i in 1..=100 {
-        let msg = &format!("{:03}", i);
+        let msg = &format!("{i:03}");
         let date = &base_date.format("%Y-%m-%d").to_string();
         git.commit(msg, date);
         base_date = base_date.checked_add_days(Days::new(1)).unwrap();
@@ -1196,7 +1196,7 @@ fn create_output_dirs(path: &str) {
 }
 
 fn copy_git_dir(path: &Path, name: &str) {
-    let dst_path = format!("{}/{}", OUTPUT_DIR, name);
+    let dst_path = format!("{OUTPUT_DIR}/{name}");
     // dircpy overwrite doesn't seem to work as expected, so delete explicitly
     if Path::new(&dst_path).is_dir() {
         std::fs::remove_dir_all(&dst_path).unwrap();
@@ -1259,7 +1259,7 @@ fn compare_graph_image(option: &GenerateGraphOption) -> Result<(), String> {
         )
         .unwrap();
 
-        return Err(format!("Images are different. diff: {}", diff_file));
+        return Err(format!("Images are different. diff: {diff_file}"));
     }
 
     Ok(())

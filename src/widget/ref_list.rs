@@ -217,7 +217,7 @@ fn refs_to_ref_tree_nodes(ref_names: Vec<String>) -> Vec<RefTreeNode> {
                 let identifier = if parent_identifier.is_empty() {
                     part.to_string()
                 } else {
-                    format!("{}/{}", parent_identifier, part)
+                    format!("{parent_identifier}/{part}")
                 };
                 let node = RefTreeNode {
                     identifier: identifier.clone(),

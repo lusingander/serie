@@ -68,8 +68,7 @@ impl<'de> Deserialize<'de> for KeyBind {
                 };
                 if let Some(conflict_user_event) = key_map.insert(key_event, user_event) {
                     let msg = format!(
-                        "{:?} map to multiple events: {:?}, {:?}",
-                        key_event, user_event, conflict_user_event
+                        "{key_event:?} map to multiple events: {user_event:?}, {conflict_user_event:?}"
                     );
                     return Err(serde::de::Error::custom(msg));
                 }
