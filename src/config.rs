@@ -9,6 +9,8 @@ use umbra::optional;
 
 use crate::{keybind::KeyBind, Result};
 
+const XDG_CONFIG_HOME_ENV_NAME: &str = "XDG_CONFIG_HOME";
+const DEFAULT_CONFIG_DIR: &str = ".config";
 const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
 const CONFIG_FILE_ENV_NAME: &str = "SERIE_CONFIG_FILE";
@@ -23,9 +25,12 @@ pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>)> {
             read_config_from_path(&user_path)
         }
         None => {
-            let default_path = xdg_config_file_path();
-            if default_path.exists() {
-                read_config_from_path(&default_path)
+            if let Some(default_path) = config_file_path() {
+                if default_path.exists() {
+                    read_config_from_path(&default_path)
+                } else {
+                    Ok(Config::default())
+                }
             } else {
                 Ok(Config::default())
             }
@@ -38,10 +43,12 @@ fn config_file_path_from_env() -> Option<PathBuf> {
     env::var(CONFIG_FILE_ENV_NAME).ok().map(PathBuf::from)
 }
 
-fn xdg_config_file_path() -> PathBuf {
-    xdg::BaseDirectories::with_prefix(APP_DIR_NAME)
-        .unwrap()
-        .get_config_file(CONFIG_FILE_NAME)
+fn config_file_path() -> Option<PathBuf> {
+    env::var(XDG_CONFIG_HOME_ENV_NAME)
+        .ok()
+        .map(PathBuf::from)
+        .or_else(|| env::home_dir().map(|home| home.join(DEFAULT_CONFIG_DIR)))
+        .map(|config_dir| config_dir.join(APP_DIR_NAME).join(CONFIG_FILE_NAME))
 }
 
 fn read_config_from_path(path: &Path) -> Result<Config> {
