@@ -10,7 +10,7 @@ license = "MIT"
 keywords = ["git", "cli", "tui", "terminal"]
 categories = ["command-line-utilities"]
 edition = "2021"
-rust-version = "1.79.0"
+rust-version = "1.87.0"
 
 exclude = ["/.github", "/img"]
 
