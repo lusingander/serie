@@ -37,7 +37,6 @@ toml = "0.8.21"
 tui-input = "0.11.1"
 tui-tree-widget = "0.23.0"
 umbra = "0.4.0"
-xdg = "2.5.2"
 
 [dev-dependencies]
 dircpy = "0.3.19"
