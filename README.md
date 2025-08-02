@@ -49,7 +49,13 @@ $ cargo install --locked serie
 $ pacman -S serie
 ```
 
-### [Homebrew (macOS)](https://github.com/lusingander/homebrew-tap/blob/master/serie.rb)
+### [Homebrew](https://formulae.brew.sh/formula/serie)
+
+```
+$ brew install serie
+```
+
+or from [tap](https://github.com/lusingander/homebrew-tap/blob/master/serie.rb):
 
 ```
 $ brew install lusingander/tap/serie
