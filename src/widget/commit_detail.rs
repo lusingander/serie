@@ -107,7 +107,7 @@ impl CommitDetail<'_> {
         paragraph.render(area, buf);
     }
 
-    fn contents(&self, area: Rect) -> (Vec<Line>, Vec<Line>) {
+    fn contents(&self, area: Rect) -> (Vec<Line<'_>>, Vec<Line<'_>>) {
         let mut label_lines: Vec<Line> = Vec::new();
         let mut value_lines: Vec<Line> = Vec::new();
 
@@ -143,7 +143,7 @@ impl CommitDetail<'_> {
         (label_lines, value_lines)
     }
 
-    fn author_lines(&self) -> Vec<Line> {
+    fn author_lines(&self) -> Vec<Line<'_>> {
         self.author_committer_lines(
             &self.commit.author_name,
             &self.commit.author_email,
@@ -151,7 +151,7 @@ impl CommitDetail<'_> {
         )
     }
 
-    fn committer_lines(&self) -> Vec<Line> {
+    fn committer_lines(&self) -> Vec<Line<'_>> {
         self.author_committer_lines(
             &self.commit.committer_name,
             &self.commit.committer_email,
@@ -182,11 +182,11 @@ impl CommitDetail<'_> {
         ]
     }
 
-    fn sha_line(&self) -> Line {
+    fn sha_line(&self) -> Line<'_> {
         Line::raw(self.commit.commit_hash.as_str())
     }
 
-    fn parents_line(&self) -> Line {
+    fn parents_line(&self) -> Line<'_> {
         let mut spans = Vec::new();
         let parents = &self.commit.parent_commit_hashes;
         for (i, hash) in parents
@@ -202,7 +202,7 @@ impl CommitDetail<'_> {
         Line::from(spans)
     }
 
-    fn refs_line(&self) -> Line {
+    fn refs_line(&self) -> Line<'_> {
         let ref_spans = self.refs.iter().filter_map(|r| match r {
             Ref::Branch { name, .. } => Some(
                 Span::raw(name)
@@ -232,7 +232,7 @@ impl CommitDetail<'_> {
         Line::from(spans)
     }
 
-    fn commit_message_lines(&self) -> Vec<Line> {
+    fn commit_message_lines(&self) -> Vec<Line<'_>> {
         let subject_line = Line::from(self.commit.subject.as_str().bold());
 
         let mut lines = vec![subject_line];
@@ -249,7 +249,7 @@ impl CommitDetail<'_> {
         lines
     }
 
-    fn changes_lines(&self) -> Vec<Line> {
+    fn changes_lines(&self) -> Vec<Line<'_>> {
         self.changes
             .iter()
             .map(|c| match c {
@@ -279,11 +279,11 @@ impl CommitDetail<'_> {
             .collect()
     }
 
-    fn empty_line(&self) -> Line {
+    fn empty_line(&self) -> Line<'_> {
         Line::raw("")
     }
 
-    fn divider_line(&self, width: usize) -> Line {
+    fn divider_line(&self, width: usize) -> Line<'_> {
         Line::from("─".repeat(width).fg(self.color_theme.divider_fg))
     }
 

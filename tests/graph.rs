@@ -1024,7 +1024,7 @@ struct GitRepository<'a> {
 }
 
 impl GitRepository<'_> {
-    fn new(path: &Path) -> GitRepository {
+    fn new(path: &'_ Path) -> GitRepository<'_> {
         GitRepository { path }
     }
 
@@ -1111,7 +1111,7 @@ struct GenerateGraphOption<'a> {
 }
 
 impl GenerateGraphOption<'_> {
-    fn new(output_name: &str, sort: git::SortCommit) -> GenerateGraphOption {
+    fn new(output_name: &str, sort: git::SortCommit) -> GenerateGraphOption<'_> {
         GenerateGraphOption { output_name, sort }
     }
 }
