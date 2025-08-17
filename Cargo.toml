@@ -1,6 +1,6 @@
 [package]
 name = "serie"
-version = "0.4.6"
+version = "0.4.7"
 description = "A rich git commit graph in your terminal, like magic"
 authors = ["Kyosuke Fujimoto <kyoro.f@gmail.com>"]
 homepage = "https://github.com/lusingander/serie"

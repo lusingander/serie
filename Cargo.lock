@@ -1667,7 +1667,7 @@ dependencies = [
 
 [[package]]
 name = "serie"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "arboard",
  "base64 0.22.1",
