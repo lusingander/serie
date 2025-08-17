@@ -11,7 +11,7 @@ use ratatui::{
 
 use crate::{
     color::{ColorTheme, GraphColorSet},
-    config::{CursorType, UiConfig},
+    config::{CoreConfig, CursorType, UiConfig},
     event::{AppEvent, Receiver, Sender, UserEvent},
     external::copy_to_clipboard,
     git::Repository,
@@ -51,6 +51,7 @@ impl<'a> App<'a> {
         graph_image_manager: GraphImageManager<'a>,
         graph: &'a Graph,
         keybind: &'a KeyBind,
+        core_config: &'a CoreConfig,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
         graph_color_set: &'a GraphColorSet,
@@ -84,6 +85,8 @@ impl<'a> App<'a> {
             graph_cell_width,
             head,
             ref_name_to_commit_index_map,
+            core_config.search.ignore_case,
+            core_config.search.fuzzy,
         );
         let view = View::of_list(commit_list_state, ui_config, color_theme, tx.clone());
 

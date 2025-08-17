@@ -90,7 +90,7 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 pub fn run() -> Result<()> {
     let args = Args::parse();
-    let (ui_config, graph_config, key_bind_patch) = config::load()?;
+    let (core_config, ui_config, graph_config, key_bind_patch) = config::load()?;
     let key_bind = keybind::KeyBind::new(key_bind_patch);
 
     let color_theme = color::ColorTheme::default();
@@ -121,6 +121,7 @@ pub fn run() -> Result<()> {
         graph_image_manager,
         &graph,
         &key_bind,
+        &core_config,
         &ui_config,
         &color_theme,
         &graph_color_set,

@@ -15,7 +15,7 @@ const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
 const CONFIG_FILE_ENV_NAME: &str = "SERIE_CONFIG_FILE";
 
-pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>)> {
+pub fn load() -> Result<(CoreConfig, UiConfig, GraphConfig, Option<KeyBind>)> {
     let config = match config_file_path_from_env() {
         Some(user_path) => {
             if !user_path.exists() {
@@ -36,7 +36,7 @@ pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>)> {
             }
         }
     }?;
-    Ok((config.ui, config.graph, config.keybind))
+    Ok((config.core, config.ui, config.graph, config.keybind))
 }
 
 fn config_file_path_from_env() -> Option<PathBuf> {
@@ -61,11 +61,29 @@ fn read_config_from_path(path: &Path) -> Result<Config> {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct Config {
     #[nested]
+    core: CoreConfig,
+    #[nested]
     ui: UiConfig,
     #[nested]
     graph: GraphConfig,
     // The user customed keybinds, please ref `assets/default-keybind.toml`
     keybind: Option<KeyBind>,
+}
+
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct CoreConfig {
+    #[nested]
+    pub search: CoreSearchConfig,
+}
+
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+pub struct CoreSearchConfig {
+    #[default = false]
+    pub ignore_case: bool,
+    #[default = false]
+    pub fuzzy: bool,
 }
 
 #[optional(derives = [Deserialize])]
@@ -160,6 +178,12 @@ mod tests {
     fn test_config_default() {
         let actual = Config::default();
         let expected = Config {
+            core: CoreConfig {
+                search: CoreSearchConfig {
+                    ignore_case: false,
+                    fuzzy: false,
+                },
+            },
             ui: UiConfig {
                 common: UiCommonConfig {
                     cursor_type: CursorType::Native,
@@ -200,6 +224,9 @@ mod tests {
     #[test]
     fn test_config_complete_toml() {
         let toml = r##"
+            [core.search]
+            ignore_case = true
+            fuzzy = true
             [ui.common]
             cursor_type = { Virtual = "|" }
             [ui.list]
@@ -221,6 +248,12 @@ mod tests {
         "##;
         let actual: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
         let expected = Config {
+            core: CoreConfig {
+                search: CoreSearchConfig {
+                    ignore_case: true,
+                    fuzzy: true,
+                },
+            },
             ui: UiConfig {
                 common: UiCommonConfig {
                     cursor_type: CursorType::Virtual("|".into()),
@@ -259,6 +292,12 @@ mod tests {
         "#;
         let actual: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
         let expected = Config {
+            core: CoreConfig {
+                search: CoreSearchConfig {
+                    ignore_case: false,
+                    fuzzy: false,
+                },
+            },
             ui: UiConfig {
                 common: UiCommonConfig {
                     cursor_type: CursorType::Native,
