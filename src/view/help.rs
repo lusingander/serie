@@ -21,6 +21,7 @@ pub struct HelpView<'a> {
 
     help_key_lines: Vec<Line<'static>>,
     help_value_lines: Vec<Line<'static>>,
+    help_key_line_max_width: u16,
 
     offset: usize,
 
@@ -38,10 +39,16 @@ impl HelpView<'_> {
         keybind: &'a KeyBind,
     ) -> HelpView<'a> {
         let (help_key_lines, help_value_lines) = build_lines(color_theme, keybind);
+        let help_key_line_max_width = help_key_lines
+            .iter()
+            .map(|line| line.width())
+            .max()
+            .unwrap_or_default() as u16;
         HelpView {
             before,
             help_key_lines,
             help_value_lines,
+            help_key_line_max_width,
             offset: 0,
             image_protocol,
             tx,
@@ -80,9 +87,17 @@ impl HelpView<'_> {
             return;
         }
 
-        let [key_area, value_area] =
+        let [mut key_area, mut value_area] =
             Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)])
                 .areas(area);
+
+        if key_area.width - 4 /* padding */ < self.help_key_line_max_width {
+            [key_area, value_area] = Layout::horizontal([
+                Constraint::Length(self.help_key_line_max_width + 4),
+                Constraint::Min(0),
+            ])
+            .areas(area);
+        }
 
         let key_lines: Vec<Line> = self
             .help_key_lines
