@@ -15,11 +15,11 @@ rust-version = "1.87.0"
 exclude = ["/.github", "/img"]
 
 [dependencies]
-arboard = "3.5.0"
+arboard = "3.6.0"
 base64 = "0.22.1"
-chrono = "0.4.40"
-clap = { version = "4.5.37", features = ["derive"] }
-console = "0.15.11"
+chrono = "0.4.41"
+clap = { version = "4.5.45", features = ["derive"] }
+console = "0.16.0"
 fuzzy-matcher = "0.3.7"
 fxhash = "0.2.1"
 image = { version = "0.25.6", default-features = false, features = [
@@ -29,19 +29,19 @@ image = { version = "0.25.6", default-features = false, features = [
 laurier = "0.1.0"
 once_cell = "1.21.3"
 ratatui = "0.29.0"
-rayon = "1.10.0"
+rayon = "1.11.0"
 semver = "1.0.26"
 serde = { version = "1.0.219", features = ["derive"] }
 smart-default = "0.7.1"
-toml = "0.8.21"
-tui-input = "0.11.1"
-tui-tree-widget = "0.23.0"
+toml = "0.9.5"
+tui-input = "0.14.0"
+tui-tree-widget = "0.23.1"
 umbra = "0.4.0"
 
 [dev-dependencies]
 dircpy = "0.3.19"
-rstest = "0.25.0"
-tempfile = "3.19.1"
+rstest = "0.26.1"
+tempfile = "3.20.0"
 text-to-png = "0.2.0"
 
 [profile.release]
