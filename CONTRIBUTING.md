@@ -28,8 +28,6 @@ If the application does not work with your terminal emulator, please first check
 
 For information on tested terminal emulators, refer to [Compatibility](./README.md#compatibility).
 
-Please share your experience with other terminals on the [Discussions](https://github.com/lusingander/serie/discussions/29). Please share any necessary information listed at the top of the Discussions. Since implementations of image display protocols in each terminals have differences in behavior and unimplemented features, it is important to check their actual behavior.
-
 ## Pull Requests
 
 We welcome pull requests, but please note that they are not guaranteed to be accepted. Following this guideline will increase the likelihood of your pull request being approved.
@@ -53,7 +51,3 @@ If existing graphs are modified, overwrite the images and ensure no unexpected c
 ## License
 
 This project is licensed under the [MIT License](LICENSE). By contributing, contributors agree to abide by the terms of the applicable license.
-
-## Additional Information
-
-If you have any questions or concerns, please use the [Discussions](https://github.com/lusingander/serie/discussions).
