@@ -195,6 +195,9 @@ pub struct CommitListState<'a> {
     offset: usize,
     total: usize,
     height: usize,
+
+    default_ignore_case: bool,
+    default_fuzzy: bool,
 }
 
 impl<'a> CommitListState<'a> {
@@ -204,6 +207,8 @@ impl<'a> CommitListState<'a> {
         graph_cell_width: u16,
         head: &'a Head,
         ref_name_to_commit_index_map: HashMap<&'a str, usize>,
+        default_ignore_case: bool,
+        default_fuzzy: bool,
     ) -> CommitListState<'a> {
         let total = commits.len();
         CommitListState {
@@ -219,6 +224,8 @@ impl<'a> CommitListState<'a> {
             offset: 0,
             total,
             height: 0,
+            default_ignore_case,
+            default_fuzzy,
         }
     }
 
@@ -398,8 +405,8 @@ impl<'a> CommitListState<'a> {
             self.search_state = SearchState::Searching {
                 start_index: self.current_selected_index(),
                 match_index: 0,
-                ignore_case: false,
-                fuzzy: false,
+                ignore_case: self.default_ignore_case,
+                fuzzy: self.default_fuzzy,
                 transient_message: TransientMessage::None,
             };
             self.search_input.reset();

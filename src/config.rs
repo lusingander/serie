@@ -15,7 +15,7 @@ const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
 const CONFIG_FILE_ENV_NAME: &str = "SERIE_CONFIG_FILE";
 
-pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>)> {
+pub fn load() -> Result<(CoreConfig, UiConfig, GraphConfig, Option<KeyBind>)> {
     let config = match config_file_path_from_env() {
         Some(user_path) => {
             if !user_path.exists() {
@@ -36,7 +36,7 @@ pub fn load() -> Result<(UiConfig, GraphConfig, Option<KeyBind>)> {
             }
         }
     }?;
-    Ok((config.ui, config.graph, config.keybind))
+    Ok((config.core, config.ui, config.graph, config.keybind))
 }
 
 fn config_file_path_from_env() -> Option<PathBuf> {
