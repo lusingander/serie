@@ -244,6 +244,14 @@ If the config file exists but some items are not set, the default values will be
 The values set in this example are the default values.
 
 ```toml
+[core.search]
+# Whether to enable ignore case by default.
+# type: boolean
+ignore_case = false
+# Whether to enable fuzzy matching by default.
+# type: boolean
+fuzzy = false
+
 [ui.common]
 # The type of a cursor to display in the input.
 # If `cursor_type = "Native"` is set, the terminal native cursor is used.
