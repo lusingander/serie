@@ -117,3 +117,22 @@ pub enum UserEvent {
     FullCopy,
     Unknown,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UserEventWithCount {
+    pub event: UserEvent,
+    pub count: usize,
+}
+
+impl UserEventWithCount {
+    pub fn new(event: UserEvent, count: usize) -> Self {
+        Self {
+            event,
+            count: if count == 0 { 1 } else { count },
+        }
+    }
+
+    pub fn from_event(event: UserEvent) -> Self {
+        Self::new(event, 1)
+    }
+}

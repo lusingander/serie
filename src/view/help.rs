@@ -9,7 +9,7 @@ use ratatui::{
 
 use crate::{
     color::ColorTheme,
-    event::{AppEvent, Sender, UserEvent},
+    event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     keybind::KeyBind,
     protocol::ImageProtocol,
     view::View,
@@ -56,7 +56,10 @@ impl HelpView<'_> {
         }
     }
 
-    pub fn handle_event(&mut self, event: UserEvent, _: KeyEvent) {
+    pub fn handle_event_with_count(&mut self, event_with_count: UserEventWithCount, _: KeyEvent) {
+        let event = event_with_count.event;
+        let count = event_with_count.count;
+
         match event {
             UserEvent::Quit => {
                 self.tx.send(AppEvent::Quit);
@@ -66,10 +69,14 @@ impl HelpView<'_> {
                 self.tx.send(AppEvent::CloseHelp);
             }
             UserEvent::NavigateDown => {
-                self.scroll_down();
+                for _ in 0..count {
+                    self.scroll_down();
+                }
             }
             UserEvent::NavigateUp => {
-                self.scroll_up();
+                for _ in 0..count {
+                    self.scroll_up();
+                }
             }
             UserEvent::GoToTop => {
                 self.select_first();
