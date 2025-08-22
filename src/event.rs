@@ -136,3 +136,39 @@ impl UserEventWithCount {
         Self::new(event, 1)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_user_event_with_count_new() {
+        let event = UserEventWithCount::new(UserEvent::NavigateUp, 5);
+        assert_eq!(event.event, UserEvent::NavigateUp);
+        assert_eq!(event.count, 5);
+    }
+
+    #[test]
+    fn test_user_event_with_count_new_zero_count() {
+        let event = UserEventWithCount::new(UserEvent::NavigateDown, 0);
+        assert_eq!(event.event, UserEvent::NavigateDown);
+        assert_eq!(event.count, 1); // zero should be converted to 1
+    }
+
+    #[test]
+    fn test_user_event_with_count_from_event() {
+        let event = UserEventWithCount::from_event(UserEvent::NavigateLeft);
+        assert_eq!(event.event, UserEvent::NavigateLeft);
+        assert_eq!(event.count, 1);
+    }
+
+    #[test]
+    fn test_user_event_with_count_equality() {
+        let event1 = UserEventWithCount::new(UserEvent::ScrollUp, 3);
+        let event2 = UserEventWithCount::new(UserEvent::ScrollUp, 3);
+        let event3 = UserEventWithCount::new(UserEvent::ScrollDown, 3);
+
+        assert_eq!(event1, event2);
+        assert_ne!(event1, event3);
+    }
+}
