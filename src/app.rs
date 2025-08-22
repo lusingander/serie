@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use ratatui::{
     backend::Backend,
+    crossterm::event::{KeyCode, KeyEvent},
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
     text::Line,
@@ -12,7 +13,7 @@ use ratatui::{
 use crate::{
     color::{ColorTheme, GraphColorSet},
     config::{CoreConfig, CursorType, UiConfig},
-    event::{AppEvent, Receiver, Sender, UserEvent},
+    event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
     external::copy_to_clipboard,
     git::Repository,
     graph::{CellWidthType, Graph, GraphImageManager},
@@ -43,6 +44,7 @@ pub struct App<'a> {
     color_theme: &'a ColorTheme,
     image_protocol: ImageProtocol,
     tx: Sender,
+    numeric_prefix: String,
 }
 
 impl<'a> App<'a> {
@@ -99,6 +101,7 @@ impl<'a> App<'a> {
             color_theme,
             image_protocol,
             tx,
+            numeric_prefix: String::new(),
         }
     }
 }
@@ -132,13 +135,31 @@ impl App<'_> {
 
                     match self.keybind.get(&key) {
                         Some(UserEvent::ForceQuit) => {
+                            self.numeric_prefix.clear();
                             self.tx.send(AppEvent::Quit);
                         }
                         Some(ue) => {
-                            self.view.handle_event(*ue, key);
+                            let event_with_count = self.process_numeric_prefix(*ue, key);
+                            if let Some(event_with_count) = event_with_count {
+                                self.view.handle_event_with_count(event_with_count, key);
+                                self.numeric_prefix.clear();
+                            }
                         }
                         None => {
-                            self.view.handle_event(UserEvent::Unknown, key);
+                            if let KeyCode::Char(c) = key.code {
+                                if c.is_ascii_digit()
+                                    && (c != '0' || !self.numeric_prefix.is_empty())
+                                {
+                                    self.numeric_prefix.push(c);
+                                    continue;
+                                }
+                            }
+
+                            self.numeric_prefix.clear();
+                            self.view.handle_event_with_count(
+                                UserEventWithCount::from_event(UserEvent::Unknown),
+                                key,
+                            );
                         }
                     }
                 }
@@ -266,6 +287,38 @@ impl App<'_> {
 }
 
 impl App<'_> {
+    fn process_numeric_prefix(
+        &self,
+        user_event: UserEvent,
+        _key: KeyEvent,
+    ) -> Option<UserEventWithCount> {
+        let count = if self.numeric_prefix.is_empty() {
+            1
+        } else {
+            self.numeric_prefix.parse::<usize>().unwrap_or(1)
+        };
+
+        match user_event {
+            UserEvent::NavigateUp
+            | UserEvent::NavigateDown
+            | UserEvent::NavigateLeft
+            | UserEvent::NavigateRight
+            | UserEvent::ScrollUp
+            | UserEvent::ScrollDown
+            | UserEvent::PageUp
+            | UserEvent::PageDown
+            | UserEvent::HalfPageUp
+            | UserEvent::HalfPageDown => Some(UserEventWithCount::new(user_event, count)),
+            _ => {
+                if self.numeric_prefix.is_empty() {
+                    Some(UserEventWithCount::new(user_event, 1))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
     fn open_detail(&mut self) {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
@@ -396,5 +449,153 @@ impl App<'_> {
                 self.tx.send(AppEvent::NotifyError(msg));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Helper function to test numeric prefix parsing logic
+    fn test_process_numeric_prefix_logic(
+        numeric_prefix: &str,
+        user_event: UserEvent,
+    ) -> Option<UserEventWithCount> {
+        let count = if numeric_prefix.is_empty() {
+            1
+        } else {
+            numeric_prefix.parse::<usize>().unwrap_or(1)
+        };
+
+        match user_event {
+            UserEvent::NavigateUp
+            | UserEvent::NavigateDown
+            | UserEvent::NavigateLeft
+            | UserEvent::NavigateRight
+            | UserEvent::ScrollUp
+            | UserEvent::ScrollDown
+            | UserEvent::PageUp
+            | UserEvent::PageDown
+            | UserEvent::HalfPageUp
+            | UserEvent::HalfPageDown => Some(UserEventWithCount::new(user_event, count)),
+            _ => {
+                if numeric_prefix.is_empty() {
+                    Some(UserEventWithCount::new(user_event, 1))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_process_numeric_prefix_no_prefix() {
+        let result = test_process_numeric_prefix_logic("", UserEvent::NavigateDown);
+
+        assert!(result.is_some());
+        let event_with_count = result.unwrap();
+        assert_eq!(event_with_count.event, UserEvent::NavigateDown);
+        assert_eq!(event_with_count.count, 1);
+    }
+
+    #[test]
+    fn test_process_numeric_prefix_with_prefix() {
+        let result = test_process_numeric_prefix_logic("5", UserEvent::NavigateDown);
+
+        assert!(result.is_some());
+        let event_with_count = result.unwrap();
+        assert_eq!(event_with_count.event, UserEvent::NavigateDown);
+        assert_eq!(event_with_count.count, 5);
+    }
+
+    #[test]
+    fn test_process_numeric_prefix_invalid_number() {
+        let result = test_process_numeric_prefix_logic("abc", UserEvent::NavigateDown);
+
+        assert!(result.is_some());
+        let event_with_count = result.unwrap();
+        assert_eq!(event_with_count.event, UserEvent::NavigateDown);
+        assert_eq!(event_with_count.count, 1); // Should fallback to 1
+    }
+
+    #[test]
+    fn test_process_numeric_prefix_countable_events() {
+        let countable_events = [
+            UserEvent::NavigateUp,
+            UserEvent::NavigateDown,
+            UserEvent::NavigateLeft,
+            UserEvent::NavigateRight,
+            UserEvent::ScrollUp,
+            UserEvent::ScrollDown,
+            UserEvent::PageUp,
+            UserEvent::PageDown,
+            UserEvent::HalfPageUp,
+            UserEvent::HalfPageDown,
+        ];
+
+        for event in countable_events {
+            let result = test_process_numeric_prefix_logic("3", event);
+            assert!(result.is_some());
+            let event_with_count = result.unwrap();
+            assert_eq!(event_with_count.event, event);
+            assert_eq!(event_with_count.count, 3);
+        }
+    }
+
+    #[test]
+    fn test_process_numeric_prefix_non_countable_events() {
+        let non_countable_events = [
+            UserEvent::Quit,
+            UserEvent::Confirm,
+            UserEvent::Cancel,
+            UserEvent::HelpToggle,
+            UserEvent::Search,
+            UserEvent::ShortCopy,
+            UserEvent::FullCopy,
+        ];
+
+        for event in non_countable_events {
+            let result = test_process_numeric_prefix_logic("5", event);
+            assert!(result.is_none()); // Should return None when prefix exists but event isn't countable
+        }
+    }
+
+    #[test]
+    fn test_process_numeric_prefix_non_countable_events_no_prefix() {
+        let result = test_process_numeric_prefix_logic("", UserEvent::Confirm);
+        assert!(result.is_some());
+        let event_with_count = result.unwrap();
+        assert_eq!(event_with_count.event, UserEvent::Confirm);
+        assert_eq!(event_with_count.count, 1);
+    }
+
+    #[test]
+    fn test_process_numeric_prefix_large_numbers() {
+        let result = test_process_numeric_prefix_logic("999", UserEvent::NavigateDown);
+
+        assert!(result.is_some());
+        let event_with_count = result.unwrap();
+        assert_eq!(event_with_count.event, UserEvent::NavigateDown);
+        assert_eq!(event_with_count.count, 999);
+    }
+
+    #[test]
+    fn test_process_numeric_prefix_zero() {
+        let result = test_process_numeric_prefix_logic("0", UserEvent::NavigateUp);
+
+        assert!(result.is_some());
+        let event_with_count = result.unwrap();
+        assert_eq!(event_with_count.event, UserEvent::NavigateUp);
+        assert_eq!(event_with_count.count, 1); // UserEventWithCount::new converts 0 to 1
+    }
+
+    #[test]
+    fn test_process_numeric_prefix_multi_digit() {
+        let result = test_process_numeric_prefix_logic("42", UserEvent::ScrollDown);
+
+        assert!(result.is_some());
+        let event_with_count = result.unwrap();
+        assert_eq!(event_with_count.event, UserEvent::ScrollDown);
+        assert_eq!(event_with_count.count, 42);
     }
 }
