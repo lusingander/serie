@@ -7,7 +7,7 @@ use ratatui::{
 use crate::{
     color::ColorTheme,
     config::UiConfig,
-    event::{AppEvent, Sender, UserEvent},
+    event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     git::Ref,
     widget::{
         commit_list::{CommitList, CommitListState},
@@ -45,7 +45,10 @@ impl<'a> RefsView<'a> {
         }
     }
 
-    pub fn handle_event(&mut self, event: UserEvent, _: KeyEvent) {
+    pub fn handle_event_with_count(&mut self, event_with_count: UserEventWithCount, _: KeyEvent) {
+        let event = event_with_count.event;
+        let count = event_with_count.count;
+
         match event {
             UserEvent::Quit => {
                 self.tx.send(AppEvent::Quit);
@@ -54,11 +57,15 @@ impl<'a> RefsView<'a> {
                 self.tx.send(AppEvent::CloseRefs);
             }
             UserEvent::NavigateDown => {
-                self.ref_list_state.select_next();
+                for _ in 0..count {
+                    self.ref_list_state.select_next();
+                }
                 self.update_commit_list_selected();
             }
             UserEvent::NavigateUp => {
-                self.ref_list_state.select_prev();
+                for _ in 0..count {
+                    self.ref_list_state.select_prev();
+                }
                 self.update_commit_list_selected();
             }
             UserEvent::GoToTop => {

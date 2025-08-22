@@ -3,7 +3,7 @@ use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 use crate::{
     color::ColorTheme,
     config::UiConfig,
-    event::{AppEvent, Sender, UserEvent},
+    event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     widget::commit_list::{CommitList, CommitListState, SearchState},
 };
 
@@ -31,7 +31,9 @@ impl<'a> ListView<'a> {
         }
     }
 
-    pub fn handle_event(&mut self, event: UserEvent, key: KeyEvent) {
+    pub fn handle_event_with_count(&mut self, event_with_count: UserEventWithCount, key: KeyEvent) {
+        let event = event_with_count.event;
+        let count = event_with_count.count;
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
             match event {
                 UserEvent::Confirm => {
@@ -62,10 +64,14 @@ impl<'a> ListView<'a> {
                     self.tx.send(AppEvent::Quit);
                 }
                 UserEvent::NavigateDown => {
-                    self.as_mut_list_state().select_next();
+                    for _ in 0..count {
+                        self.as_mut_list_state().select_next();
+                    }
                 }
                 UserEvent::NavigateUp => {
-                    self.as_mut_list_state().select_prev();
+                    for _ in 0..count {
+                        self.as_mut_list_state().select_prev();
+                    }
                 }
                 UserEvent::GoToParent => {
                     self.as_mut_list_state().select_parent();
@@ -77,22 +83,34 @@ impl<'a> ListView<'a> {
                     self.as_mut_list_state().select_last();
                 }
                 UserEvent::ScrollDown => {
-                    self.as_mut_list_state().scroll_down();
+                    for _ in 0..count {
+                        self.as_mut_list_state().scroll_down();
+                    }
                 }
                 UserEvent::ScrollUp => {
-                    self.as_mut_list_state().scroll_up();
+                    for _ in 0..count {
+                        self.as_mut_list_state().scroll_up();
+                    }
                 }
                 UserEvent::PageDown => {
-                    self.as_mut_list_state().scroll_down_page();
+                    for _ in 0..count {
+                        self.as_mut_list_state().scroll_down_page();
+                    }
                 }
                 UserEvent::PageUp => {
-                    self.as_mut_list_state().scroll_up_page();
+                    for _ in 0..count {
+                        self.as_mut_list_state().scroll_up_page();
+                    }
                 }
                 UserEvent::HalfPageDown => {
-                    self.as_mut_list_state().scroll_down_half();
+                    for _ in 0..count {
+                        self.as_mut_list_state().scroll_down_half();
+                    }
                 }
                 UserEvent::HalfPageUp => {
-                    self.as_mut_list_state().scroll_up_half();
+                    for _ in 0..count {
+                        self.as_mut_list_state().scroll_up_half();
+                    }
                 }
                 UserEvent::SelectTop => {
                     self.as_mut_list_state().select_high();
