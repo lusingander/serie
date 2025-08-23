@@ -814,18 +814,29 @@ impl CommitList<'_> {
                         commit.subject.to_string()
                     };
 
+                    let line_number = commit.line_number + 1; // 1-based
+                    let prefix = format!("{:>4} | ", line_number);
+                    let subject_with_line = format!("{}{}", prefix, subject);
+
                     let sub_spans =
                         if let Some(pos) = state.search_matches[state.offset + i].subject.clone() {
+                            let prefix_len = prefix.len();
+                            let shifted_pos = SearchMatchPosition::new(
+                                pos.matched_indices
+                                    .iter()
+                                    .map(|&idx| idx + prefix_len)
+                                    .collect(),
+                            );
                             highlighted_spans(
-                                subject.into(),
-                                pos,
+                                subject_with_line.into(),
+                                shifted_pos,
                                 self.ctx.color_theme.list_subject_fg,
                                 Modifier::empty(),
                                 &self.ctx.color_theme,
                                 truncate,
                             )
                         } else {
-                            vec![subject.fg(self.ctx.color_theme.list_subject_fg)]
+                            vec![subject_with_line.fg(self.ctx.color_theme.list_subject_fg)]
                         };
 
                     spans.extend(sub_spans)
