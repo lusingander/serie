@@ -803,17 +803,20 @@ impl CommitList<'_> {
                         commit.subject.to_string()
                     };
 
+                    let line_number = commit.line_number + 1; // 1-based
+                    let subject_with_line = format!("{:>4} | {}", line_number, subject);
+
                     let sub_spans =
                         if let Some(pos) = state.search_matches[state.offset + i].subject.clone() {
                             highlighted_spans(
-                                subject,
+                                subject_with_line,
                                 pos,
                                 self.color_theme.list_subject_fg,
                                 self.color_theme,
                                 truncate,
                             )
                         } else {
-                            vec![subject.into()]
+                            vec![subject_with_line.into()]
                         };
 
                     spans.extend(sub_spans)
