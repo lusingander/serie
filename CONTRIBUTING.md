@@ -38,6 +38,13 @@ We welcome pull requests, but please note that they are not guaranteed to be acc
 - Creating a pull request does not necessarily require an issue. But if the problem is complex, creating an issue beforehand might make the process smoother.
 - Do not include fixes that are not directly related to the pull request topic.
 
+### Continuous Integration
+
+We use [GitHub Actions](https://github.com/lusingander/serie/blob/master/.github/workflows/build.yml) to perform basic checks:
+
+- Run both stable and MSRV versions of Rust.
+- Run build, test, format, and lint.
+
 ### Improving the Commit Graph
 
 Improvements to the commit graph are welcome.
