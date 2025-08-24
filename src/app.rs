@@ -138,12 +138,10 @@ impl App<'_> {
                             self.tx.send(AppEvent::Quit);
                         }
                         Some(ue) => {
-                            if let Some(event_with_count) =
-                                process_numeric_prefix(&self.numeric_prefix, *ue, key)
-                            {
-                                self.view.handle_event(event_with_count, key);
-                                self.numeric_prefix.clear();
-                            }
+                            let event_with_count =
+                                process_numeric_prefix(&self.numeric_prefix, *ue, key);
+                            self.view.handle_event(event_with_count, key);
+                            self.numeric_prefix.clear();
                         }
                         None => {
                             if let KeyCode::Char(c) = key.code {
@@ -430,19 +428,16 @@ fn process_numeric_prefix(
     numeric_prefix: &str,
     user_event: UserEvent,
     _key_event: KeyEvent,
-) -> Option<UserEventWithCount> {
-    let count = if numeric_prefix.is_empty() {
-        1
-    } else {
-        numeric_prefix.parse::<usize>().unwrap_or(1)
-    };
-
+) -> UserEventWithCount {
     if user_event.is_countable() {
-        Some(UserEventWithCount::new(user_event, count))
-    } else if numeric_prefix.is_empty() {
-        Some(UserEventWithCount::from_event(user_event))
+        let count = if numeric_prefix.is_empty() {
+            1
+        } else {
+            numeric_prefix.parse::<usize>().unwrap_or(1)
+        };
+        UserEventWithCount::new(user_event, count)
     } else {
-        None
+        UserEventWithCount::from_event(user_event)
     }
 }
 
@@ -454,18 +449,18 @@ mod tests {
 
     #[rustfmt::skip]
     #[rstest]
-    #[case("",    UserEvent::NavigateDown, Some(UserEventWithCount::new(UserEvent::NavigateDown, 1)))] // no prefix
-    #[case("5",   UserEvent::NavigateUp,   Some(UserEventWithCount::new(UserEvent::NavigateUp, 5)))] // with prefix
-    #[case("0",   UserEvent::PageDown,     Some(UserEventWithCount::new(UserEvent::PageDown, 1)))] // zero should be converted to 1
-    #[case("42",  UserEvent::ScrollDown,   Some(UserEventWithCount::new(UserEvent::ScrollDown, 42)))] // multi-digit number
-    #[case("999", UserEvent::PageDown,     Some(UserEventWithCount::new(UserEvent::PageDown, 999)))] // large number
-    #[case("abc", UserEvent::ScrollUp,     Some(UserEventWithCount::new(UserEvent::ScrollUp, 1)))] // should fallback to 1
-    #[case("5",   UserEvent::Quit,         None)] // non-countable event with prefix
-    #[case("",    UserEvent::Confirm,      Some(UserEventWithCount::new(UserEvent::Confirm, 1)))] // non-countable event without prefix
+    #[case("",    UserEvent::NavigateDown, UserEventWithCount::new(UserEvent::NavigateDown, 1))] // no prefix
+    #[case("5",   UserEvent::NavigateUp,   UserEventWithCount::new(UserEvent::NavigateUp, 5))] // with prefix
+    #[case("0",   UserEvent::PageDown,     UserEventWithCount::new(UserEvent::PageDown, 1))] // zero should be converted to 1
+    #[case("42",  UserEvent::ScrollDown,   UserEventWithCount::new(UserEvent::ScrollDown, 42))] // multi-digit number
+    #[case("999", UserEvent::PageDown,     UserEventWithCount::new(UserEvent::PageDown, 999))] // large number
+    #[case("abc", UserEvent::ScrollUp,     UserEventWithCount::new(UserEvent::ScrollUp, 1))] // should fallback to 1
+    #[case("5",   UserEvent::Quit,         UserEventWithCount::new(UserEvent::Quit, 1))] // non-countable event with prefix
+    #[case("",    UserEvent::Confirm,      UserEventWithCount::new(UserEvent::Confirm, 1))] // non-countable event without prefix
     fn test_process_numeric_prefix(
         #[case] numeric_prefix: &str,
         #[case] user_event: UserEvent,
-        #[case] expected: Option<UserEventWithCount>,
+        #[case] expected: UserEventWithCount,
     ) {
         let dummy_key_event = KeyEvent::from(KeyCode::Enter); // KeyEvent is not used in the logic
         let actual = process_numeric_prefix(numeric_prefix, user_event, dummy_key_event);
