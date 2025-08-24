@@ -133,7 +133,17 @@ impl App<'_> {
                         }
                     }
 
-                    match self.keybind.get(&key) {
+                    let user_event = self.keybind.get(&key);
+
+                    if let Some(UserEvent::Cancel) = user_event {
+                        if !self.numeric_prefix.is_empty() {
+                            // Clear numeric prefix and cancel the event
+                            self.numeric_prefix.clear();
+                            continue;
+                        }
+                    }
+
+                    match user_event {
                         Some(UserEvent::ForceQuit) => {
                             self.tx.send(AppEvent::Quit);
                         }
