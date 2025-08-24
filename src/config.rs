@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     env,
     path::{Path, PathBuf},
 };
@@ -75,6 +76,8 @@ struct Config {
 pub struct CoreConfig {
     #[nested]
     pub search: CoreSearchConfig,
+    #[nested]
+    pub user_command: CoreUserCommandConfig,
 }
 
 #[optional(derives = [Deserialize])]
@@ -84,6 +87,20 @@ pub struct CoreSearchConfig {
     pub ignore_case: bool,
     #[default = false]
     pub fuzzy: bool,
+}
+
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+pub struct CoreUserCommandConfig {
+    #[default(HashMap::from([("1".into(), vec![
+        "git".into(),
+        "--no-pager".into(),
+        "diff".into(),
+        "--color=always".into(),
+        "{{parent_hash}}".into(),
+        "{{target_hash}}".into(),
+    ])]))]
+    pub commands: HashMap<String, Vec<String>>,
 }
 
 #[optional(derives = [Deserialize])]
@@ -192,6 +209,19 @@ mod tests {
                     ignore_case: false,
                     fuzzy: false,
                 },
+                user_command: CoreUserCommandConfig {
+                    commands: HashMap::from([(
+                        "1".into(),
+                        vec![
+                            "git".into(),
+                            "--no-pager".into(),
+                            "diff".into(),
+                            "--color=always".into(),
+                            "{{parent_hash}}".into(),
+                            "{{target_hash}}".into(),
+                        ],
+                    )]),
+                },
             },
             ui: UiConfig {
                 common: UiCommonConfig {
@@ -237,6 +267,10 @@ mod tests {
             [core.search]
             ignore_case = true
             fuzzy = true
+            [core.user_command]
+            commands.1 = ["git", "diff", "{{parent_hash}}", "{{target_hash}}"]
+            commands.2 = ["echo", "hello"]
+            commands.10 = ["echo", "world"]
             [ui.common]
             cursor_type = { Virtual = "|" }
             [ui.list]
@@ -264,6 +298,21 @@ mod tests {
                 search: CoreSearchConfig {
                     ignore_case: true,
                     fuzzy: true,
+                },
+                user_command: CoreUserCommandConfig {
+                    commands: HashMap::from([
+                        (
+                            "1".into(),
+                            vec![
+                                "git".into(),
+                                "diff".into(),
+                                "{{parent_hash}}".into(),
+                                "{{target_hash}}".into(),
+                            ],
+                        ),
+                        ("2".into(), vec!["echo".into(), "hello".into()]),
+                        ("10".into(), vec!["echo".into(), "world".into()]),
+                    ]),
                 },
             },
             ui: UiConfig {
@@ -309,6 +358,19 @@ mod tests {
                 search: CoreSearchConfig {
                     ignore_case: false,
                     fuzzy: false,
+                },
+                user_command: CoreUserCommandConfig {
+                    commands: HashMap::from([(
+                        "1".into(),
+                        vec![
+                            "git".into(),
+                            "--no-pager".into(),
+                            "diff".into(),
+                            "--color=always".into(),
+                            "{{parent_hash}}".into(),
+                            "{{target_hash}}".into(),
+                        ],
+                    )]),
                 },
             },
             ui: UiConfig {
