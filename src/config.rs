@@ -96,6 +96,8 @@ pub struct UiConfig {
     #[nested]
     pub detail: UiDetailConfig,
     #[nested]
+    pub user_command: UiUserCommandConfig,
+    #[nested]
     pub refs: UiRefsConfig,
 }
 
@@ -136,6 +138,13 @@ pub struct UiDetailConfig {
     pub date_format: String,
     #[default = true]
     pub date_local: bool,
+}
+
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+pub struct UiUserCommandConfig {
+    #[default = 20]
+    pub height: u16,
 }
 
 #[optional(derives = [Deserialize])]
@@ -200,6 +209,7 @@ mod tests {
                     date_format: "%Y-%m-%d %H:%M:%S %z".into(),
                     date_local: true,
                 },
+                user_command: UiUserCommandConfig { height: 20 },
                 refs: UiRefsConfig { width: 26 },
             },
             graph: GraphConfig {
@@ -239,6 +249,8 @@ mod tests {
             height = 30
             date_format = "%Y/%m/%d %H:%M:%S"
             date_local = false
+            [ui.user_command]
+            height = 30
             [ui.refs]
             width = 40
             [graph.color]
@@ -270,6 +282,7 @@ mod tests {
                     date_format: "%Y/%m/%d %H:%M:%S".into(),
                     date_local: false,
                 },
+                user_command: UiUserCommandConfig { height: 30 },
                 refs: UiRefsConfig { width: 40 },
             },
             graph: GraphConfig {
@@ -314,6 +327,7 @@ mod tests {
                     date_format: "%Y-%m-%d %H:%M:%S %z".into(),
                     date_local: true,
                 },
+                user_command: UiUserCommandConfig { height: 20 },
                 refs: UiRefsConfig { width: 26 },
             },
             graph: GraphConfig {
