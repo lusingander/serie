@@ -118,6 +118,22 @@ pub enum UserEvent {
     Unknown,
 }
 
+impl UserEvent {
+    pub fn is_countable(&self) -> bool {
+        matches!(
+            self,
+            UserEvent::NavigateUp
+                | UserEvent::NavigateDown
+                | UserEvent::ScrollUp
+                | UserEvent::ScrollDown
+                | UserEvent::PageUp
+                | UserEvent::PageDown
+                | UserEvent::HalfPageUp
+                | UserEvent::HalfPageDown
+        )
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UserEventWithCount {
     pub event: UserEvent,

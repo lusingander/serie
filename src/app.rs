@@ -297,22 +297,12 @@ impl App<'_> {
             self.numeric_prefix.parse::<usize>().unwrap_or(1)
         };
 
-        match user_event {
-            UserEvent::NavigateUp
-            | UserEvent::NavigateDown
-            | UserEvent::ScrollUp
-            | UserEvent::ScrollDown
-            | UserEvent::PageUp
-            | UserEvent::PageDown
-            | UserEvent::HalfPageUp
-            | UserEvent::HalfPageDown => Some(UserEventWithCount::new(user_event, count)),
-            _ => {
-                if self.numeric_prefix.is_empty() {
-                    Some(UserEventWithCount::new(user_event, 1))
-                } else {
-                    None
-                }
-            }
+        if user_event.is_countable() {
+            Some(UserEventWithCount::new(user_event, count))
+        } else if self.numeric_prefix.is_empty() {
+            Some(UserEventWithCount::from_event(user_event))
+        } else {
+            None
         }
     }
 
@@ -464,22 +454,12 @@ mod tests {
             numeric_prefix.parse::<usize>().unwrap_or(1)
         };
 
-        match user_event {
-            UserEvent::NavigateUp
-            | UserEvent::NavigateDown
-            | UserEvent::ScrollUp
-            | UserEvent::ScrollDown
-            | UserEvent::PageUp
-            | UserEvent::PageDown
-            | UserEvent::HalfPageUp
-            | UserEvent::HalfPageDown => Some(UserEventWithCount::new(user_event, count)),
-            _ => {
-                if numeric_prefix.is_empty() {
-                    Some(UserEventWithCount::new(user_event, 1))
-                } else {
-                    None
-                }
-            }
+        if user_event.is_countable() {
+            Some(UserEventWithCount::new(user_event, count))
+        } else if numeric_prefix.is_empty() {
+            Some(UserEventWithCount::from_event(user_event))
+        } else {
+            None
         }
     }
 
