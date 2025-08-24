@@ -138,8 +138,9 @@ impl App<'_> {
                             self.tx.send(AppEvent::Quit);
                         }
                         Some(ue) => {
-                            let event_with_count = self.process_numeric_prefix(*ue, key);
-                            if let Some(event_with_count) = event_with_count {
+                            if let Some(event_with_count) =
+                                process_numeric_prefix(&self.numeric_prefix, *ue, key)
+                            {
                                 self.view.handle_event(event_with_count, key);
                                 self.numeric_prefix.clear();
                             }
@@ -286,26 +287,6 @@ impl App<'_> {
 }
 
 impl App<'_> {
-    fn process_numeric_prefix(
-        &self,
-        user_event: UserEvent,
-        _key: KeyEvent,
-    ) -> Option<UserEventWithCount> {
-        let count = if self.numeric_prefix.is_empty() {
-            1
-        } else {
-            self.numeric_prefix.parse::<usize>().unwrap_or(1)
-        };
-
-        if user_event.is_countable() {
-            Some(UserEventWithCount::new(user_event, count))
-        } else if self.numeric_prefix.is_empty() {
-            Some(UserEventWithCount::from_event(user_event))
-        } else {
-            None
-        }
-    }
-
     fn open_detail(&mut self) {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
@@ -439,6 +420,26 @@ impl App<'_> {
     }
 }
 
+fn process_numeric_prefix(
+    numeric_prefix: &str,
+    user_event: UserEvent,
+    _key_event: KeyEvent,
+) -> Option<UserEventWithCount> {
+    let count = if numeric_prefix.is_empty() {
+        1
+    } else {
+        numeric_prefix.parse::<usize>().unwrap_or(1)
+    };
+
+    if user_event.is_countable() {
+        Some(UserEventWithCount::new(user_event, count))
+    } else if numeric_prefix.is_empty() {
+        Some(UserEventWithCount::from_event(user_event))
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -448,19 +449,7 @@ mod tests {
         numeric_prefix: &str,
         user_event: UserEvent,
     ) -> Option<UserEventWithCount> {
-        let count = if numeric_prefix.is_empty() {
-            1
-        } else {
-            numeric_prefix.parse::<usize>().unwrap_or(1)
-        };
-
-        if user_event.is_countable() {
-            Some(UserEventWithCount::new(user_event, count))
-        } else if numeric_prefix.is_empty() {
-            Some(UserEventWithCount::from_event(user_event))
-        } else {
-            None
-        }
+        process_numeric_prefix(numeric_prefix, user_event, KeyEvent::from(KeyCode::Enter))
     }
 
     #[test]
