@@ -235,7 +235,13 @@ impl App<'_> {
 impl App<'_> {
     fn render_status_line(&self, f: &mut Frame, area: Rect) {
         let text: Line = match &self.status_line {
-            StatusLine::None => "".into(),
+            StatusLine::None => {
+                if self.numeric_prefix.is_empty() {
+                    Line::raw("")
+                } else {
+                    Line::raw(self.numeric_prefix.as_str()).fg(self.color_theme.status_input_fg)
+                }
+            }
             StatusLine::Input(msg, _, transient_msg) => {
                 let msg_w = console::measure_text_width(msg.as_str());
                 if let Some(t_msg) = transient_msg {
