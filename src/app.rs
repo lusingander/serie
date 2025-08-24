@@ -154,7 +154,17 @@ impl App<'_> {
                             self.numeric_prefix.clear();
                         }
                         None => {
-                            if let KeyCode::Char(c) = key.code {
+                            if let StatusLine::Input(_, _, _) = self.status_line {
+                                // In input mode, pass all key events to the view
+                                // fixme: currently, the only thing that processes key_event is searching the list,
+                                //        so this probably works, but it's not the right process...
+                                self.numeric_prefix.clear();
+                                self.view.handle_event(
+                                    UserEventWithCount::from_event(UserEvent::Unknown),
+                                    key,
+                                );
+                            } else if let KeyCode::Char(c) = key.code {
+                                // Accumulate numeric prefix
                                 if c.is_ascii_digit()
                                     && (c != '0' || !self.numeric_prefix.is_empty())
                                 {
@@ -162,12 +172,6 @@ impl App<'_> {
                                     continue;
                                 }
                             }
-
-                            self.numeric_prefix.clear();
-                            self.view.handle_event(
-                                UserEventWithCount::from_event(UserEvent::Unknown),
-                                key,
-                            );
                         }
                     }
                 }
