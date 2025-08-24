@@ -31,7 +31,7 @@ impl<'a> ListView<'a> {
         }
     }
 
-    pub fn handle_event_with_count(&mut self, event_with_count: UserEventWithCount, key: KeyEvent) {
+    pub fn handle_event(&mut self, event_with_count: UserEventWithCount, key: KeyEvent) {
         let event = event_with_count.event;
         let count = event_with_count.count;
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
@@ -74,7 +74,9 @@ impl<'a> ListView<'a> {
                     }
                 }
                 UserEvent::GoToParent => {
-                    self.as_mut_list_state().select_parent();
+                    for _ in 0..count {
+                        self.as_mut_list_state().select_parent();
+                    }
                 }
                 UserEvent::GoToTop => {
                     self.as_mut_list_state().select_first();
