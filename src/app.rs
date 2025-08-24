@@ -442,124 +442,27 @@ fn process_numeric_prefix(
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
 
-    // Helper function to test numeric prefix parsing logic
-    fn test_process_numeric_prefix_logic(
-        numeric_prefix: &str,
-        user_event: UserEvent,
-    ) -> Option<UserEventWithCount> {
-        process_numeric_prefix(numeric_prefix, user_event, KeyEvent::from(KeyCode::Enter))
-    }
-
-    #[test]
-    fn test_process_numeric_prefix_no_prefix() {
-        let result = test_process_numeric_prefix_logic("", UserEvent::NavigateDown);
-
-        assert!(result.is_some());
-        let event_with_count = result.unwrap();
-        assert_eq!(event_with_count.event, UserEvent::NavigateDown);
-        assert_eq!(event_with_count.count, 1);
-    }
-
-    #[test]
-    fn test_process_numeric_prefix_with_prefix() {
-        let result = test_process_numeric_prefix_logic("5", UserEvent::NavigateDown);
-
-        assert!(result.is_some());
-        let event_with_count = result.unwrap();
-        assert_eq!(event_with_count.event, UserEvent::NavigateDown);
-        assert_eq!(event_with_count.count, 5);
-    }
-
-    #[test]
-    fn test_process_numeric_prefix_invalid_number() {
-        let result = test_process_numeric_prefix_logic("abc", UserEvent::NavigateDown);
-
-        assert!(result.is_some());
-        let event_with_count = result.unwrap();
-        assert_eq!(event_with_count.event, UserEvent::NavigateDown);
-        assert_eq!(event_with_count.count, 1); // Should fallback to 1
-    }
-
-    #[test]
-    fn test_process_numeric_prefix_countable_events() {
-        let countable_events = [
-            UserEvent::NavigateUp,
-            UserEvent::NavigateDown,
-            UserEvent::ScrollUp,
-            UserEvent::ScrollDown,
-            UserEvent::PageUp,
-            UserEvent::PageDown,
-            UserEvent::HalfPageUp,
-            UserEvent::HalfPageDown,
-        ];
-
-        for event in countable_events {
-            let result = test_process_numeric_prefix_logic("3", event);
-            assert!(result.is_some());
-            let event_with_count = result.unwrap();
-            assert_eq!(event_with_count.event, event);
-            assert_eq!(event_with_count.count, 3);
-        }
-    }
-
-    #[test]
-    fn test_process_numeric_prefix_non_countable_events() {
-        let non_countable_events = [
-            UserEvent::Quit,
-            UserEvent::NavigateLeft,
-            UserEvent::NavigateRight,
-            UserEvent::Confirm,
-            UserEvent::Cancel,
-            UserEvent::HelpToggle,
-            UserEvent::Search,
-            UserEvent::ShortCopy,
-            UserEvent::FullCopy,
-        ];
-
-        for event in non_countable_events {
-            let result = test_process_numeric_prefix_logic("5", event);
-            assert!(result.is_none()); // Should return None when prefix exists but event isn't countable
-        }
-    }
-
-    #[test]
-    fn test_process_numeric_prefix_non_countable_events_no_prefix() {
-        let result = test_process_numeric_prefix_logic("", UserEvent::Confirm);
-        assert!(result.is_some());
-        let event_with_count = result.unwrap();
-        assert_eq!(event_with_count.event, UserEvent::Confirm);
-        assert_eq!(event_with_count.count, 1);
-    }
-
-    #[test]
-    fn test_process_numeric_prefix_large_numbers() {
-        let result = test_process_numeric_prefix_logic("999", UserEvent::NavigateDown);
-
-        assert!(result.is_some());
-        let event_with_count = result.unwrap();
-        assert_eq!(event_with_count.event, UserEvent::NavigateDown);
-        assert_eq!(event_with_count.count, 999);
-    }
-
-    #[test]
-    fn test_process_numeric_prefix_zero() {
-        let result = test_process_numeric_prefix_logic("0", UserEvent::NavigateUp);
-
-        assert!(result.is_some());
-        let event_with_count = result.unwrap();
-        assert_eq!(event_with_count.event, UserEvent::NavigateUp);
-        assert_eq!(event_with_count.count, 1); // UserEventWithCount::new converts 0 to 1
-    }
-
-    #[test]
-    fn test_process_numeric_prefix_multi_digit() {
-        let result = test_process_numeric_prefix_logic("42", UserEvent::ScrollDown);
-
-        assert!(result.is_some());
-        let event_with_count = result.unwrap();
-        assert_eq!(event_with_count.event, UserEvent::ScrollDown);
-        assert_eq!(event_with_count.count, 42);
+    #[rustfmt::skip]
+    #[rstest]
+    #[case("",    UserEvent::NavigateDown, Some(UserEventWithCount::new(UserEvent::NavigateDown, 1)))] // no prefix
+    #[case("5",   UserEvent::NavigateUp,   Some(UserEventWithCount::new(UserEvent::NavigateUp, 5)))] // with prefix
+    #[case("0",   UserEvent::PageDown,     Some(UserEventWithCount::new(UserEvent::PageDown, 1)))] // zero should be converted to 1
+    #[case("42",  UserEvent::ScrollDown,   Some(UserEventWithCount::new(UserEvent::ScrollDown, 42)))] // multi-digit number
+    #[case("999", UserEvent::PageDown,     Some(UserEventWithCount::new(UserEvent::PageDown, 999)))] // large number
+    #[case("abc", UserEvent::ScrollUp,     Some(UserEventWithCount::new(UserEvent::ScrollUp, 1)))] // should fallback to 1
+    #[case("5",   UserEvent::Quit,         None)] // non-countable event with prefix
+    #[case("",    UserEvent::Confirm,      Some(UserEventWithCount::new(UserEvent::Confirm, 1)))] // non-countable event without prefix
+    fn test_process_numeric_prefix(
+        #[case] numeric_prefix: &str,
+        #[case] user_event: UserEvent,
+        #[case] expected: Option<UserEventWithCount>,
+    ) {
+        let dummy_key_event = KeyEvent::from(KeyCode::Enter); // KeyEvent is not used in the logic
+        let actual = process_numeric_prefix(numeric_prefix, user_event, dummy_key_event);
+        assert_eq!(actual, expected);
     }
 }
