@@ -7,7 +7,10 @@ use crate::{
     git::{Commit, FileChange, Ref},
     keybind::KeyBind,
     protocol::ImageProtocol,
-    view::{detail::DetailView, help::HelpView, list::ListView, refs::RefsView},
+    view::{
+        detail::DetailView, help::HelpView, list::ListView, refs::RefsView,
+        user_command::UserCommandView,
+    },
     widget::commit_list::CommitListState,
 };
 
@@ -17,6 +20,7 @@ pub enum View<'a> {
     Default, // dummy variant to make #[default] work
     List(Box<ListView<'a>>),
     Detail(Box<DetailView<'a>>),
+    UserCommand(Box<UserCommandView<'a>>),
     Refs(Box<RefsView<'a>>),
     Help(Box<HelpView<'a>>),
 }
@@ -27,6 +31,7 @@ impl<'a> View<'a> {
             View::Default => {}
             View::List(view) => view.handle_event(event_with_count, key_event),
             View::Detail(view) => view.handle_event(event_with_count, key_event),
+            View::UserCommand(view) => view.handle_event(event_with_count, key_event),
             View::Refs(view) => view.handle_event(event_with_count, key_event),
             View::Help(view) => view.handle_event(event_with_count, key_event),
         }
@@ -37,6 +42,7 @@ impl<'a> View<'a> {
             View::Default => {}
             View::List(view) => view.render(f, area),
             View::Detail(view) => view.render(f, area),
+            View::UserCommand(view) => view.render(f, area),
             View::Refs(view) => view.render(f, area),
             View::Help(view) => view.render(f, area),
         }
@@ -71,6 +77,24 @@ impl<'a> View<'a> {
             commit,
             changes,
             refs,
+            ui_config,
+            color_theme,
+            image_protocol,
+            tx,
+        )))
+    }
+
+    pub fn of_user_command(
+        commit_list_state: CommitListState<'a>,
+        commit: Commit,
+        ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
+        image_protocol: ImageProtocol,
+        tx: Sender,
+    ) -> Self {
+        View::UserCommand(Box::new(UserCommandView::new(
+            commit_list_state,
+            commit,
             ui_config,
             color_theme,
             image_protocol,

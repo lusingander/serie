@@ -189,6 +189,15 @@ impl App<'_> {
                 AppEvent::ClearDetail => {
                     self.clear_detail();
                 }
+                AppEvent::OpenUserCommand(n) => {
+                    self.open_user_command(n);
+                }
+                AppEvent::CloseUserCommand => {
+                    self.close_user_command();
+                }
+                AppEvent::ClearUserCommand => {
+                    self.clear_user_command();
+                }
                 AppEvent::OpenRefs => {
                     self.open_refs();
                 }
@@ -343,6 +352,52 @@ impl App<'_> {
 
     fn clear_detail(&mut self) {
         if let View::Detail(ref mut view) = self.view {
+            view.clear();
+        }
+    }
+
+    fn open_user_command(&mut self, n: usize) {
+        if let View::Detail(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let selected = commit_list_state.selected_commit_hash().clone();
+            let (commit, _) = self.repository.commit_detail(&selected);
+            self.view = View::of_user_command(
+                commit_list_state,
+                commit,
+                self.ui_config,
+                self.color_theme,
+                self.image_protocol,
+                self.tx.clone(),
+            );
+        }
+    }
+
+    fn close_user_command(&mut self) {
+        if let View::UserCommand(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let selected = commit_list_state.selected_commit_hash().clone();
+            let (commit, changes) = self.repository.commit_detail(&selected);
+            let refs = self
+                .repository
+                .refs(&selected)
+                .into_iter()
+                .cloned()
+                .collect();
+            self.view = View::of_detail(
+                commit_list_state,
+                commit,
+                changes,
+                refs,
+                self.ui_config,
+                self.color_theme,
+                self.image_protocol,
+                self.tx.clone(),
+            );
+        }
+    }
+
+    fn clear_user_command(&mut self) {
+        if let View::UserCommand(ref mut view) = self.view {
             view.clear();
         }
     }
