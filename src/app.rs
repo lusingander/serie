@@ -141,7 +141,7 @@ impl App<'_> {
                         Some(ue) => {
                             let event_with_count = self.process_numeric_prefix(*ue, key);
                             if let Some(event_with_count) = event_with_count {
-                                self.view.handle_event_with_count(event_with_count, key);
+                                self.view.handle_event(event_with_count, key);
                                 self.numeric_prefix.clear();
                             }
                         }
@@ -156,7 +156,7 @@ impl App<'_> {
                             }
 
                             self.numeric_prefix.clear();
-                            self.view.handle_event_with_count(
+                            self.view.handle_event(
                                 UserEventWithCount::from_event(UserEvent::Unknown),
                                 key,
                             );

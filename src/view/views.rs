@@ -22,17 +22,13 @@ pub enum View<'a> {
 }
 
 impl<'a> View<'a> {
-    pub fn handle_event_with_count(
-        &mut self,
-        event_with_count: UserEventWithCount,
-        key_event: KeyEvent,
-    ) {
+    pub fn handle_event(&mut self, event_with_count: UserEventWithCount, key_event: KeyEvent) {
         match self {
             View::Default => {}
-            View::List(view) => view.handle_event_with_count(event_with_count, key_event),
-            View::Detail(view) => view.handle_event_with_count(event_with_count, key_event),
-            View::Refs(view) => view.handle_event_with_count(event_with_count, key_event),
-            View::Help(view) => view.handle_event_with_count(event_with_count, key_event),
+            View::List(view) => view.handle_event(event_with_count, key_event),
+            View::Detail(view) => view.handle_event(event_with_count, key_event),
+            View::Refs(view) => view.handle_event(event_with_count, key_event),
+            View::Help(view) => view.handle_event(event_with_count, key_event),
         }
     }
 

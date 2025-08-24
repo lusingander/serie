@@ -58,7 +58,7 @@ impl<'a> DetailView<'a> {
         }
     }
 
-    pub fn handle_event_with_count(&mut self, event_with_count: UserEventWithCount, _: KeyEvent) {
+    pub fn handle_event(&mut self, event_with_count: UserEventWithCount, _: KeyEvent) {
         let event = event_with_count.event;
         let count = event_with_count.count;
 
