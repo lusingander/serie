@@ -30,6 +30,8 @@ search = ["/"]
 ignore_case_toggle = ["ctrl-g"]
 fuzzy_toggle = ["ctrl-x"]
 
+user_command_view_toggle_1 = ["d"]
+
 # copy part of information, ex: copy the short commit hash not all
 short_copy = ["c"]
 full_copy = ["shift-c"]

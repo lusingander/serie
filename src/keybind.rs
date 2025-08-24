@@ -242,6 +242,8 @@ mod tests {
             navigate_left = ["ctrl-h", "shift-h", "alt-h"]
             navigate_right = ["ctrl-shift-l", "alt-shift-ctrl-l"]
             quit = ["esc", "f12"]
+            user_command_view_toggle_1 = ["d"]
+            user_command_view_toggle_10 = ["e"]
         "#;
 
         let expected = KeyBind(
@@ -285,6 +287,14 @@ mod tests {
                 (
                     KeyEvent::new(KeyCode::F(12), KeyModifiers::empty()),
                     UserEvent::Quit,
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('d'), KeyModifiers::empty()),
+                    UserEvent::UserCommandViewToggle(1),
+                ),
+                (
+                    KeyEvent::new(KeyCode::Char('e'), KeyModifiers::empty()),
+                    UserEvent::UserCommandViewToggle(10),
                 ),
             ]
             .into_iter()
