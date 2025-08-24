@@ -300,8 +300,6 @@ impl App<'_> {
         match user_event {
             UserEvent::NavigateUp
             | UserEvent::NavigateDown
-            | UserEvent::NavigateLeft
-            | UserEvent::NavigateRight
             | UserEvent::ScrollUp
             | UserEvent::ScrollDown
             | UserEvent::PageUp
@@ -469,8 +467,6 @@ mod tests {
         match user_event {
             UserEvent::NavigateUp
             | UserEvent::NavigateDown
-            | UserEvent::NavigateLeft
-            | UserEvent::NavigateRight
             | UserEvent::ScrollUp
             | UserEvent::ScrollDown
             | UserEvent::PageUp
@@ -522,8 +518,6 @@ mod tests {
         let countable_events = [
             UserEvent::NavigateUp,
             UserEvent::NavigateDown,
-            UserEvent::NavigateLeft,
-            UserEvent::NavigateRight,
             UserEvent::ScrollUp,
             UserEvent::ScrollDown,
             UserEvent::PageUp,
@@ -545,6 +539,8 @@ mod tests {
     fn test_process_numeric_prefix_non_countable_events() {
         let non_countable_events = [
             UserEvent::Quit,
+            UserEvent::NavigateLeft,
+            UserEvent::NavigateRight,
             UserEvent::Confirm,
             UserEvent::Cancel,
             UserEvent::HelpToggle,
