@@ -135,7 +135,6 @@ impl App<'_> {
 
                     match self.keybind.get(&key) {
                         Some(UserEvent::ForceQuit) => {
-                            self.numeric_prefix.clear();
                             self.tx.send(AppEvent::Quit);
                         }
                         Some(ue) => {
