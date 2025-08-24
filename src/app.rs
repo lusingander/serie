@@ -357,11 +357,23 @@ impl App<'_> {
     }
 
     fn open_user_command(&mut self, n: usize) {
-        if let View::Detail(ref mut view) = self.view {
+        if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
             let selected = commit_list_state.selected_commit_hash().clone();
             let (commit, _) = self.repository.commit_detail(&selected);
-            self.view = View::of_user_command(
+            self.view = View::of_user_command_from_list(
+                commit_list_state,
+                commit,
+                self.ui_config,
+                self.color_theme,
+                self.image_protocol,
+                self.tx.clone(),
+            );
+        } else if let View::Detail(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let selected = commit_list_state.selected_commit_hash().clone();
+            let (commit, _) = self.repository.commit_detail(&selected);
+            self.view = View::of_user_command_from_detail(
                 commit_list_state,
                 commit,
                 self.ui_config,
@@ -383,16 +395,25 @@ impl App<'_> {
                 .into_iter()
                 .cloned()
                 .collect();
-            self.view = View::of_detail(
-                commit_list_state,
-                commit,
-                changes,
-                refs,
-                self.ui_config,
-                self.color_theme,
-                self.image_protocol,
-                self.tx.clone(),
-            );
+            if view.before_view_is_list() {
+                self.view = View::of_list(
+                    commit_list_state,
+                    self.ui_config,
+                    self.color_theme,
+                    self.tx.clone(),
+                );
+            } else {
+                self.view = View::of_detail(
+                    commit_list_state,
+                    commit,
+                    changes,
+                    refs,
+                    self.ui_config,
+                    self.color_theme,
+                    self.image_protocol,
+                    self.tx.clone(),
+                );
+            }
         }
     }
 

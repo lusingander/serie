@@ -8,8 +8,11 @@ use crate::{
     keybind::KeyBind,
     protocol::ImageProtocol,
     view::{
-        detail::DetailView, help::HelpView, list::ListView, refs::RefsView,
-        user_command::UserCommandView,
+        detail::DetailView,
+        help::HelpView,
+        list::ListView,
+        refs::RefsView,
+        user_command::{UserCommandView, UserCommandViewBeforeView},
     },
     widget::commit_list::CommitListState,
 };
@@ -84,7 +87,7 @@ impl<'a> View<'a> {
         )))
     }
 
-    pub fn of_user_command(
+    pub fn of_user_command_from_list(
         commit_list_state: CommitListState<'a>,
         commit: Commit,
         ui_config: &'a UiConfig,
@@ -99,6 +102,26 @@ impl<'a> View<'a> {
             color_theme,
             image_protocol,
             tx,
+            UserCommandViewBeforeView::List,
+        )))
+    }
+
+    pub fn of_user_command_from_detail(
+        commit_list_state: CommitListState<'a>,
+        commit: Commit,
+        ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
+        image_protocol: ImageProtocol,
+        tx: Sender,
+    ) -> Self {
+        View::UserCommand(Box::new(UserCommandView::new(
+            commit_list_state,
+            commit,
+            ui_config,
+            color_theme,
+            image_protocol,
+            tx,
+            UserCommandViewBeforeView::Detail,
         )))
     }
 
