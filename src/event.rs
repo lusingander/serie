@@ -126,6 +126,7 @@ impl UserEvent {
                 | UserEvent::NavigateDown
                 | UserEvent::ScrollUp
                 | UserEvent::ScrollDown
+                | UserEvent::GoToParent
                 | UserEvent::PageUp
                 | UserEvent::PageDown
                 | UserEvent::HalfPageUp

@@ -74,7 +74,9 @@ impl<'a> ListView<'a> {
                     }
                 }
                 UserEvent::GoToParent => {
-                    self.as_mut_list_state().select_parent();
+                    for _ in 0..count {
+                        self.as_mut_list_state().select_parent();
+                    }
                 }
                 UserEvent::GoToTop => {
                     self.as_mut_list_state().select_first();
