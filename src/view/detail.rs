@@ -8,7 +8,7 @@ use ratatui::{
 use crate::{
     color::ColorTheme,
     config::UiConfig,
-    event::{AppEvent, Sender, UserEvent},
+    event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     git::{Commit, FileChange, Ref},
     protocol::ImageProtocol,
     widget::{
@@ -58,13 +58,20 @@ impl<'a> DetailView<'a> {
         }
     }
 
-    pub fn handle_event(&mut self, event: UserEvent, _: KeyEvent) {
+    pub fn handle_event_with_count(&mut self, event_with_count: UserEventWithCount, _: KeyEvent) {
+        let event = event_with_count.event;
+        let count = event_with_count.count;
+
         match event {
             UserEvent::NavigateDown => {
-                self.commit_detail_state.scroll_down();
+                for _ in 0..count {
+                    self.commit_detail_state.scroll_down();
+                }
             }
             UserEvent::NavigateUp => {
-                self.commit_detail_state.scroll_up();
+                for _ in 0..count {
+                    self.commit_detail_state.scroll_up();
+                }
             }
             UserEvent::GoToTop => {
                 self.commit_detail_state.select_first();
