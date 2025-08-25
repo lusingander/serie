@@ -169,7 +169,6 @@ impl App<'_> {
                                     && (c != '0' || !self.numeric_prefix.is_empty())
                                 {
                                     self.numeric_prefix.push(c);
-                                    continue;
                                 }
                             }
                         }
@@ -251,7 +250,8 @@ impl App<'_> {
                 if self.numeric_prefix.is_empty() {
                     Line::raw("")
                 } else {
-                    Line::raw(self.numeric_prefix.as_str()).fg(self.color_theme.status_input_fg)
+                    Line::raw(self.numeric_prefix.as_str())
+                        .fg(self.color_theme.status_input_transient_fg)
                 }
             }
             StatusLine::Input(msg, _, transient_msg) => {
