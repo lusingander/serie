@@ -31,6 +31,7 @@ pub struct UserCommandView<'a> {
     commit_list_state: Option<CommitListState<'a>>,
     commit_user_command_state: CommitUserCommandState,
 
+    user_command_number: usize,
     user_command_output_lines: Vec<Line<'a>>,
 
     ui_config: &'a UiConfig,
@@ -63,6 +64,7 @@ impl<'a> UserCommandView<'a> {
         UserCommandView {
             commit_list_state: Some(commit_list_state),
             commit_user_command_state: CommitUserCommandState::default(),
+            user_command_number,
             user_command_output_lines,
             ui_config,
             color_theme,
@@ -97,9 +99,16 @@ impl<'a> UserCommandView<'a> {
             UserEvent::HelpToggle => {
                 self.tx.send(AppEvent::OpenHelp);
             }
-            UserEvent::Cancel | UserEvent::Close | UserEvent::UserCommandViewToggle(_) => {
-                self.tx.send(AppEvent::ClearUserCommand); // hack: reset the rendering of the image area
-                self.tx.send(AppEvent::CloseUserCommand);
+            UserEvent::UserCommandViewToggle(n) => {
+                if n == self.user_command_number {
+                    self.close();
+                } else {
+                    // switch to another user command
+                    self.tx.send(AppEvent::OpenUserCommand(n));
+                }
+            }
+            UserEvent::Cancel | UserEvent::Close => {
+                self.close();
             }
             _ => {}
         }
@@ -149,6 +158,11 @@ impl<'a> UserCommandView<'a> {
 
     pub fn before_view_is_list(&self) -> bool {
         matches!(self.before_view, UserCommandViewBeforeView::List)
+    }
+
+    fn close(&self) {
+        self.tx.send(AppEvent::ClearUserCommand); // hack: reset the rendering of the image area
+        self.tx.send(AppEvent::CloseUserCommand);
     }
 }
 

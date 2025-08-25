@@ -387,6 +387,33 @@ impl App<'_> {
                 self.image_protocol,
                 self.tx.clone(),
             );
+        } else if let View::UserCommand(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let selected = commit_list_state.selected_commit_hash().clone();
+            let (commit, _) = self.repository.commit_detail(&selected);
+            if view.before_view_is_list() {
+                self.view = View::of_user_command_from_list(
+                    commit_list_state,
+                    commit,
+                    user_command_number,
+                    self.core_config,
+                    self.ui_config,
+                    self.color_theme,
+                    self.image_protocol,
+                    self.tx.clone(),
+                );
+            } else {
+                self.view = View::of_user_command_from_detail(
+                    commit_list_state,
+                    commit,
+                    user_command_number,
+                    self.core_config,
+                    self.ui_config,
+                    self.color_theme,
+                    self.image_protocol,
+                    self.tx.clone(),
+                );
+            }
         }
     }
 
