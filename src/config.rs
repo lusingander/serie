@@ -97,7 +97,7 @@ pub struct CoreUserCommandConfig {
         "--no-pager".into(),
         "diff".into(),
         "--color=always".into(),
-        "{{parent_hash}}".into(),
+        "{{first_parent_hash}}".into(),
         "{{target_hash}}".into(),
     ])]))]
     pub commands: HashMap<String, Vec<String>>,
@@ -268,7 +268,7 @@ mod tests {
                             "--no-pager".into(),
                             "diff".into(),
                             "--color=always".into(),
-                            "{{parent_hash}}".into(),
+                            "{{first_parent_hash}}".into(),
                             "{{target_hash}}".into(),
                         ],
                     )]),
@@ -319,7 +319,7 @@ mod tests {
             ignore_case = true
             fuzzy = true
             [core.user_command]
-            commands_1 = ["git", "diff", "{{parent_hash}}", "{{target_hash}}"]
+            commands_1 = ["git", "diff", "{{first_parent_hash}}", "{{target_hash}}"]
             commands_2 = ["echo", "hello"]
             commands_10 = ["echo", "world"]
             [ui.common]
@@ -357,7 +357,7 @@ mod tests {
                             vec![
                                 "git".into(),
                                 "diff".into(),
-                                "{{parent_hash}}".into(),
+                                "{{first_parent_hash}}".into(),
                                 "{{target_hash}}".into(),
                             ],
                         ),
@@ -418,7 +418,7 @@ mod tests {
                             "--no-pager".into(),
                             "diff".into(),
                             "--color=always".into(),
-                            "{{parent_hash}}".into(),
+                            "{{first_parent_hash}}".into(),
                             "{{target_hash}}".into(),
                         ],
                     )]),

@@ -3,7 +3,7 @@ use std::process::Command;
 use arboard::Clipboard;
 
 const USER_COMMAND_TARGET_HASH_MARKER: &str = "{{target_hash}}";
-const USER_COMMAND_PARENT_HASH_MARKER: &str = "{{parent_hash}}";
+const USER_COMMAND_FIRST_PARENT_HASH_MARKER: &str = "{{first_parent_hash}}";
 
 pub fn copy_to_clipboard(value: String) -> Result<(), String> {
     Clipboard::new()
@@ -20,7 +20,7 @@ pub fn exec_user_command(
         .iter()
         .map(|s| {
             s.replace(USER_COMMAND_TARGET_HASH_MARKER, target_hash)
-                .replace(USER_COMMAND_PARENT_HASH_MARKER, parent_hash)
+                .replace(USER_COMMAND_FIRST_PARENT_HASH_MARKER, parent_hash)
         })
         .collect::<Vec<_>>();
 
