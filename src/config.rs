@@ -89,7 +89,7 @@ pub struct CoreSearchConfig {
     pub fuzzy: bool,
 }
 
-#[optional(derives = [Deserialize])]
+#[optional]
 #[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
 pub struct CoreUserCommandConfig {
     #[default(HashMap::from([("1".into(), vec![
@@ -101,6 +101,57 @@ pub struct CoreUserCommandConfig {
         "{{target_hash}}".into(),
     ])]))]
     pub commands: HashMap<String, Vec<String>>,
+}
+
+impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{Error, MapAccess, Visitor};
+        use std::fmt;
+
+        struct OptionalCoreUserCommandConfigVisitor;
+
+        impl<'de> Visitor<'de> for OptionalCoreUserCommandConfigVisitor {
+            type Value = HashMap<String, Vec<String>>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a map of user commands")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> std::result::Result<Self::Value, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut commands = HashMap::new();
+                while let Some(key) = map.next_key::<String>()? {
+                    if let Some(suffix) = key.strip_prefix("commands_") {
+                        let command_key = suffix.to_string();
+                        if command_key.is_empty() {
+                            return Err(V::Error::custom(
+                                "command key cannot be empty, like `commands_`",
+                            ));
+                        }
+                        let command_value: Vec<String> = map.next_value()?;
+                        commands.insert(command_key, command_value);
+                    } else if key == "commands" {
+                        return Err(V::Error::custom(
+                            "invalid key `commands`, use `commands_n` format instead",
+                        ));
+                    } else {
+                        let _: serde::de::IgnoredAny = map.next_value()?;
+                    }
+                }
+                Ok(commands)
+            }
+        }
+
+        let commands = deserializer.deserialize_map(OptionalCoreUserCommandConfigVisitor)?;
+        Ok(OptionalCoreUserCommandConfig {
+            commands: Some(commands),
+        })
+    }
 }
 
 #[optional(derives = [Deserialize])]
@@ -268,9 +319,9 @@ mod tests {
             ignore_case = true
             fuzzy = true
             [core.user_command]
-            commands.1 = ["git", "diff", "{{parent_hash}}", "{{target_hash}}"]
-            commands.2 = ["echo", "hello"]
-            commands.10 = ["echo", "world"]
+            commands_1 = ["git", "diff", "{{parent_hash}}", "{{target_hash}}"]
+            commands_2 = ["echo", "hello"]
+            commands_10 = ["echo", "world"]
             [ui.common]
             cursor_type = { Virtual = "|" }
             [ui.list]
