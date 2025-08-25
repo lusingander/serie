@@ -53,43 +53,12 @@ impl<'a> UserCommandView<'a> {
         tx: Sender,
         before_view: UserCommandViewBeforeView,
     ) -> UserCommandView<'a> {
-        let user_command_output_lines = if commit.parent_commit_hashes.is_empty() {
-            vec![]
-        } else {
-            match core_config
-                .user_command
-                .commands
-                .get(&user_command_number.to_string())
-            {
-                Some(command) => {
-                    let cmd_output = exec_user_command(
-                        command
-                            .iter()
-                            .map(String::as_str)
-                            .collect::<Vec<_>>()
-                            .as_slice(),
-                        commit.commit_hash.as_str(),
-                        commit.parent_commit_hashes[0].as_str(),
-                    );
-                    match cmd_output {
-                        Ok(output) => output.into_text().unwrap().into_iter().collect(),
-                        Err(err) => {
-                            let msg = format!("Failed to execute command: {}", err);
-                            tx.send(AppEvent::NotifyError(msg));
-                            vec![]
-                        }
-                    }
-                }
-                None => {
-                    let msg = format!(
-                        "No user command configured for number {}",
-                        user_command_number
-                    );
-                    tx.send(AppEvent::NotifyError(msg));
+        let user_command_output_lines =
+            build_user_command_output_lines(&commit, user_command_number, core_config)
+                .unwrap_or_else(|err| {
+                    tx.send(AppEvent::NotifyError(err));
                     vec![]
-                }
-            }
-        };
+                });
 
         UserCommandView {
             commit_list_state: Some(commit_list_state),
@@ -181,4 +150,39 @@ impl<'a> UserCommandView<'a> {
     pub fn before_view_is_list(&self) -> bool {
         matches!(self.before_view, UserCommandViewBeforeView::List)
     }
+}
+
+fn build_user_command_output_lines<'a>(
+    commit: &Commit,
+    user_command_number: usize,
+    core_config: &'a CoreConfig,
+) -> Result<Vec<Line<'a>>, String> {
+    let command = core_config
+        .user_command
+        .commands
+        .get(&user_command_number.to_string())
+        .ok_or_else(|| {
+            format!(
+                "No user command configured for number {}",
+                user_command_number
+            )
+        })?
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>();
+    let target_hash = commit.commit_hash.as_str();
+    let parent_hash = commit
+        .parent_commit_hashes
+        .first()
+        .map(|c| c.as_str())
+        .unwrap_or_default();
+
+    exec_user_command(&command, target_hash, parent_hash)
+        .and_then(|output| {
+            output
+                .into_text()
+                .map(|t| t.into_iter().collect())
+                .map_err(|e| e.to_string())
+        })
+        .map_err(|err| format!("Failed to execute command: {}", err))
 }
