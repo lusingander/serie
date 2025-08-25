@@ -40,6 +40,7 @@ pub struct App<'a> {
     status_line: StatusLine,
 
     keybind: &'a KeyBind,
+    core_config: &'a CoreConfig,
     ui_config: &'a UiConfig,
     color_theme: &'a ColorTheme,
     image_protocol: ImageProtocol,
@@ -97,6 +98,7 @@ impl<'a> App<'a> {
             status_line: StatusLine::None,
             view,
             keybind,
+            core_config,
             ui_config,
             color_theme,
             image_protocol,
@@ -356,7 +358,7 @@ impl App<'_> {
         }
     }
 
-    fn open_user_command(&mut self, n: usize) {
+    fn open_user_command(&mut self, user_command_number: usize) {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
             let selected = commit_list_state.selected_commit_hash().clone();
@@ -364,6 +366,8 @@ impl App<'_> {
             self.view = View::of_user_command_from_list(
                 commit_list_state,
                 commit,
+                user_command_number,
+                self.core_config,
                 self.ui_config,
                 self.color_theme,
                 self.image_protocol,
@@ -376,6 +380,8 @@ impl App<'_> {
             self.view = View::of_user_command_from_detail(
                 commit_list_state,
                 commit,
+                user_command_number,
+                self.core_config,
                 self.ui_config,
                 self.color_theme,
                 self.image_protocol,

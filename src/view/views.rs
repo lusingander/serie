@@ -2,7 +2,7 @@ use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
 use crate::{
     color::ColorTheme,
-    config::UiConfig,
+    config::{CoreConfig, UiConfig},
     event::{Sender, UserEventWithCount},
     git::{Commit, FileChange, Ref},
     keybind::KeyBind,
@@ -90,6 +90,8 @@ impl<'a> View<'a> {
     pub fn of_user_command_from_list(
         commit_list_state: CommitListState<'a>,
         commit: Commit,
+        user_command_number: usize,
+        core_config: &'a CoreConfig,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
         image_protocol: ImageProtocol,
@@ -98,6 +100,8 @@ impl<'a> View<'a> {
         View::UserCommand(Box::new(UserCommandView::new(
             commit_list_state,
             commit,
+            user_command_number,
+            core_config,
             ui_config,
             color_theme,
             image_protocol,
@@ -109,6 +113,8 @@ impl<'a> View<'a> {
     pub fn of_user_command_from_detail(
         commit_list_state: CommitListState<'a>,
         commit: Commit,
+        user_command_number: usize,
+        core_config: &'a CoreConfig,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
         image_protocol: ImageProtocol,
@@ -117,6 +123,8 @@ impl<'a> View<'a> {
         View::UserCommand(Box::new(UserCommandView::new(
             commit_list_state,
             commit,
+            user_command_number,
+            core_config,
             ui_config,
             color_theme,
             image_protocol,

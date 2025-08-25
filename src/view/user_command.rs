@@ -9,7 +9,7 @@ use ratatui::{
 
 use crate::{
     color::ColorTheme,
-    config::UiConfig,
+    config::{CoreConfig, UiConfig},
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     external::exec_user_command,
     git::Commit,
@@ -45,6 +45,8 @@ impl<'a> UserCommandView<'a> {
     pub fn new(
         commit_list_state: CommitListState<'a>,
         commit: Commit,
+        user_command_number: usize,
+        core_config: &'a CoreConfig,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
         image_protocol: ImageProtocol,
@@ -54,24 +56,35 @@ impl<'a> UserCommandView<'a> {
         let user_command_output_lines = if commit.parent_commit_hashes.is_empty() {
             vec![]
         } else {
-            // fixme
-            let command = &[
-                "git",
-                "--no-pager",
-                "diff",
-                "--color=always",
-                "{{parent_hash}}",
-                "{{target_hash}}",
-            ];
-            let cmd_output = exec_user_command(
-                command,
-                commit.commit_hash.as_str(),
-                commit.parent_commit_hashes[0].as_str(),
-            );
-            match cmd_output {
-                Ok(output) => output.into_text().unwrap().into_iter().collect(),
-                Err(err) => {
-                    let msg = format!("Failed to execute command: {}", err);
+            match core_config
+                .user_command
+                .commands
+                .get(&user_command_number.to_string())
+            {
+                Some(command) => {
+                    let cmd_output = exec_user_command(
+                        command
+                            .iter()
+                            .map(String::as_str)
+                            .collect::<Vec<_>>()
+                            .as_slice(),
+                        commit.commit_hash.as_str(),
+                        commit.parent_commit_hashes[0].as_str(),
+                    );
+                    match cmd_output {
+                        Ok(output) => output.into_text().unwrap().into_iter().collect(),
+                        Err(err) => {
+                            let msg = format!("Failed to execute command: {}", err);
+                            tx.send(AppEvent::NotifyError(msg));
+                            vec![]
+                        }
+                    }
+                }
+                None => {
+                    let msg = format!(
+                        "No user command configured for number {}",
+                        user_command_number
+                    );
                     tx.send(AppEvent::NotifyError(msg));
                     vec![]
                 }
