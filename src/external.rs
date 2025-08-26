@@ -4,6 +4,8 @@ use arboard::Clipboard;
 
 const USER_COMMAND_TARGET_HASH_MARKER: &str = "{{target_hash}}";
 const USER_COMMAND_FIRST_PARENT_HASH_MARKER: &str = "{{first_parent_hash}}";
+const USER_COMMAND_AREA_WIDTH_MARKER: &str = "{{area_width}}";
+const USER_COMMAND_AREA_HEIGHT_MARKER: &str = "{{area_height}}";
 
 pub fn copy_to_clipboard(value: String) -> Result<(), String> {
     Clipboard::new()
@@ -14,13 +16,17 @@ pub fn copy_to_clipboard(value: String) -> Result<(), String> {
 pub fn exec_user_command(
     command: &[&str],
     target_hash: &str,
-    parent_hash: &str,
+    first_parent_hash: &str,
+    area_width: u16,
+    area_height: u16,
 ) -> Result<String, String> {
     let command = command
         .iter()
         .map(|s| {
             s.replace(USER_COMMAND_TARGET_HASH_MARKER, target_hash)
-                .replace(USER_COMMAND_FIRST_PARENT_HASH_MARKER, parent_hash)
+                .replace(USER_COMMAND_FIRST_PARENT_HASH_MARKER, first_parent_hash)
+                .replace(USER_COMMAND_AREA_WIDTH_MARKER, &area_width.to_string())
+                .replace(USER_COMMAND_AREA_HEIGHT_MARKER, &area_height.to_string())
         })
         .collect::<Vec<_>>();
 

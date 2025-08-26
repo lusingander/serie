@@ -47,6 +47,7 @@ impl<'a> UserCommandView<'a> {
         commit_list_state: CommitListState<'a>,
         commit: Commit,
         user_command_number: usize,
+        view_area: Rect,
         core_config: &'a CoreConfig,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
@@ -54,12 +55,17 @@ impl<'a> UserCommandView<'a> {
         tx: Sender,
         before_view: UserCommandViewBeforeView,
     ) -> UserCommandView<'a> {
-        let user_command_output_lines =
-            build_user_command_output_lines(&commit, user_command_number, core_config)
-                .unwrap_or_else(|err| {
-                    tx.send(AppEvent::NotifyError(err));
-                    vec![]
-                });
+        let user_command_output_lines = build_user_command_output_lines(
+            &commit,
+            user_command_number,
+            view_area,
+            core_config,
+            ui_config,
+        )
+        .unwrap_or_else(|err| {
+            tx.send(AppEvent::NotifyError(err));
+            vec![]
+        });
 
         UserCommandView {
             commit_list_state: Some(commit_list_state),
@@ -169,7 +175,9 @@ impl<'a> UserCommandView<'a> {
 fn build_user_command_output_lines<'a>(
     commit: &Commit,
     user_command_number: usize,
+    view_area: Rect,
     core_config: &'a CoreConfig,
+    ui_config: &'a UiConfig,
 ) -> Result<Vec<Line<'a>>, String> {
     let command = core_config
         .user_command
@@ -191,7 +199,10 @@ fn build_user_command_output_lines<'a>(
         .map(|c| c.as_str())
         .unwrap_or_default();
 
-    exec_user_command(&command, target_hash, parent_hash)
+    let area_width = view_area.width - 4; // minus the left and right padding
+    let area_height = (view_area.height - 1).min(ui_config.user_command.height) - 1; // minus the top border
+
+    exec_user_command(&command, target_hash, parent_hash, area_width, area_height)
         .and_then(|output| {
             output
                 .into_text()

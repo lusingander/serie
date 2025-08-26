@@ -45,7 +45,9 @@ pub struct App<'a> {
     color_theme: &'a ColorTheme,
     image_protocol: ImageProtocol,
     tx: Sender,
+
     numeric_prefix: String,
+    view_area: Rect,
 }
 
 impl<'a> App<'a> {
@@ -104,6 +106,7 @@ impl<'a> App<'a> {
             image_protocol,
             tx,
             numeric_prefix: String::new(),
+            view_area: Rect::default(),
         }
     }
 }
@@ -249,6 +252,8 @@ impl App<'_> {
         let [view_area, status_line_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(f.area());
 
+        self.update_state(view_area);
+
         self.view.render(f, view_area);
         self.render_status_line(f, status_line_area);
     }
@@ -316,6 +321,10 @@ impl App<'_> {
 }
 
 impl App<'_> {
+    fn update_state(&mut self, view_area: Rect) {
+        self.view_area = view_area;
+    }
+
     fn open_detail(&mut self) {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
@@ -367,6 +376,7 @@ impl App<'_> {
                 commit_list_state,
                 commit,
                 user_command_number,
+                self.view_area,
                 self.core_config,
                 self.ui_config,
                 self.color_theme,
@@ -381,6 +391,7 @@ impl App<'_> {
                 commit_list_state,
                 commit,
                 user_command_number,
+                self.view_area,
                 self.core_config,
                 self.ui_config,
                 self.color_theme,
@@ -396,6 +407,7 @@ impl App<'_> {
                     commit_list_state,
                     commit,
                     user_command_number,
+                    self.view_area,
                     self.core_config,
                     self.ui_config,
                     self.color_theme,
@@ -407,6 +419,7 @@ impl App<'_> {
                     commit_list_state,
                     commit,
                     user_command_number,
+                    self.view_area,
                     self.core_config,
                     self.ui_config,
                     self.color_theme,
