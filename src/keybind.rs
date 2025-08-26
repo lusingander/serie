@@ -48,6 +48,21 @@ impl KeyBind {
         key_events.sort_by(|a, b| a.partial_cmp(b).unwrap()); // At least when used for key bindings, it doesn't seem to be a problem...
         key_events.into_iter().map(key_event_to_string).collect()
     }
+
+    pub fn user_command_view_toggle_event_numbers(&self) -> Vec<usize> {
+        let mut numbers: Vec<usize> = self
+            .values()
+            .filter_map(|ue| {
+                if let UserEvent::UserCommandViewToggle(n) = ue {
+                    Some(*n)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        numbers.sort_unstable();
+        numbers
+    }
 }
 
 impl<'de> Deserialize<'de> for KeyBind {
