@@ -148,9 +148,13 @@ impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
         }
 
         let commands = deserializer.deserialize_map(OptionalCoreUserCommandConfigVisitor)?;
-        Ok(OptionalCoreUserCommandConfig {
-            commands: Some(commands),
-        })
+        let commands = if commands.is_empty() {
+            None
+        } else {
+            Some(commands)
+        };
+
+        Ok(OptionalCoreUserCommandConfig { commands })
     }
 }
 
