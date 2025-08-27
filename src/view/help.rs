@@ -310,6 +310,10 @@ fn build_lines(
         (vec![UserEvent::Cancel, UserEvent::Close], "Close user command".into()),
         (vec![UserEvent::PageDown], "Scroll down".into()),
         (vec![UserEvent::PageUp], "Scroll up".into()),
+        (vec![UserEvent::PageDown], "Scroll page down".into()),
+        (vec![UserEvent::PageUp], "Scroll page up".into()),
+        (vec![UserEvent::HalfPageDown], "Scroll half page down".into()),
+        (vec![UserEvent::HalfPageUp], "Scroll half page up".into()),
         (vec![UserEvent::GoToTop], "Go to top".into()),
         (vec![UserEvent::GoToBottom], "Go to bottom".into()),
     ];

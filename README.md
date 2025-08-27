@@ -221,11 +221,13 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 
 #### User Command
 
-| Key                                              | Description        | Corresponding keybind          |
-| ------------------------------------------------ | ------------------ | ------------------------------ |
-| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>?</kbd> | Close user command | `close` `cancel` `help_toggle` |
-| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                | Scroll down/up     | `navigate_down` `navigate_up`  |
-| <kbd>g/G</kbd>                                   | Go to top/bottom   | `go_to_top` `go_to_bottom`     |
+| Key                                              | Description              | Corresponding keybind           |
+| ------------------------------------------------ | ------------------------ | ------------------------------- |
+| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>?</kbd> | Close user command       | `close` `cancel` `help_toggle`  |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                | Scroll down/up           | `navigate_down` `navigate_up`   |
+| <kbd>Ctrl-f/b</kbd>                              | Scroll page down/up      | `page_down` `page_up`           |
+| <kbd>Ctrl-d/u</kbd>                              | Scroll half page down/up | `half_page_down` `half_page_up` |
+| <kbd>g/G</kbd>                                   | Go to top/bottom         | `go_to_top` `go_to_bottom`      |
 
 #### Help
 
