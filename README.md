@@ -431,6 +431,8 @@ Contributions that do not follow these guidelines may not be accepted.
 <img src="./img/refs.png" width=600>
 <img src="./img/searching.png" width=600>
 <img src="./img/applied.png" width=600>
+<img src="./img/diff_git.png" width=600>
+<img src="./img/diff_difft.png" width=600>
 
 The following repositories are used as these examples:
 
