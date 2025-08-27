@@ -25,6 +25,7 @@ pub struct HelpView<'a> {
     help_key_line_max_width: u16,
 
     offset: usize,
+    height: usize,
 
     image_protocol: ImageProtocol,
     tx: Sender,
@@ -52,6 +53,7 @@ impl HelpView<'_> {
             help_value_lines,
             help_key_line_max_width,
             offset: 0,
+            height: 0,
             image_protocol,
             tx,
             clear: false,
@@ -80,6 +82,26 @@ impl HelpView<'_> {
                     self.scroll_up();
                 }
             }
+            UserEvent::PageDown => {
+                for _ in 0..count {
+                    self.scroll_page_down();
+                }
+            }
+            UserEvent::PageUp => {
+                for _ in 0..count {
+                    self.scroll_page_up();
+                }
+            }
+            UserEvent::HalfPageDown => {
+                for _ in 0..count {
+                    self.scroll_half_page_down();
+                }
+            }
+            UserEvent::HalfPageUp => {
+                for _ in 0..count {
+                    self.scroll_half_page_up();
+                }
+            }
             UserEvent::GoToTop => {
                 self.select_first();
             }
@@ -90,11 +112,13 @@ impl HelpView<'_> {
         }
     }
 
-    pub fn render(&self, f: &mut Frame, area: Rect) {
+    pub fn render(&mut self, f: &mut Frame, area: Rect) {
         if self.clear {
             f.render_widget(Clear, area);
             return;
         }
+
+        self.update_state(area);
 
         let [mut key_area, mut value_area] =
             Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)])
@@ -150,15 +174,27 @@ impl<'a> HelpView<'a> {
     }
 
     fn scroll_down(&mut self) {
-        if self.offset < self.help_key_lines.len() - 1 {
-            self.offset += 1;
-        }
+        self.offset = self.offset.saturating_add(1);
     }
 
     fn scroll_up(&mut self) {
-        if self.offset > 0 {
-            self.offset -= 1;
-        }
+        self.offset = self.offset.saturating_sub(1);
+    }
+
+    fn scroll_page_down(&mut self) {
+        self.offset = self.offset.saturating_add(self.height);
+    }
+
+    fn scroll_page_up(&mut self) {
+        self.offset = self.offset.saturating_sub(self.height);
+    }
+
+    fn scroll_half_page_down(&mut self) {
+        self.offset = self.offset.saturating_add(self.height / 2);
+    }
+
+    fn scroll_half_page_up(&mut self) {
+        self.offset = self.offset.saturating_sub(self.height / 2);
     }
 
     fn select_first(&mut self) {
@@ -166,7 +202,12 @@ impl<'a> HelpView<'a> {
     }
 
     fn select_last(&mut self) {
-        self.offset = self.help_key_lines.len() - 1;
+        self.offset = usize::MAX;
+    }
+
+    fn update_state(&mut self, area: Rect) {
+        self.height = area.height as usize;
+        self.offset = self.offset.min(self.help_key_lines.len() - 1)
     }
 }
 
@@ -199,6 +240,10 @@ fn build_lines(
         (vec![UserEvent::HelpToggle, UserEvent::Cancel, UserEvent::Close], "Close help".into()),
         (vec![UserEvent::NavigateDown], "Scroll down".into()),
         (vec![UserEvent::NavigateUp], "Scroll up".into()),
+        (vec![UserEvent::PageDown], "Scroll page down".into()),
+        (vec![UserEvent::PageUp], "Scroll page up".into()),
+        (vec![UserEvent::HalfPageDown], "Scroll half page down".into()),
+        (vec![UserEvent::HalfPageUp], "Scroll half page up".into()),
         (vec![UserEvent::GoToTop], "Go to top".into()),
         (vec![UserEvent::GoToBottom], "Go to bottom".into()),
     ];
