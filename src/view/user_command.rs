@@ -189,6 +189,7 @@ fn build_user_command_output_lines<'a>(
                 user_command_number
             )
         })?
+        .commands
         .iter()
         .map(String::as_str)
         .collect::<Vec<_>>();

@@ -503,6 +503,7 @@ impl App<'_> {
             self.image_protocol,
             self.tx.clone(),
             self.keybind,
+            self.core_config,
         );
     }
 

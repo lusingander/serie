@@ -92,15 +92,18 @@ pub struct CoreSearchConfig {
 #[optional]
 #[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
 pub struct CoreUserCommandConfig {
-    #[default(HashMap::from([("1".into(), vec![
-        "git".into(),
-        "--no-pager".into(),
-        "diff".into(),
-        "--color=always".into(),
-        "{{first_parent_hash}}".into(),
-        "{{target_hash}}".into(),
-    ])]))]
-    pub commands: HashMap<String, Vec<String>>,
+    #[default(HashMap::from([("1".into(), UserCommand {
+        name: "git diff".into(),
+        commands: vec![
+            "git".into(),
+            "--no-pager".into(),
+            "diff".into(),
+            "--color=always".into(),
+            "{{first_parent_hash}}".into(),
+            "{{target_hash}}".into(),
+        ],
+    })]))]
+    pub commands: HashMap<String, UserCommand>,
 }
 
 impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
@@ -114,7 +117,7 @@ impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
         struct OptionalCoreUserCommandConfigVisitor;
 
         impl<'de> Visitor<'de> for OptionalCoreUserCommandConfigVisitor {
-            type Value = HashMap<String, Vec<String>>;
+            type Value = HashMap<String, UserCommand>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("a map of user commands")
@@ -133,7 +136,7 @@ impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
                                 "command key cannot be empty, like `commands_`",
                             ));
                         }
-                        let command_value: Vec<String> = map.next_value()?;
+                        let command_value: UserCommand = map.next_value()?;
                         commands.insert(command_key, command_value);
                     } else if key == "commands" {
                         return Err(V::Error::custom(
@@ -156,6 +159,12 @@ impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
 
         Ok(OptionalCoreUserCommandConfig { commands })
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct UserCommand {
+    pub name: String,
+    pub commands: Vec<String>,
 }
 
 #[optional(derives = [Deserialize])]
@@ -267,14 +276,17 @@ mod tests {
                 user_command: CoreUserCommandConfig {
                     commands: HashMap::from([(
                         "1".into(),
-                        vec![
-                            "git".into(),
-                            "--no-pager".into(),
-                            "diff".into(),
-                            "--color=always".into(),
-                            "{{first_parent_hash}}".into(),
-                            "{{target_hash}}".into(),
-                        ],
+                        UserCommand {
+                            name: "git diff".into(),
+                            commands: vec![
+                                "git".into(),
+                                "--no-pager".into(),
+                                "diff".into(),
+                                "--color=always".into(),
+                                "{{first_parent_hash}}".into(),
+                                "{{target_hash}}".into(),
+                            ],
+                        },
                     )]),
                 },
             },
@@ -323,9 +335,9 @@ mod tests {
             ignore_case = true
             fuzzy = true
             [core.user_command]
-            commands_1 = ["git", "diff", "{{first_parent_hash}}", "{{target_hash}}"]
-            commands_2 = ["echo", "hello"]
-            commands_10 = ["echo", "world"]
+            commands_1 = { name = "git diff no color", commands = ["git", "diff", "{{first_parent_hash}}", "{{target_hash}}"] }
+            commands_2 = { name = "echo hello", commands = ["echo", "hello"] }
+            commands_10 = { name = "echo world", commands = ["echo", "world"] }
             [ui.common]
             cursor_type = { Virtual = "|" }
             [ui.list]
@@ -358,15 +370,30 @@ mod tests {
                     commands: HashMap::from([
                         (
                             "1".into(),
-                            vec![
-                                "git".into(),
-                                "diff".into(),
-                                "{{first_parent_hash}}".into(),
-                                "{{target_hash}}".into(),
-                            ],
+                            UserCommand {
+                                name: "git diff no color".into(),
+                                commands: vec![
+                                    "git".into(),
+                                    "diff".into(),
+                                    "{{first_parent_hash}}".into(),
+                                    "{{target_hash}}".into(),
+                                ],
+                            },
                         ),
-                        ("2".into(), vec!["echo".into(), "hello".into()]),
-                        ("10".into(), vec!["echo".into(), "world".into()]),
+                        (
+                            "2".into(),
+                            UserCommand {
+                                name: "echo hello".into(),
+                                commands: vec!["echo".into(), "hello".into()],
+                            },
+                        ),
+                        (
+                            "10".into(),
+                            UserCommand {
+                                name: "echo world".into(),
+                                commands: vec!["echo".into(), "world".into()],
+                            },
+                        ),
                     ]),
                 },
             },
@@ -417,14 +444,17 @@ mod tests {
                 user_command: CoreUserCommandConfig {
                     commands: HashMap::from([(
                         "1".into(),
-                        vec![
-                            "git".into(),
-                            "--no-pager".into(),
-                            "diff".into(),
-                            "--color=always".into(),
-                            "{{first_parent_hash}}".into(),
-                            "{{target_hash}}".into(),
-                        ],
+                        UserCommand {
+                            name: "git diff".into(),
+                            commands: vec![
+                                "git".into(),
+                                "--no-pager".into(),
+                                "diff".into(),
+                                "--color=always".into(),
+                                "{{first_parent_hash}}".into(),
+                                "{{target_hash}}".into(),
+                            ],
+                        },
                     )]),
                 },
             },

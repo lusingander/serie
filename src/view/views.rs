@@ -159,6 +159,7 @@ impl<'a> View<'a> {
         image_protocol: ImageProtocol,
         tx: Sender,
         keybind: &'a KeyBind,
+        core_config: &'a CoreConfig,
     ) -> Self {
         View::Help(Box::new(HelpView::new(
             before,
@@ -166,6 +167,7 @@ impl<'a> View<'a> {
             image_protocol,
             tx,
             keybind,
+            core_config,
         )))
     }
 }

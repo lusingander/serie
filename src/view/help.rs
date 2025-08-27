@@ -9,6 +9,7 @@ use ratatui::{
 
 use crate::{
     color::ColorTheme,
+    config::CoreConfig,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -37,8 +38,9 @@ impl HelpView<'_> {
         image_protocol: ImageProtocol,
         tx: Sender,
         keybind: &'a KeyBind,
+        core_config: &'a CoreConfig,
     ) -> HelpView<'a> {
-        let (help_key_lines, help_value_lines) = build_lines(color_theme, keybind);
+        let (help_key_lines, help_value_lines) = build_lines(color_theme, keybind, core_config);
         let help_key_line_max_width = help_key_lines
             .iter()
             .map(|line| line.width())
@@ -169,11 +171,22 @@ impl<'a> HelpView<'a> {
 }
 
 #[rustfmt::skip]
-fn build_lines(color_theme: &ColorTheme, keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
+fn build_lines(
+    color_theme: &ColorTheme,
+    keybind: &KeyBind,
+    core_config: &CoreConfig,
+) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
     let user_command_view_toggle_helps = keybind
         .user_command_view_toggle_event_numbers()
         .into_iter()
-        .map(|n| (vec![UserEvent::UserCommandViewToggle(n)], format!("Toggle user command view {}", n)))
+        .flat_map(|n| {
+            core_config
+                .user_command
+                .commands
+                .get(&n.to_string())
+                .map(|c| format!("Toggle user command {} - {}", n, c.name))
+                .map(|desc| (vec![UserEvent::UserCommandViewToggle(n)], desc))
+        })
         .collect::<Vec<_>>();
 
     let common_helps = vec![
