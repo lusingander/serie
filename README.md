@@ -195,15 +195,17 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 | <kbd>Ctrl-g</kbd>                    | Toggle ignore case (if searching)                  | `ignore_case_toggle`                         |
 | <kbd>Ctrl-x</kbd>                    | Toggle fuzzy match (if searching)                  | `fuzzy_toggle`                               |
 | <kbd>c/C</kbd>                       | Copy commit short/full hash                        | `short_copy` `full_copy`                     |
+| <kbd>d</kbd>                         | Toggle custom user command view                    | `user_command_view_toggle_1`                 |
 
 #### Commit Detail
 
-| Key                                 | Description                 | Corresponding keybind         |
-| ----------------------------------- | --------------------------- | ----------------------------- |
-| <kbd>Esc</kbd> <kbd>Backspace</kbd> | Close commit details        | `close` `cancel`              |
-| <kbd>Down/Up</kbd> <kbd>j/k</kbd>   | Scroll down/up              | `navigate_down` `navigate_up` |
-| <kbd>g/G</kbd>                      | Go to top/bottom            | `go_to_top` `go_to_bottom`    |
-| <kbd>c/C</kbd>                      | Copy commit short/full hash | `short_copy` `full_copy`      |
+| Key                                 | Description                     | Corresponding keybind         |
+| ----------------------------------- | ------------------------------- | ----------------------------- |
+| <kbd>Esc</kbd> <kbd>Backspace</kbd> | Close commit details            | `close` `cancel`              |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd>   | Scroll down/up                  | `navigate_down` `navigate_up` |
+| <kbd>g/G</kbd>                      | Go to top/bottom                | `go_to_top` `go_to_bottom`    |
+| <kbd>c/C</kbd>                      | Copy commit short/full hash     | `short_copy` `full_copy`      |
+| <kbd>d</kbd>                        | Toggle custom user command view | `user_command_view_toggle_1`  |
 
 #### Refs List
 
@@ -214,6 +216,14 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 | <kbd>g/G</kbd>                                     | Go to top/bottom | `go_to_top` `go_to_bottom`         |
 | <kbd>Right/Left</kbd> <kbd>l/h</kbd>               | Open/Close node  | `navigate_right` `navigate_left`   |
 | <kbd>c</kbd>                                       | Copy ref name    | `short_copy`                       |
+
+#### User Command
+
+| Key                                              | Description        | Corresponding keybind          |
+| ------------------------------------------------ | ------------------ | ------------------------------ |
+| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>?</kbd> | Close user command | `close` `cancel` `help_toggle` |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                | Scroll down/up     | `navigate_down` `navigate_up`  |
+| <kbd>g/G</kbd>                                   | Go to top/bottom   | `go_to_top` `go_to_bottom`     |
 
 #### Help
 
@@ -252,6 +262,13 @@ ignore_case = false
 # Whether to enable fuzzy matching by default.
 # type: boolean
 fuzzy = false
+
+[core.user_command]
+# The command definition for generating the content displayed in the user command view.
+# Multiple commands can be specified in the format commands_{n}.
+# For details about user command, see the separate User command section.
+# type: object
+commands_1 = { name = "git diff", commands = ["git", "--no-pager", "diff", "--color=always", "{{first_parent_hash}}", "{{target_hash}}"]}
 
 [ui.common]
 # The type of a cursor to display in the input.
@@ -323,6 +340,50 @@ background = "#00000000"
 ```
 
 </details>
+
+### User command
+
+The User command view allows you to display the output (stdout) of your custom external commands.
+This allows you to do things like view commit diffs using your favorite tools.
+
+To define a user command, you need to configure the following two settings:
+- Keybinding definition. Specify the key to display each user command.
+  - Config: `keybind.user_command_view_toggle_{n}`
+- Command definition. Specify the actual command you want to execute.
+  - Config: `core.user_command.commands_{n}`
+
+<details>
+<summary>Configuration example</summary>
+
+```toml
+[keybind]
+user_command_view_toggle_1 = ["d"]
+user_command_view_toggle_2 = ["shift-d"]
+
+[core.user_command]
+commands_1 = { "name" = "git diff", commands = ["git", "--no-pager", "diff", "--color=always", "{{first_parent_hash}}", "{{target_hash}}"] }
+commands_2 = { "name" = "xxx", commands = ["xxx", "{{first_parent_hash}}", "{{target_hash}}", "--width", "{{area_width}}", "--height", "{{area_height}}"] }
+```
+
+</details>
+
+#### Variables
+
+The following variables can be used in command definitions.
+They will be replaced with their respective values command is executed.
+
+- `{{target_hash}}`
+  - The hash of the selected commit.
+  - example: `b0ce4cb9c798576af9b4accc9f26ddce5e72063d`
+- `{{first_parent_hash}}`
+  - The hash of the first parent of the selected commit.
+  - example: `c103d9744df8ebf100773a11345f011152ec5581`
+- `{{area_width}}`
+  - Width of the user command display area (number of cells).
+  - example: 80
+- `{{area_height}}`
+  - Height of the user command display area (number of cells).
+  - example: 30
 
 ## Compatibility
 
