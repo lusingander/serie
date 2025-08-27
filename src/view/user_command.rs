@@ -96,6 +96,26 @@ impl<'a> UserCommandView<'a> {
                     self.commit_user_command_state.scroll_up();
                 }
             }
+            UserEvent::PageDown => {
+                for _ in 0..count {
+                    self.commit_user_command_state.scroll_page_down();
+                }
+            }
+            UserEvent::PageUp => {
+                for _ in 0..count {
+                    self.commit_user_command_state.scroll_page_up();
+                }
+            }
+            UserEvent::HalfPageDown => {
+                for _ in 0..count {
+                    self.commit_user_command_state.scroll_half_page_down();
+                }
+            }
+            UserEvent::HalfPageUp => {
+                for _ in 0..count {
+                    self.commit_user_command_state.scroll_half_page_up();
+                }
+            }
             UserEvent::GoToTop => {
                 self.commit_user_command_state.select_first();
             }

@@ -10,6 +10,7 @@ use crate::color::ColorTheme;
 
 #[derive(Debug, Default)]
 pub struct CommitUserCommandState {
+    height: usize,
     offset: usize,
 }
 
@@ -20,6 +21,22 @@ impl CommitUserCommandState {
 
     pub fn scroll_up(&mut self) {
         self.offset = self.offset.saturating_sub(1);
+    }
+
+    pub fn scroll_page_down(&mut self) {
+        self.offset = self.offset.saturating_add(self.height);
+    }
+
+    pub fn scroll_page_up(&mut self) {
+        self.offset = self.offset.saturating_sub(self.height);
+    }
+
+    pub fn scroll_half_page_down(&mut self) {
+        self.offset = self.offset.saturating_add(self.height / 2);
+    }
+
+    pub fn scroll_half_page_up(&mut self) {
+        self.offset = self.offset.saturating_sub(self.height / 2);
     }
 
     pub fn select_first(&mut self) {
@@ -84,6 +101,7 @@ impl CommitUserCommand<'_> {
         line_count: usize,
         area_height: usize,
     ) {
+        state.height = area_height;
         state.offset = state.offset.min(line_count.saturating_sub(area_height));
     }
 }
