@@ -280,8 +280,8 @@ fn build_lines(
     
     let mut detail_helps = vec![
         (vec![UserEvent::Cancel, UserEvent::Close], "Close commit details".into()),
-        (vec![UserEvent::PageDown], "Scroll down".into()),
-        (vec![UserEvent::PageUp], "Scroll up".into()),
+        (vec![UserEvent::NavigateDown], "Scroll down".into()),
+        (vec![UserEvent::NavigateUp], "Scroll up".into()),
         (vec![UserEvent::PageDown], "Scroll page down".into()),
         (vec![UserEvent::PageUp], "Scroll page up".into()),
         (vec![UserEvent::HalfPageDown], "Scroll half page down".into()),
@@ -308,8 +308,8 @@ fn build_lines(
     
     let mut user_command_helps = vec![
         (vec![UserEvent::Cancel, UserEvent::Close], "Close user command".into()),
-        (vec![UserEvent::PageDown], "Scroll down".into()),
-        (vec![UserEvent::PageUp], "Scroll up".into()),
+        (vec![UserEvent::NavigateDown], "Scroll down".into()),
+        (vec![UserEvent::NavigateUp], "Scroll up".into()),
         (vec![UserEvent::PageDown], "Scroll page down".into()),
         (vec![UserEvent::PageUp], "Scroll page up".into()),
         (vec![UserEvent::HalfPageDown], "Scroll half page down".into()),
