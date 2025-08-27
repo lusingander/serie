@@ -2,12 +2,18 @@ use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
 use crate::{
     color::ColorTheme,
-    config::UiConfig,
+    config::{CoreConfig, UiConfig},
     event::{Sender, UserEventWithCount},
     git::{Commit, FileChange, Ref},
     keybind::KeyBind,
     protocol::ImageProtocol,
-    view::{detail::DetailView, help::HelpView, list::ListView, refs::RefsView},
+    view::{
+        detail::DetailView,
+        help::HelpView,
+        list::ListView,
+        refs::RefsView,
+        user_command::{UserCommandView, UserCommandViewBeforeView},
+    },
     widget::commit_list::CommitListState,
 };
 
@@ -17,6 +23,7 @@ pub enum View<'a> {
     Default, // dummy variant to make #[default] work
     List(Box<ListView<'a>>),
     Detail(Box<DetailView<'a>>),
+    UserCommand(Box<UserCommandView<'a>>),
     Refs(Box<RefsView<'a>>),
     Help(Box<HelpView<'a>>),
 }
@@ -27,6 +34,7 @@ impl<'a> View<'a> {
             View::Default => {}
             View::List(view) => view.handle_event(event_with_count, key_event),
             View::Detail(view) => view.handle_event(event_with_count, key_event),
+            View::UserCommand(view) => view.handle_event(event_with_count, key_event),
             View::Refs(view) => view.handle_event(event_with_count, key_event),
             View::Help(view) => view.handle_event(event_with_count, key_event),
         }
@@ -37,6 +45,7 @@ impl<'a> View<'a> {
             View::Default => {}
             View::List(view) => view.render(f, area),
             View::Detail(view) => view.render(f, area),
+            View::UserCommand(view) => view.render(f, area),
             View::Refs(view) => view.render(f, area),
             View::Help(view) => view.render(f, area),
         }
@@ -78,6 +87,56 @@ impl<'a> View<'a> {
         )))
     }
 
+    pub fn of_user_command_from_list(
+        commit_list_state: CommitListState<'a>,
+        commit: Commit,
+        user_command_number: usize,
+        view_area: Rect,
+        core_config: &'a CoreConfig,
+        ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
+        image_protocol: ImageProtocol,
+        tx: Sender,
+    ) -> Self {
+        View::UserCommand(Box::new(UserCommandView::new(
+            commit_list_state,
+            commit,
+            user_command_number,
+            view_area,
+            core_config,
+            ui_config,
+            color_theme,
+            image_protocol,
+            tx,
+            UserCommandViewBeforeView::List,
+        )))
+    }
+
+    pub fn of_user_command_from_detail(
+        commit_list_state: CommitListState<'a>,
+        commit: Commit,
+        user_command_number: usize,
+        view_area: Rect,
+        core_config: &'a CoreConfig,
+        ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
+        image_protocol: ImageProtocol,
+        tx: Sender,
+    ) -> Self {
+        View::UserCommand(Box::new(UserCommandView::new(
+            commit_list_state,
+            commit,
+            user_command_number,
+            view_area,
+            core_config,
+            ui_config,
+            color_theme,
+            image_protocol,
+            tx,
+            UserCommandViewBeforeView::Detail,
+        )))
+    }
+
     pub fn of_refs(
         commit_list_state: CommitListState<'a>,
         refs: Vec<Ref>,
@@ -100,6 +159,7 @@ impl<'a> View<'a> {
         image_protocol: ImageProtocol,
         tx: Sender,
         keybind: &'a KeyBind,
+        core_config: &'a CoreConfig,
     ) -> Self {
         View::Help(Box::new(HelpView::new(
             before,
@@ -107,6 +167,7 @@ impl<'a> View<'a> {
             image_protocol,
             tx,
             keybind,
+            core_config,
         )))
     }
 }

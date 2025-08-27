@@ -9,6 +9,7 @@ use ratatui::{
 
 use crate::{
     color::ColorTheme,
+    config::CoreConfig,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -37,8 +38,9 @@ impl HelpView<'_> {
         image_protocol: ImageProtocol,
         tx: Sender,
         keybind: &'a KeyBind,
+        core_config: &'a CoreConfig,
     ) -> HelpView<'a> {
-        let (help_key_lines, help_value_lines) = build_lines(color_theme, keybind);
+        let (help_key_lines, help_value_lines) = build_lines(color_theme, keybind, core_config);
         let help_key_line_max_width = help_key_lines
             .iter()
             .map(|line| line.width())
@@ -169,88 +171,101 @@ impl<'a> HelpView<'a> {
 }
 
 #[rustfmt::skip]
-fn build_lines(color_theme: &ColorTheme, keybind: &KeyBind) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
-    let (common_key_lines, common_value_lines) = build_block_lines(
-        "Common:",
-        &[
-            (&[UserEvent::ForceQuit, UserEvent::Quit], "Quit app"),
-            (&[UserEvent::HelpToggle], "Open help"),
-        ],
-        color_theme,
-        keybind,
-    );
-    let (help_key_lines, help_value_lines) = build_block_lines(
-        "Help:",
-        &[
-            (&[UserEvent::HelpToggle, UserEvent::Cancel, UserEvent::Close], "Close help"),
-            (&[UserEvent::NavigateDown], "Scroll down"),
-            (&[UserEvent::NavigateUp], "Scroll up"),
-            (&[UserEvent::GoToTop], "Go to top"),
-            (&[UserEvent::GoToBottom], "Go to bottom"),
-        ],
-        color_theme,
-        keybind,
-    );
-    let (list_key_lines, list_value_lines) = build_block_lines(
-        "Commit List:",
-        &[
-            (&[UserEvent::NavigateDown], "Move down"),
-            (&[UserEvent::NavigateUp], "Move up"),
-            (&[UserEvent::GoToParent], "Go to parent"),
-            (&[UserEvent::GoToTop], "Go to top"),
-            (&[UserEvent::GoToBottom], "Go to bottom"),
-            (&[UserEvent::PageDown], "Scroll page down"),
-            (&[UserEvent::PageUp], "Scroll page up"),
-            (&[UserEvent::HalfPageDown], "Scroll half page down"),
-            (&[UserEvent::HalfPageUp], "Scroll half page up"),
-            (&[UserEvent::ScrollDown], "Scroll down"),
-            (&[UserEvent::ScrollUp], "Scroll up"),
-            (&[UserEvent::SelectTop], "Select top of the screen"),
-            (&[UserEvent::SelectMiddle], "Select middle of the screen"),
-            (&[UserEvent::SelectBottom], "Select bottom of the screen"),
-            (&[UserEvent::Confirm], "Show commit details"),
-            (&[UserEvent::RefListToggle], "Open refs list"),
-            (&[UserEvent::Search], "Start search"),
-            (&[UserEvent::Cancel], "Cancel search"),
-            (&[UserEvent::GoToNext], "Go to next search match"),
-            (&[UserEvent::GoToPrevious], "Go to previous search match"),
-            (&[UserEvent::IgnoreCaseToggle], "Toggle ignore case"),
-            (&[UserEvent::FuzzyToggle], "Toggle fuzzy match"),
-            (&[UserEvent::ShortCopy], "Copy commit short hash"),
-            (&[UserEvent::FullCopy], "Copy commit hash"),
-        ],
-        color_theme,
-        keybind,
-    );
-    let (detail_key_lines, detail_value_lines) = build_block_lines(
-        "Commit Detail:",
-        &[
-            (&[UserEvent::Cancel, UserEvent::Close], "Close commit details"),
-            (&[UserEvent::PageDown], "Scroll down"),
-            (&[UserEvent::PageUp], "Scroll up"),
-            (&[UserEvent::GoToTop], "Go to top"),
-            (&[UserEvent::GoToBottom], "Go to bottom"),
-            (&[UserEvent::ShortCopy], "Copy commit short hash"),
-            (&[UserEvent::FullCopy], "Copy commit hash"),
-        ],
-        color_theme,
-        keybind,
-    );
-    let (refs_key_lines, refs_value_lines) = build_block_lines(
-        "Refs List:",
-        &[
-            (&[UserEvent::Cancel, UserEvent::Close, UserEvent::RefListToggle], "Close refs list"),
-            (&[UserEvent::NavigateDown], "Move down"),
-            (&[UserEvent::NavigateUp], "Move up"),
-            (&[UserEvent::GoToTop], "Go to top"),
-            (&[UserEvent::GoToBottom], "Go to bottom"),
-            (&[UserEvent::NavigateRight], "Open node"),
-            (&[UserEvent::NavigateLeft], "Close node"),
-            (&[UserEvent::ShortCopy], "Copy ref name"),
-        ],
-        color_theme,
-        keybind,
-    );
+fn build_lines(
+    color_theme: &ColorTheme,
+    keybind: &KeyBind,
+    core_config: &CoreConfig,
+) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
+    let user_command_view_toggle_helps = keybind
+        .user_command_view_toggle_event_numbers()
+        .into_iter()
+        .flat_map(|n| {
+            core_config
+                .user_command
+                .commands
+                .get(&n.to_string())
+                .map(|c| format!("Toggle user command {} - {}", n, c.name))
+                .map(|desc| (vec![UserEvent::UserCommandViewToggle(n)], desc))
+        })
+        .collect::<Vec<_>>();
+
+    let common_helps = vec![
+        (vec![UserEvent::ForceQuit, UserEvent::Quit], "Quit app".into()),
+        (vec![UserEvent::HelpToggle], "Open help".into()),
+    ];
+    let (common_key_lines, common_value_lines) = build_block_lines("Common:", common_helps, color_theme, keybind);
+
+    let help_helps = vec![
+        (vec![UserEvent::HelpToggle, UserEvent::Cancel, UserEvent::Close], "Close help".into()),
+        (vec![UserEvent::NavigateDown], "Scroll down".into()),
+        (vec![UserEvent::NavigateUp], "Scroll up".into()),
+        (vec![UserEvent::GoToTop], "Go to top".into()),
+        (vec![UserEvent::GoToBottom], "Go to bottom".into()),
+    ];
+    let (help_key_lines, help_value_lines) = build_block_lines("Help:", help_helps, color_theme, keybind);
+
+    let mut list_helps = vec![
+        (vec![UserEvent::NavigateDown], "Move down".into()),
+        (vec![UserEvent::NavigateUp], "Move up".into()),
+        (vec![UserEvent::GoToParent], "Go to parent".into()),
+        (vec![UserEvent::GoToTop], "Go to top".into()),
+        (vec![UserEvent::GoToBottom], "Go to bottom".into()),
+        (vec![UserEvent::PageDown], "Scroll page down".into()),
+        (vec![UserEvent::PageUp], "Scroll page up".into()),
+        (vec![UserEvent::HalfPageDown], "Scroll half page down".into()),
+        (vec![UserEvent::HalfPageUp], "Scroll half page up".into()),
+        (vec![UserEvent::ScrollDown], "Scroll down".into()),
+        (vec![UserEvent::ScrollUp], "Scroll up".into()),
+        (vec![UserEvent::SelectTop], "Select top of the screen".into()),
+        (vec![UserEvent::SelectMiddle], "Select middle of the screen".into()),
+        (vec![UserEvent::SelectBottom], "Select bottom of the screen".into()),
+        (vec![UserEvent::Confirm], "Show commit details".into()),
+        (vec![UserEvent::RefListToggle], "Open refs list".into()),
+        (vec![UserEvent::Search], "Start search".into()),
+        (vec![UserEvent::Cancel], "Cancel search".into()),
+        (vec![UserEvent::GoToNext], "Go to next search match".into()),
+        (vec![UserEvent::GoToPrevious], "Go to previous search match".into()),
+        (vec![UserEvent::IgnoreCaseToggle], "Toggle ignore case".into()),
+        (vec![UserEvent::FuzzyToggle], "Toggle fuzzy match".into()),
+        (vec![UserEvent::ShortCopy], "Copy commit short hash".into()),
+        (vec![UserEvent::FullCopy], "Copy commit hash".into()),
+    ];
+    list_helps.extend(user_command_view_toggle_helps.clone());
+    let (list_key_lines, list_value_lines) = build_block_lines("Commit List:", list_helps, color_theme, keybind);
+    
+    let mut detail_helps = vec![
+        (vec![UserEvent::Cancel, UserEvent::Close], "Close commit details".into()),
+        (vec![UserEvent::PageDown], "Scroll down".into()),
+        (vec![UserEvent::PageUp], "Scroll up".into()),
+        (vec![UserEvent::GoToTop], "Go to top".into()),
+        (vec![UserEvent::GoToBottom], "Go to bottom".into()),
+        (vec![UserEvent::ShortCopy], "Copy commit short hash".into()),
+        (vec![UserEvent::FullCopy], "Copy commit hash".into()),
+    ];
+    detail_helps.extend(user_command_view_toggle_helps.clone());
+    let (detail_key_lines, detail_value_lines) = build_block_lines("Commit Detail:", detail_helps, color_theme, keybind);
+
+    let refs_helps = vec![
+        (vec![UserEvent::Cancel, UserEvent::Close, UserEvent::RefListToggle], "Close refs list".into()),
+        (vec![UserEvent::NavigateDown], "Move down".into()),
+        (vec![UserEvent::NavigateUp], "Move up".into()),
+        (vec![UserEvent::GoToTop], "Go to top".into()),
+        (vec![UserEvent::GoToBottom], "Go to bottom".into()),
+        (vec![UserEvent::NavigateRight], "Open node".into()),
+        (vec![UserEvent::NavigateLeft], "Close node".into()),
+        (vec![UserEvent::ShortCopy], "Copy ref name".into()),
+    ];
+    let (refs_key_lines, refs_value_lines) = build_block_lines("Refs List:", refs_helps, color_theme, keybind);
+    
+    let mut user_command_helps = vec![
+        (vec![UserEvent::Cancel, UserEvent::Close], "Close user command".into()),
+        (vec![UserEvent::PageDown], "Scroll down".into()),
+        (vec![UserEvent::PageUp], "Scroll up".into()),
+        (vec![UserEvent::GoToTop], "Go to top".into()),
+        (vec![UserEvent::GoToBottom], "Go to bottom".into()),
+    ];
+    user_command_helps.extend(user_command_view_toggle_helps);
+    let (user_command_key_lines, user_command_value_lines) = build_block_lines("User Command:", user_command_helps, color_theme, keybind);
 
     let key_lines = join_line_groups_with_empty(vec![
         common_key_lines,
@@ -258,6 +273,7 @@ fn build_lines(color_theme: &ColorTheme, keybind: &KeyBind) -> (Vec<Line<'static
         list_key_lines,
         detail_key_lines,
         refs_key_lines,
+        user_command_key_lines,
     ]);
     let value_lines = join_line_groups_with_empty(vec![
         common_value_lines,
@@ -265,6 +281,7 @@ fn build_lines(color_theme: &ColorTheme, keybind: &KeyBind) -> (Vec<Line<'static
         list_value_lines,
         detail_value_lines,
         refs_value_lines,
+        user_command_value_lines,
     ]);
 
     (key_lines, value_lines)
@@ -272,7 +289,7 @@ fn build_lines(color_theme: &ColorTheme, keybind: &KeyBind) -> (Vec<Line<'static
 
 fn build_block_lines(
     title: &'static str,
-    helps: &[(&[UserEvent], &'static str)],
+    helps: Vec<(Vec<UserEvent>, String)>,
     color_theme: &ColorTheme,
     keybind: &KeyBind,
 ) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
@@ -284,7 +301,8 @@ fn build_block_lines(
         .add_modifier(Modifier::BOLD)];
     let value_title_lines = vec![Line::from("")];
     let key_binding_lines: Vec<Line> = helps
-        .iter()
+        .clone()
+        .into_iter()
         .map(|(events, _)| {
             join_span_groups_with_space(
                 events
@@ -295,8 +313,10 @@ fn build_block_lines(
             )
         })
         .collect();
-    let value_binding_lines: Vec<Line> =
-        helps.iter().map(|(_, value)| Line::from(*value)).collect();
+    let value_binding_lines: Vec<Line> = helps
+        .into_iter()
+        .map(|(_, value)| Line::raw(value))
+        .collect();
 
     key_lines.extend(key_title_lines);
     key_lines.extend(key_binding_lines);

@@ -40,11 +40,14 @@ pub struct App<'a> {
     status_line: StatusLine,
 
     keybind: &'a KeyBind,
+    core_config: &'a CoreConfig,
     ui_config: &'a UiConfig,
     color_theme: &'a ColorTheme,
     image_protocol: ImageProtocol,
     tx: Sender,
+
     numeric_prefix: String,
+    view_area: Rect,
 }
 
 impl<'a> App<'a> {
@@ -97,11 +100,13 @@ impl<'a> App<'a> {
             status_line: StatusLine::None,
             view,
             keybind,
+            core_config,
             ui_config,
             color_theme,
             image_protocol,
             tx,
             numeric_prefix: String::new(),
+            view_area: Rect::default(),
         }
     }
 }
@@ -189,6 +194,15 @@ impl App<'_> {
                 AppEvent::ClearDetail => {
                     self.clear_detail();
                 }
+                AppEvent::OpenUserCommand(n) => {
+                    self.open_user_command(n);
+                }
+                AppEvent::CloseUserCommand => {
+                    self.close_user_command();
+                }
+                AppEvent::ClearUserCommand => {
+                    self.clear_user_command();
+                }
                 AppEvent::OpenRefs => {
                     self.open_refs();
                 }
@@ -237,6 +251,8 @@ impl App<'_> {
 
         let [view_area, status_line_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(f.area());
+
+        self.update_state(view_area);
 
         self.view.render(f, view_area);
         self.render_status_line(f, status_line_area);
@@ -305,6 +321,10 @@ impl App<'_> {
 }
 
 impl App<'_> {
+    fn update_state(&mut self, view_area: Rect) {
+        self.view_area = view_area;
+    }
+
     fn open_detail(&mut self) {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
@@ -347,6 +367,108 @@ impl App<'_> {
         }
     }
 
+    fn open_user_command(&mut self, user_command_number: usize) {
+        if let View::List(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let selected = commit_list_state.selected_commit_hash().clone();
+            let (commit, _) = self.repository.commit_detail(&selected);
+            self.view = View::of_user_command_from_list(
+                commit_list_state,
+                commit,
+                user_command_number,
+                self.view_area,
+                self.core_config,
+                self.ui_config,
+                self.color_theme,
+                self.image_protocol,
+                self.tx.clone(),
+            );
+        } else if let View::Detail(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let selected = commit_list_state.selected_commit_hash().clone();
+            let (commit, _) = self.repository.commit_detail(&selected);
+            self.view = View::of_user_command_from_detail(
+                commit_list_state,
+                commit,
+                user_command_number,
+                self.view_area,
+                self.core_config,
+                self.ui_config,
+                self.color_theme,
+                self.image_protocol,
+                self.tx.clone(),
+            );
+        } else if let View::UserCommand(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let selected = commit_list_state.selected_commit_hash().clone();
+            let (commit, _) = self.repository.commit_detail(&selected);
+            if view.before_view_is_list() {
+                self.view = View::of_user_command_from_list(
+                    commit_list_state,
+                    commit,
+                    user_command_number,
+                    self.view_area,
+                    self.core_config,
+                    self.ui_config,
+                    self.color_theme,
+                    self.image_protocol,
+                    self.tx.clone(),
+                );
+            } else {
+                self.view = View::of_user_command_from_detail(
+                    commit_list_state,
+                    commit,
+                    user_command_number,
+                    self.view_area,
+                    self.core_config,
+                    self.ui_config,
+                    self.color_theme,
+                    self.image_protocol,
+                    self.tx.clone(),
+                );
+            }
+        }
+    }
+
+    fn close_user_command(&mut self) {
+        if let View::UserCommand(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let selected = commit_list_state.selected_commit_hash().clone();
+            let (commit, changes) = self.repository.commit_detail(&selected);
+            let refs = self
+                .repository
+                .refs(&selected)
+                .into_iter()
+                .cloned()
+                .collect();
+            if view.before_view_is_list() {
+                self.view = View::of_list(
+                    commit_list_state,
+                    self.ui_config,
+                    self.color_theme,
+                    self.tx.clone(),
+                );
+            } else {
+                self.view = View::of_detail(
+                    commit_list_state,
+                    commit,
+                    changes,
+                    refs,
+                    self.ui_config,
+                    self.color_theme,
+                    self.image_protocol,
+                    self.tx.clone(),
+                );
+            }
+        }
+    }
+
+    fn clear_user_command(&mut self) {
+        if let View::UserCommand(ref mut view) = self.view {
+            view.clear();
+        }
+    }
+
     fn open_refs(&mut self) {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
@@ -381,6 +503,7 @@ impl App<'_> {
             self.image_protocol,
             self.tx.clone(),
             self.keybind,
+            self.core_config,
         );
     }
 

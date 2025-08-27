@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     env,
     path::{Path, PathBuf},
 };
@@ -75,6 +76,8 @@ struct Config {
 pub struct CoreConfig {
     #[nested]
     pub search: CoreSearchConfig,
+    #[nested]
+    pub user_command: CoreUserCommandConfig,
 }
 
 #[optional(derives = [Deserialize])]
@@ -86,6 +89,84 @@ pub struct CoreSearchConfig {
     pub fuzzy: bool,
 }
 
+#[optional]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+pub struct CoreUserCommandConfig {
+    #[default(HashMap::from([("1".into(), UserCommand {
+        name: "git diff".into(),
+        commands: vec![
+            "git".into(),
+            "--no-pager".into(),
+            "diff".into(),
+            "--color=always".into(),
+            "{{first_parent_hash}}".into(),
+            "{{target_hash}}".into(),
+        ],
+    })]))]
+    pub commands: HashMap<String, UserCommand>,
+}
+
+impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{Error, MapAccess, Visitor};
+        use std::fmt;
+
+        struct OptionalCoreUserCommandConfigVisitor;
+
+        impl<'de> Visitor<'de> for OptionalCoreUserCommandConfigVisitor {
+            type Value = HashMap<String, UserCommand>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a map of user commands")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> std::result::Result<Self::Value, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut commands = HashMap::new();
+                while let Some(key) = map.next_key::<String>()? {
+                    if let Some(suffix) = key.strip_prefix("commands_") {
+                        let command_key = suffix.to_string();
+                        if command_key.is_empty() {
+                            return Err(V::Error::custom(
+                                "command key cannot be empty, like `commands_`",
+                            ));
+                        }
+                        let command_value: UserCommand = map.next_value()?;
+                        commands.insert(command_key, command_value);
+                    } else if key == "commands" {
+                        return Err(V::Error::custom(
+                            "invalid key `commands`, use `commands_n` format instead",
+                        ));
+                    } else {
+                        let _: serde::de::IgnoredAny = map.next_value()?;
+                    }
+                }
+                Ok(commands)
+            }
+        }
+
+        let commands = deserializer.deserialize_map(OptionalCoreUserCommandConfigVisitor)?;
+        let commands = if commands.is_empty() {
+            None
+        } else {
+            Some(commands)
+        };
+
+        Ok(OptionalCoreUserCommandConfig { commands })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct UserCommand {
+    pub name: String,
+    pub commands: Vec<String>,
+}
+
 #[optional(derives = [Deserialize])]
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct UiConfig {
@@ -95,6 +176,8 @@ pub struct UiConfig {
     pub list: UiListConfig,
     #[nested]
     pub detail: UiDetailConfig,
+    #[nested]
+    pub user_command: UiUserCommandConfig,
     #[nested]
     pub refs: UiRefsConfig,
 }
@@ -136,6 +219,13 @@ pub struct UiDetailConfig {
     pub date_format: String,
     #[default = true]
     pub date_local: bool,
+}
+
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+pub struct UiUserCommandConfig {
+    #[default = 20]
+    pub height: u16,
 }
 
 #[optional(derives = [Deserialize])]
@@ -183,6 +273,22 @@ mod tests {
                     ignore_case: false,
                     fuzzy: false,
                 },
+                user_command: CoreUserCommandConfig {
+                    commands: HashMap::from([(
+                        "1".into(),
+                        UserCommand {
+                            name: "git diff".into(),
+                            commands: vec![
+                                "git".into(),
+                                "--no-pager".into(),
+                                "diff".into(),
+                                "--color=always".into(),
+                                "{{first_parent_hash}}".into(),
+                                "{{target_hash}}".into(),
+                            ],
+                        },
+                    )]),
+                },
             },
             ui: UiConfig {
                 common: UiCommonConfig {
@@ -200,6 +306,7 @@ mod tests {
                     date_format: "%Y-%m-%d %H:%M:%S %z".into(),
                     date_local: true,
                 },
+                user_command: UiUserCommandConfig { height: 20 },
                 refs: UiRefsConfig { width: 26 },
             },
             graph: GraphConfig {
@@ -227,6 +334,10 @@ mod tests {
             [core.search]
             ignore_case = true
             fuzzy = true
+            [core.user_command]
+            commands_1 = { name = "git diff no color", commands = ["git", "diff", "{{first_parent_hash}}", "{{target_hash}}"] }
+            commands_2 = { name = "echo hello", commands = ["echo", "hello"] }
+            commands_10 = { name = "echo world", commands = ["echo", "world"] }
             [ui.common]
             cursor_type = { Virtual = "|" }
             [ui.list]
@@ -239,6 +350,8 @@ mod tests {
             height = 30
             date_format = "%Y/%m/%d %H:%M:%S"
             date_local = false
+            [ui.user_command]
+            height = 30
             [ui.refs]
             width = 40
             [graph.color]
@@ -252,6 +365,36 @@ mod tests {
                 search: CoreSearchConfig {
                     ignore_case: true,
                     fuzzy: true,
+                },
+                user_command: CoreUserCommandConfig {
+                    commands: HashMap::from([
+                        (
+                            "1".into(),
+                            UserCommand {
+                                name: "git diff no color".into(),
+                                commands: vec![
+                                    "git".into(),
+                                    "diff".into(),
+                                    "{{first_parent_hash}}".into(),
+                                    "{{target_hash}}".into(),
+                                ],
+                            },
+                        ),
+                        (
+                            "2".into(),
+                            UserCommand {
+                                name: "echo hello".into(),
+                                commands: vec!["echo".into(), "hello".into()],
+                            },
+                        ),
+                        (
+                            "10".into(),
+                            UserCommand {
+                                name: "echo world".into(),
+                                commands: vec!["echo".into(), "world".into()],
+                            },
+                        ),
+                    ]),
                 },
             },
             ui: UiConfig {
@@ -270,6 +413,7 @@ mod tests {
                     date_format: "%Y/%m/%d %H:%M:%S".into(),
                     date_local: false,
                 },
+                user_command: UiUserCommandConfig { height: 30 },
                 refs: UiRefsConfig { width: 40 },
             },
             graph: GraphConfig {
@@ -297,6 +441,22 @@ mod tests {
                     ignore_case: false,
                     fuzzy: false,
                 },
+                user_command: CoreUserCommandConfig {
+                    commands: HashMap::from([(
+                        "1".into(),
+                        UserCommand {
+                            name: "git diff".into(),
+                            commands: vec![
+                                "git".into(),
+                                "--no-pager".into(),
+                                "diff".into(),
+                                "--color=always".into(),
+                                "{{first_parent_hash}}".into(),
+                                "{{target_hash}}".into(),
+                            ],
+                        },
+                    )]),
+                },
             },
             ui: UiConfig {
                 common: UiCommonConfig {
@@ -314,6 +474,7 @@ mod tests {
                     date_format: "%Y-%m-%d %H:%M:%S %z".into(),
                     date_local: true,
                 },
+                user_command: UiUserCommandConfig { height: 20 },
                 refs: UiRefsConfig { width: 26 },
             },
             graph: GraphConfig {

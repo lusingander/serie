@@ -133,6 +133,9 @@ impl<'a> ListView<'a> {
                     self.as_mut_list_state().start_search();
                     self.update_search_query();
                 }
+                UserEvent::UserCommandViewToggle(n) => {
+                    self.tx.send(AppEvent::OpenUserCommand(n));
+                }
                 UserEvent::HelpToggle => {
                     self.tx.send(AppEvent::OpenHelp);
                 }

@@ -85,6 +85,9 @@ impl<'a> DetailView<'a> {
             UserEvent::FullCopy => {
                 self.copy_commit_hash();
             }
+            UserEvent::UserCommandViewToggle(n) => {
+                self.tx.send(AppEvent::OpenUserCommand(n));
+            }
             UserEvent::HelpToggle => {
                 self.tx.send(AppEvent::OpenHelp);
             }
