@@ -16,10 +16,10 @@ exclude = ["/.github", "/img"]
 
 [dependencies]
 ansi-to-tui = "7.0.0"
-arboard = "3.6.0"
+arboard = "3.6.1"
 base64 = "0.22.1"
 chrono = "0.4.41"
-clap = { version = "4.5.45", features = ["derive"] }
+clap = { version = "4.5.46", features = ["derive"] }
 console = "0.16.0"
 fuzzy-matcher = "0.3.7"
 fxhash = "0.2.1"
@@ -42,7 +42,7 @@ umbra = "0.4.0"
 [dev-dependencies]
 dircpy = "0.3.19"
 rstest = "0.26.1"
-tempfile = "3.20.0"
+tempfile = "3.21.0"
 text-to-png = "0.2.0"
 
 [profile.release]
