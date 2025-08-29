@@ -340,6 +340,55 @@ edge = "#00000000"
 # type: string
 background = "#00000000"
 
+[color]
+# The colors of each element of the application.
+# Note: Graph colors are specified with [graph.color].
+#
+# Colors should be specified in one of the following formats:
+# - ANSI color name
+#   - "red", "bright-blue", "light-red", "reset", ...
+# - 8-bit color (256-color) index values
+#   - "34", "128", "255", ...
+# - 24-bit true color hex codes
+#   - "#abcdef", ...
+# type: string
+fg = "reset"
+bg = "reset"
+list_selected_fg = "white"
+list_selected_bg = "dark-gray"
+list_ref_paren_fg = "yellow"
+list_ref_branch_fg = "green"
+list_ref_remote_branch_fg = "red"
+list_ref_tag_fg = "yellow"
+list_ref_stash_fg = "magenta"
+list_head_fg = "cyan"
+list_subject_fg = "reset"
+list_name_fg = "cyan"
+list_hash_fg = "yellow"
+list_date_fg = "magenta"
+list_match_fg = "black"
+list_match_bg = "yellow"
+detail_email_fg = "blue"
+detail_ref_branch_fg = "green"
+detail_ref_remote_branch_fg = "red"
+detail_ref_tag_fg = "yellow"
+detail_file_change_add_fg = "green"
+detail_file_change_modify_fg = "yellow"
+detail_file_change_delete_fg = "red"
+detail_file_change_move_fg = "magenta"
+ref_selected_fg = "white"
+ref_selected_bg = "dark-gray"
+help_block_title_fg = "green"
+help_key_fg = "yellow"
+virtual_cursor_fg = "reset"
+status_input_fg = "reset"
+status_input_transient_fg = "dark-gray"
+status_info_fg = "cyan"
+status_success_fg = "green"
+status_warn_fg = "yellow"
+status_error_fg = "red"
+divider_fg = "dark-gray"
+
 [keybind]
 # See ./assets/default-keybind.toml for a specific example configuration.
 # ...
