@@ -1,8 +1,11 @@
 use ratatui::style::Color as RatatuiColor;
+use serde::Deserialize;
+use umbra::optional;
 
 use crate::config::GraphColorConfig;
 
-#[derive(Debug)]
+#[optional(derives = [Deserialize], visibility = pub)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ColorTheme {
     pub fg: RatatuiColor,
     pub bg: RatatuiColor,

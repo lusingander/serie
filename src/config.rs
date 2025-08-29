@@ -8,7 +8,11 @@ use serde::Deserialize;
 use smart_default::SmartDefault;
 use umbra::optional;
 
-use crate::{keybind::KeyBind, Result};
+use crate::{
+    color::{ColorTheme, OptionalColorTheme},
+    keybind::KeyBind,
+    Result,
+};
 
 const XDG_CONFIG_HOME_ENV_NAME: &str = "XDG_CONFIG_HOME";
 const DEFAULT_CONFIG_DIR: &str = ".config";
@@ -16,7 +20,13 @@ const APP_DIR_NAME: &str = "serie";
 const CONFIG_FILE_NAME: &str = "config.toml";
 const CONFIG_FILE_ENV_NAME: &str = "SERIE_CONFIG_FILE";
 
-pub fn load() -> Result<(CoreConfig, UiConfig, GraphConfig, Option<KeyBind>)> {
+pub fn load() -> Result<(
+    CoreConfig,
+    UiConfig,
+    GraphConfig,
+    ColorTheme,
+    Option<KeyBind>,
+)> {
     let config = match config_file_path_from_env() {
         Some(user_path) => {
             if !user_path.exists() {
@@ -37,7 +47,13 @@ pub fn load() -> Result<(CoreConfig, UiConfig, GraphConfig, Option<KeyBind>)> {
             }
         }
     }?;
-    Ok((config.core, config.ui, config.graph, config.keybind))
+    Ok((
+        config.core,
+        config.ui,
+        config.graph,
+        config.color,
+        config.keybind,
+    ))
 }
 
 fn config_file_path_from_env() -> Option<PathBuf> {
@@ -67,6 +83,8 @@ struct Config {
     ui: UiConfig,
     #[nested]
     graph: GraphConfig,
+    #[nested]
+    color: ColorTheme,
     // The user customed keybinds, please ref `assets/default-keybind.toml`
     keybind: Option<KeyBind>,
 }
@@ -323,6 +341,7 @@ mod tests {
                     background: "#00000000".into(),
                 },
             },
+            color: ColorTheme::default(),
             keybind: None,
         };
         assert_eq!(actual, expected);
@@ -423,6 +442,7 @@ mod tests {
                     background: "#ffffff".into(),
                 },
             },
+            color: ColorTheme::default(),
             keybind: None,
         };
         assert_eq!(actual, expected);
@@ -491,6 +511,7 @@ mod tests {
                     background: "#00000000".into(),
                 },
             },
+            color: ColorTheme::default(),
             keybind: None,
         };
         assert_eq!(actual, expected);
