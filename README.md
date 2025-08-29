@@ -453,20 +453,20 @@ The terminals on which each has been confirmed to work are listed below.
 
 #### Inline Images Protocol
 
-| Terminal emulator                                                                | Support | Note                                                                                                                                         |
-| -------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| [iTerm2](https://iterm2.com)                                                     | ○       | But slower than other terminals                                                                                                              |
-| [WezTerm](https://wezfurlong.org/wezterm/)                                       | ○       |                                                                                                                                              |
-| [VSCode integrated terminal](https://code.visualstudio.com/docs/terminal/basics) | ○       | Requires the [`terminal.integrated.enableImages` setting](https://code.visualstudio.com/docs/terminal/advanced#_image-support) to be enabled |
-| [Hyper](https://hyper.is)                                                        | △       | >=[v4.0.0](https://github.com/vercel/hyper/releases/tag/v4.0.0-canary.4), not yet officially released                                        |
-| [Tabby](https://tabby.sh)                                                        | △       | The graph background is not transparent                                                                                                      |
+| Terminal emulator                                                                   | Note                                                                                                                                         |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| [iTerm2](https://iterm2.com)                                                        | But slower than other terminals                                                                                                              |
+| [WezTerm](https://wezfurlong.org/wezterm/)                                          |                                                                                                                                              |
+| [VSCode integrated terminal](https://code.visualstudio.com/docs/terminal/basics) \* | Requires the [`terminal.integrated.enableImages` setting](https://code.visualstudio.com/docs/terminal/advanced#_image-support) to be enabled |
+
+\*Not only the VSCode integrated terminal, but any terminal emulator using [xterm.js](https://xtermjs.org) may basically work in the same way as long as [image display feature is enabled](https://github.com/xtermjs/xterm.js/tree/master/addons/addon-image).
 
 #### Terminal graphics protocol
 
-| Terminal emulator                         | Support | Note |
-| ----------------------------------------- | ------- | ---- |
-| [kitty](https://sw.kovidgoyal.net/kitty/) | ○       |      |
-| [Ghostty](https://ghostty.org)            | ○       |      |
+| Terminal emulator                         | Note |
+| ----------------------------------------- | ---- |
+| [kitty](https://sw.kovidgoyal.net/kitty/) |      |
+| [Ghostty](https://ghostty.org)            |      |
 
 ### Unsupported environments
 
