@@ -1,103 +1,91 @@
 use ratatui::style::Color as RatatuiColor;
 use serde::Deserialize;
+use smart_default::SmartDefault;
 use umbra::optional;
 
 use crate::config::GraphColorConfig;
 
 #[optional(derives = [Deserialize], visibility = pub)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
 pub struct ColorTheme {
+    #[default(RatatuiColor::Reset)]
     pub fg: RatatuiColor,
+    #[default(RatatuiColor::Reset)]
     pub bg: RatatuiColor,
 
+    #[default(RatatuiColor::White)]
     pub list_selected_fg: RatatuiColor,
+    #[default(RatatuiColor::DarkGray)]
     pub list_selected_bg: RatatuiColor,
+    #[default(RatatuiColor::Yellow)]
     pub list_ref_paren_fg: RatatuiColor,
+    #[default(RatatuiColor::Green)]
     pub list_ref_branch_fg: RatatuiColor,
+    #[default(RatatuiColor::Red)]
     pub list_ref_remote_branch_fg: RatatuiColor,
+    #[default(RatatuiColor::Yellow)]
     pub list_ref_tag_fg: RatatuiColor,
+    #[default(RatatuiColor::Magenta)]
     pub list_ref_stash_fg: RatatuiColor,
+    #[default(RatatuiColor::Cyan)]
     pub list_head_fg: RatatuiColor,
+    #[default(RatatuiColor::Reset)]
     pub list_subject_fg: RatatuiColor,
+    #[default(RatatuiColor::Cyan)]
     pub list_name_fg: RatatuiColor,
+    #[default(RatatuiColor::Yellow)]
     pub list_hash_fg: RatatuiColor,
+    #[default(RatatuiColor::Magenta)]
     pub list_date_fg: RatatuiColor,
+    #[default(RatatuiColor::Black)]
     pub list_match_fg: RatatuiColor,
+    #[default(RatatuiColor::Yellow)]
     pub list_match_bg: RatatuiColor,
 
+    #[default(RatatuiColor::Blue)]
     pub detail_email_fg: RatatuiColor,
+    #[default(RatatuiColor::Green)]
     pub detail_ref_branch_fg: RatatuiColor,
+    #[default(RatatuiColor::Red)]
     pub detail_ref_remote_branch_fg: RatatuiColor,
+    #[default(RatatuiColor::Yellow)]
     pub detail_ref_tag_fg: RatatuiColor,
+    #[default(RatatuiColor::Green)]
     pub detail_file_change_add_fg: RatatuiColor,
+    #[default(RatatuiColor::Yellow)]
     pub detail_file_change_modify_fg: RatatuiColor,
+    #[default(RatatuiColor::Red)]
     pub detail_file_change_delete_fg: RatatuiColor,
+    #[default(RatatuiColor::Magenta)]
     pub detail_file_change_move_fg: RatatuiColor,
 
+    #[default(RatatuiColor::White)]
     pub ref_selected_fg: RatatuiColor,
+    #[default(RatatuiColor::DarkGray)]
     pub ref_selected_bg: RatatuiColor,
 
+    #[default(RatatuiColor::Green)]
     pub help_block_title_fg: RatatuiColor,
+    #[default(RatatuiColor::Yellow)]
     pub help_key_fg: RatatuiColor,
 
+    #[default(RatatuiColor::Reset)]
     pub virtual_cursor_fg: RatatuiColor,
+    #[default(RatatuiColor::Reset)]
     pub status_input_fg: RatatuiColor,
+    #[default(RatatuiColor::DarkGray)]
     pub status_input_transient_fg: RatatuiColor,
+    #[default(RatatuiColor::Cyan)]
     pub status_info_fg: RatatuiColor,
+    #[default(RatatuiColor::Green)]
     pub status_success_fg: RatatuiColor,
+    #[default(RatatuiColor::Yellow)]
     pub status_warn_fg: RatatuiColor,
+    #[default(RatatuiColor::Red)]
     pub status_error_fg: RatatuiColor,
 
+    #[default(RatatuiColor::DarkGray)]
     pub divider_fg: RatatuiColor,
-}
-
-impl Default for ColorTheme {
-    fn default() -> Self {
-        Self {
-            fg: RatatuiColor::Reset,
-            bg: RatatuiColor::Reset,
-
-            list_selected_fg: RatatuiColor::White,
-            list_selected_bg: RatatuiColor::DarkGray,
-            list_ref_paren_fg: RatatuiColor::Yellow,
-            list_ref_branch_fg: RatatuiColor::Green,
-            list_ref_remote_branch_fg: RatatuiColor::Red,
-            list_ref_tag_fg: RatatuiColor::Yellow,
-            list_ref_stash_fg: RatatuiColor::Magenta,
-            list_head_fg: RatatuiColor::Cyan,
-            list_subject_fg: RatatuiColor::Reset,
-            list_name_fg: RatatuiColor::Cyan,
-            list_hash_fg: RatatuiColor::Yellow,
-            list_date_fg: RatatuiColor::Magenta,
-            list_match_fg: RatatuiColor::Black,
-            list_match_bg: RatatuiColor::Yellow,
-
-            detail_email_fg: RatatuiColor::Blue,
-            detail_ref_branch_fg: RatatuiColor::Green,
-            detail_ref_remote_branch_fg: RatatuiColor::Red,
-            detail_ref_tag_fg: RatatuiColor::Yellow,
-            detail_file_change_add_fg: RatatuiColor::Green,
-            detail_file_change_modify_fg: RatatuiColor::Yellow,
-            detail_file_change_delete_fg: RatatuiColor::Red,
-            detail_file_change_move_fg: RatatuiColor::Magenta,
-
-            ref_selected_fg: RatatuiColor::White,
-            ref_selected_bg: RatatuiColor::DarkGray,
-
-            help_block_title_fg: RatatuiColor::Green,
-            help_key_fg: RatatuiColor::Yellow,
-
-            virtual_cursor_fg: RatatuiColor::Reset,
-            status_input_fg: RatatuiColor::Reset,
-            status_input_transient_fg: RatatuiColor::DarkGray,
-            status_info_fg: RatatuiColor::Cyan,
-            status_success_fg: RatatuiColor::Green,
-            status_warn_fg: RatatuiColor::Yellow,
-            status_error_fg: RatatuiColor::Red,
-
-            divider_fg: RatatuiColor::DarkGray,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
