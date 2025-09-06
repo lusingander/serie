@@ -315,6 +315,11 @@ date_format = "%Y-%m-%d %H:%M:%S %z"
 # type: boolean
 date_local = true
 
+[ui.user_command]
+# The height of a user command area.
+# type: u16
+height = 20
+
 [ui.refs]
 # The width of a refs list area.
 # type: u16
@@ -435,10 +440,10 @@ They will be replaced with their respective values command is executed.
   - example: `c103d9744df8ebf100773a11345f011152ec5581`
 - `{{area_width}}`
   - Width of the user command display area (number of cells).
-  - example: 80
+  - example: `80`
 - `{{area_height}}`
   - Height of the user command display area (number of cells).
-  - example: 30
+  - example: `30`
 
 ## Compatibility
 
