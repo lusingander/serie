@@ -3,8 +3,8 @@ use std::{
     io::Cursor,
 };
 
-use fxhash::{FxHashMap, FxHashSet};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     color::GraphColorSet,
