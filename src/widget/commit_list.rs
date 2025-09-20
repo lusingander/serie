@@ -7,7 +7,7 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::{Event, KeyEvent},
     layout::{Constraint, Layout, Rect},
-    style::{Color, Style, Stylize},
+    style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{List, ListItem, StatefulWidget, Widget},
 };
@@ -809,6 +809,7 @@ impl CommitList<'_> {
                                 subject,
                                 pos,
                                 self.color_theme.list_subject_fg,
+                                Modifier::empty(),
                                 self.color_theme,
                                 truncate,
                             )
@@ -844,6 +845,7 @@ impl CommitList<'_> {
                             name,
                             pos,
                             self.color_theme.list_name_fg,
+                            Modifier::empty(),
                             self.color_theme,
                             truncate,
                         )
@@ -870,6 +872,7 @@ impl CommitList<'_> {
                             hash,
                             pos,
                             self.color_theme.list_hash_fg,
+                            Modifier::empty(),
                             self.color_theme,
                             false,
                         )
@@ -978,7 +981,16 @@ fn refs_spans<'a>(
         .map(|(name, fg)| {
             let spans = refs_matches
                 .get(name)
-                .map(|pos| highlighted_spans(name.to_string(), pos.clone(), fg, color_theme, false))
+                .map(|pos| {
+                    highlighted_spans(
+                        name.to_string(),
+                        pos.clone(),
+                        fg,
+                        Modifier::BOLD,
+                        color_theme,
+                        false,
+                    )
+                })
                 .unwrap_or_else(|| vec![Span::raw(name).fg(fg).bold()]);
             (spans, name)
         })
@@ -1021,16 +1033,18 @@ fn highlighted_spans(
     s: String,
     pos: SearchMatchPosition,
     base_fg: Color,
+    base_modifier: Modifier,
     color_theme: &ColorTheme,
     truncate: bool,
 ) -> Vec<Span<'static>> {
     let mut hm = highlight_matched_text(s)
         .matched_indices(pos.matched_indices)
-        .not_matched_style(Style::default().fg(base_fg))
+        .not_matched_style(Style::default().fg(base_fg).add_modifier(base_modifier))
         .matched_style(
             Style::default()
                 .fg(color_theme.list_match_fg)
-                .bg(color_theme.list_match_bg),
+                .bg(color_theme.list_match_bg)
+                .add_modifier(base_modifier),
         );
     if truncate {
         hm = hm.ellipsis(ELLIPSIS);
