@@ -813,7 +813,7 @@ impl CommitList<'_> {
                                 truncate,
                             )
                         } else {
-                            vec![subject.into()]
+                            vec![subject.fg(self.color_theme.list_subject_fg)]
                         };
 
                     spans.extend(sub_spans)
