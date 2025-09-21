@@ -1,0 +1,519 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Serie Configuration Schema",
+  "description": "Schema for the Serie application's configuration file.",
+  "type": "object",
+  "properties": {
+    "core": {
+      "type": "object",
+      "description": "Core application settings",
+      "properties": {
+        "search": {
+          "type": "object",
+          "description": "Default search settings",
+          "properties": {
+            "ignore_case": {
+              "type": "boolean",
+              "description": "Whether to enable ignore case by default.",
+              "default": false
+            },
+            "fuzzy": {
+              "type": "boolean",
+              "description": "Whether to enable fuzzy matching by default.",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "user_command": {
+          "type": "object",
+          "description": "Custom user command definitions.",
+          "patternProperties": {
+            "^commands_[0-9]+$": {
+              "type": "object",
+              "description": "A custom command. The key must be in the format 'commands_{n}' where n is a number.",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "The name of the command to be displayed."
+                },
+                "commands": {
+                  "type": "array",
+                  "description": "The command and its arguments to execute.",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "name",
+                "commands"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ui": {
+      "type": "object",
+      "description": "UI appearance settings",
+      "properties": {
+        "common": {
+          "type": "object",
+          "properties": {
+            "cursor_type": {
+              "description": "The type of cursor to display in input fields.",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "Native"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "Virtual": {
+                      "type": "string",
+                      "description": "A string to be used as a virtual cursor."
+                    }
+                  },
+                  "required": [
+                    "Virtual"
+                  ],
+                  "additionalProperties": false
+                }
+              ],
+              "default": "Native"
+            }
+          },
+          "additionalProperties": false
+        },
+        "list": {
+          "type": "object",
+          "description": "Settings for the commit list view.",
+          "properties": {
+            "subject_min_width": {
+              "type": "integer",
+              "description": "The minimum width of a subject in the commit list.",
+              "default": 20
+            },
+            "date_format": {
+              "type": "string",
+              "description": "The date format for the author date in strftime format.",
+              "default": "%Y-%m-%d"
+            },
+            "date_width": {
+              "type": "integer",
+              "description": "The width of the author date column.",
+              "default": 10
+            },
+            "date_local": {
+              "type": "boolean",
+              "description": "Whether to show the author date in local timezone.",
+              "default": true
+            },
+            "name_width": {
+              "type": "integer",
+              "description": "The width of the author name column.",
+              "default": 20
+            }
+          },
+          "additionalProperties": false
+        },
+        "detail": {
+          "type": "object",
+          "description": "Settings for the commit detail view.",
+          "properties": {
+            "height": {
+              "type": "integer",
+              "description": "The height of the commit detail area.",
+              "default": 20
+            },
+            "date_format": {
+              "type": "string",
+              "description": "The date format for author/committer dates in strftime format.",
+              "default": "%Y-%m-%d %H:%M:%S %z"
+            },
+            "date_local": {
+              "type": "boolean",
+              "description": "Whether to show dates in local timezone.",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "user_command": {
+          "type": "object",
+          "description": "Settings for the user command view.",
+          "properties": {
+            "height": {
+              "type": "integer",
+              "description": "The height of the user command area.",
+              "default": 20
+            }
+          },
+          "additionalProperties": false
+        },
+        "refs": {
+          "type": "object",
+          "description": "Settings for the refs list view.",
+          "properties": {
+            "width": {
+              "type": "integer",
+              "description": "The width of the refs list area.",
+              "default": 26
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "graph": {
+      "type": "object",
+      "description": "Commit graph rendering settings",
+      "properties": {
+        "color": {
+          "type": "object",
+          "description": "Colors for the commit graph.",
+          "properties": {
+            "branches": {
+              "type": "array",
+              "description": "Colors used for the branches in the graph. Should be in #RRGGBB or #RRGGBBAA format.",
+              "items": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+              },
+              "default": [
+                "#E06C76",
+                "#98C379",
+                "#E5C07B",
+                "#61AFEF",
+                "#C678DD",
+                "#56B6C2"
+              ]
+            },
+            "edge": {
+              "type": "string",
+              "description": "Color of the edge surrounding the commit circles. Should be in #RRGGBB or #RRGGBBAA format.",
+              "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+              "default": "#00000000"
+            },
+            "background": {
+              "type": "string",
+              "description": "Background color of the commit graph. Should be in #RRGGBB or #RRGGBBAA format.",
+              "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+              "default": "#00000000"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "color": {
+      "type": "object",
+      "description": "The colors of each element of the application. Colors can be specified as ANSI color names (e.g., 'red', 'bright-blue'), 8-bit color indices (e.g., '34', '128'), or 24-bit hex codes (e.g., '#abcdef').",
+      "properties": {
+        "fg": {
+          "type": "string",
+          "description": "Foreground color.",
+          "default": "reset"
+        },
+        "bg": {
+          "type": "string",
+          "description": "Background color.",
+          "default": "reset"
+        },
+        "list_selected_fg": {
+          "type": "string",
+          "description": "Foreground color for a selected item in lists.",
+          "default": "white"
+        },
+        "list_selected_bg": {
+          "type": "string",
+          "description": "Background color for a selected item in lists.",
+          "default": "dark-gray"
+        },
+        "list_ref_paren_fg": {
+          "type": "string",
+          "description": "Color for parentheses surrounding refs in the commit list.",
+          "default": "yellow"
+        },
+        "list_ref_branch_fg": {
+          "type": "string",
+          "description": "Color for local branches in the commit list.",
+          "default": "green"
+        },
+        "list_ref_remote_branch_fg": {
+          "type": "string",
+          "description": "Color for remote branches in the commit list.",
+          "default": "red"
+        },
+        "list_ref_tag_fg": {
+          "type": "string",
+          "description": "Color for tags in the commit list.",
+          "default": "yellow"
+        },
+        "list_ref_stash_fg": {
+          "type": "string",
+          "description": "Color for stashes in the commit list.",
+          "default": "magenta"
+        },
+        "list_head_fg": {
+          "type": "string",
+          "description": "Color for the HEAD indicator in the commit list.",
+          "default": "cyan"
+        },
+        "list_subject_fg": {
+          "type": "string",
+          "description": "Color for the commit subject in the commit list.",
+          "default": "reset"
+        },
+        "list_name_fg": {
+          "type": "string",
+          "description": "Color for the author name in the commit list.",
+          "default": "cyan"
+        },
+        "list_hash_fg": {
+          "type": "string",
+          "description": "Color for the commit hash in the commit list.",
+          "default": "yellow"
+        },
+        "list_date_fg": {
+          "type": "string",
+          "description": "Color for the date in the commit list.",
+          "default": "magenta"
+        },
+        "list_match_fg": {
+          "type": "string",
+          "description": "Foreground color for a search match in the commit list.",
+          "default": "black"
+        },
+        "list_match_bg": {
+          "type": "string",
+          "description": "Background color for a search match in the commit list.",
+          "default": "yellow"
+        },
+        "detail_email_fg": {
+          "type": "string",
+          "description": "Color for email addresses in the commit detail view.",
+          "default": "blue"
+        },
+        "detail_ref_branch_fg": {
+          "type": "string",
+          "description": "Color for local branches in the commit detail view.",
+          "default": "green"
+        },
+        "detail_ref_remote_branch_fg": {
+          "type": "string",
+          "description": "Color for remote branches in the commit detail view.",
+          "default": "red"
+        },
+        "detail_ref_tag_fg": {
+          "type": "string",
+          "description": "Color for tags in the commit detail view.",
+          "default": "yellow"
+        },
+        "detail_file_change_add_fg": {
+          "type": "string",
+          "description": "Color for added file status in the commit detail view.",
+          "default": "green"
+        },
+        "detail_file_change_modify_fg": {
+          "type": "string",
+          "description": "Color for modified file status in the commit detail view.",
+          "default": "yellow"
+        },
+        "detail_file_change_delete_fg": {
+          "type": "string",
+          "description": "Color for deleted file status in the commit detail view.",
+          "default": "red"
+        },
+        "detail_file_change_move_fg": {
+          "type": "string",
+          "description": "Color for moved file status in the commit detail view.",
+          "default": "magenta"
+        },
+        "ref_selected_fg": {
+          "type": "string",
+          "description": "Foreground color for a selected item in the refs list.",
+          "default": "white"
+        },
+        "ref_selected_bg": {
+          "type": "string",
+          "description": "Background color for a selected item in the refs list.",
+          "default": "dark-gray"
+        },
+        "help_block_title_fg": {
+          "type": "string",
+          "description": "Color for block titles in the help view.",
+          "default": "green"
+        },
+        "help_key_fg": {
+          "type": "string",
+          "description": "Color for key bindings in the help view.",
+          "default": "yellow"
+        },
+        "virtual_cursor_fg": {
+          "type": "string",
+          "description": "Foreground color for the virtual cursor.",
+          "default": "reset"
+        },
+        "status_input_fg": {
+          "type": "string",
+          "description": "Foreground color for the status bar in input mode.",
+          "default": "reset"
+        },
+        "status_input_transient_fg": {
+          "type": "string",
+          "description": "Foreground color for transient messages in the status bar.",
+          "default": "dark-gray"
+        },
+        "status_info_fg": {
+          "type": "string",
+          "description": "Color for informational messages in the status bar.",
+          "default": "cyan"
+        },
+        "status_success_fg": {
+          "type": "string",
+          "description": "Color for success messages in the status bar.",
+          "default": "green"
+        },
+        "status_warn_fg": {
+          "type": "string",
+          "description": "Color for warning messages in the status bar.",
+          "default": "yellow"
+        },
+        "status_error_fg": {
+          "type": "string",
+          "description": "Color for error messages in the status bar.",
+          "default": "red"
+        },
+        "divider_fg": {
+          "type": "string",
+          "description": "Color for dividers.",
+          "default": "dark-gray"
+        }
+      },
+      "additionalProperties": false
+    },
+    "keybind": {
+      "type": "object",
+      "description": "Keybinding settings. Each property is an action, and its value is an array of key sequences.",
+      "properties": {
+        "force_quit": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "quit": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "help_toggle": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "cancel": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "close": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "navigate_up": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "navigate_down": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "navigate_right": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "navigate_left": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "go_to_parent": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "go_to_top": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "go_to_bottom": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "scroll_down": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "scroll_up": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "page_up": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "page_down": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "half_page_up": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "half_page_down": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "select_top": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "select_middle": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "select_bottom": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "go_to_next": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "go_to_previous": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "confirm": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "ref_list_toggle": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "search": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "ignore_case_toggle": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "fuzzy_toggle": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "short_copy": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "full_copy": {
+          "$ref": "#/definitions/keybindArray"
+        }
+      },
+      "patternProperties": {
+        "^user_command_view_toggle_[0-9]+$": {
+          "description": "Keybinding to toggle a specific user command view, where the number corresponds to the command in 'core.user_command'.",
+          "$ref": "#/definitions/keybindArray"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "keybindArray": {
+      "type": "array",
+      "description": "An array of key sequences for an action. Examples: [\"q\"], [\"ctrl-c\"], [\"j\", \"down\"]",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
