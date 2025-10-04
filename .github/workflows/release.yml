@@ -22,9 +22,9 @@ jobs:
           - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
           - target: x86_64-apple-darwin
-            os: macos-14
+            os: macos-latest
           - target: aarch64-apple-darwin
-            os: macos-14
+            os: macos-latest
     runs-on: ${{ matrix.targets.os }}
     steps:
       - name: Checkout
