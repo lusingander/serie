@@ -122,6 +122,8 @@ pub struct CoreUserCommandConfig {
         ],
     })]))]
     pub commands: HashMap<String, UserCommand>,
+    #[default = 4]
+    pub tab_width: u16,
 }
 
 impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
@@ -135,10 +137,10 @@ impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
         struct OptionalCoreUserCommandConfigVisitor;
 
         impl<'de> Visitor<'de> for OptionalCoreUserCommandConfigVisitor {
-            type Value = HashMap<String, UserCommand>;
+            type Value = OptionalCoreUserCommandConfig;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a map of user commands")
+                formatter.write_str("a user command configuration")
             }
 
             fn visit_map<V>(self, mut map: V) -> std::result::Result<Self::Value, V::Error>
@@ -146,6 +148,8 @@ impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
                 V: MapAccess<'de>,
             {
                 let mut commands = HashMap::new();
+                let mut tab_width = None;
+
                 while let Some(key) = map.next_key::<String>()? {
                     if let Some(suffix) = key.strip_prefix("commands_") {
                         let command_key = suffix.to_string();
@@ -156,6 +160,8 @@ impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
                         }
                         let command_value: UserCommand = map.next_value()?;
                         commands.insert(command_key, command_value);
+                    } else if key == "tab_width" {
+                        tab_width = Some(map.next_value()?);
                     } else if key == "commands" {
                         return Err(V::Error::custom(
                             "invalid key `commands`, use `commands_n` format instead",
@@ -164,18 +170,21 @@ impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
                         let _: serde::de::IgnoredAny = map.next_value()?;
                     }
                 }
-                Ok(commands)
+
+                let commands = if commands.is_empty() {
+                    None
+                } else {
+                    Some(commands)
+                };
+
+                Ok(OptionalCoreUserCommandConfig {
+                    commands,
+                    tab_width,
+                })
             }
         }
 
-        let commands = deserializer.deserialize_map(OptionalCoreUserCommandConfigVisitor)?;
-        let commands = if commands.is_empty() {
-            None
-        } else {
-            Some(commands)
-        };
-
-        Ok(OptionalCoreUserCommandConfig { commands })
+        deserializer.deserialize_map(OptionalCoreUserCommandConfigVisitor)
     }
 }
 
@@ -306,6 +315,7 @@ mod tests {
                             ],
                         },
                     )]),
+                    tab_width: 4,
                 },
             },
             ui: UiConfig {
@@ -357,6 +367,7 @@ mod tests {
             commands_1 = { name = "git diff no color", commands = ["git", "diff", "{{first_parent_hash}}", "{{target_hash}}"] }
             commands_2 = { name = "echo hello", commands = ["echo", "hello"] }
             commands_10 = { name = "echo world", commands = ["echo", "world"] }
+            tab_width = 2
             [ui.common]
             cursor_type = { Virtual = "|" }
             [ui.list]
@@ -414,6 +425,7 @@ mod tests {
                             },
                         ),
                     ]),
+                    tab_width: 2,
                 },
             },
             ui: UiConfig {
@@ -476,6 +488,7 @@ mod tests {
                             ],
                         },
                     )]),
+                    tab_width: 4,
                 },
             },
             ui: UiConfig {
