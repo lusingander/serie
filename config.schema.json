@@ -28,6 +28,13 @@
         "user_command": {
           "type": "object",
           "description": "Custom user command definitions.",
+          "properties": {
+            "tab_width": {
+              "type": "integer",
+              "description": "The number of spaces to replace tabs in the user command output.",
+              "default": 4
+            }
+          },
           "patternProperties": {
             "^commands_[0-9]+$": {
               "type": "object",
