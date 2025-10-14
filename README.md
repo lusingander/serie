@@ -275,6 +275,9 @@ fuzzy = false
 # For details about user command, see the separate User command section.
 # type: object
 commands_1 = { name = "git diff", commands = ["git", "--no-pager", "diff", "--color=always", "{{first_parent_hash}}", "{{target_hash}}"]}
+# The number of spaces to replace tabs in the user command output.
+# type: u16
+tab_width = 4
 
 [ui.common]
 # The type of a cursor to display in the input.

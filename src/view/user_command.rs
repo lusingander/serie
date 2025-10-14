@@ -223,9 +223,11 @@ fn build_user_command_output_lines<'a>(
     let area_width = view_area.width - 4; // minus the left and right padding
     let area_height = (view_area.height - 1).min(ui_config.user_command.height) - 1; // minus the top border
 
+    let tab_spaces = " ".repeat(core_config.user_command.tab_width as usize);
     exec_user_command(&command, target_hash, parent_hash, area_width, area_height)
         .and_then(|output| {
             output
+                .replace('\t', &tab_spaces) // tab is not rendered correctly, so replace it
                 .into_text()
                 .map(|t| t.into_iter().collect())
                 .map_err(|e| e.to_string())
