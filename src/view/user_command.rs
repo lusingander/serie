@@ -226,6 +226,7 @@ fn build_user_command_output_lines<'a>(
     exec_user_command(&command, target_hash, parent_hash, area_width, area_height)
         .and_then(|output| {
             output
+                .replace('\t', "    ") // tab is not rendered correctly, so replace it
                 .into_text()
                 .map(|t| t.into_iter().collect())
                 .map_err(|e| e.to_string())
