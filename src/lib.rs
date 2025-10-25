@@ -22,9 +22,9 @@ use graph::GraphImageManager;
 #[derive(Parser)]
 #[command(version)]
 struct Args {
-    /// Image protocol to render graph
-    #[arg(short, long, value_name = "TYPE", default_value = "auto")]
-    protocol: ImageProtocolType,
+    /// Image protocol to render graph [default: auto]
+    #[arg(short, long, value_name = "TYPE")]
+    protocol: Option<ImageProtocolType>,
 
     /// Commit ordering algorithm
     #[arg(short, long, value_name = "TYPE", default_value = "chrono")]
@@ -46,12 +46,13 @@ enum ImageProtocolType {
     Kitty,
 }
 
-impl From<ImageProtocolType> for protocol::ImageProtocol {
-    fn from(protocol: ImageProtocolType) -> Self {
+impl From<Option<ImageProtocolType>> for protocol::ImageProtocol {
+    fn from(protocol: Option<ImageProtocolType>) -> Self {
         match protocol {
-            ImageProtocolType::Auto => protocol::auto_detect(),
-            ImageProtocolType::Iterm => protocol::ImageProtocol::Iterm2,
-            ImageProtocolType::Kitty => protocol::ImageProtocol::Kitty,
+            Some(ImageProtocolType::Auto) => protocol::auto_detect(),
+            Some(ImageProtocolType::Iterm) => protocol::ImageProtocol::Iterm2,
+            Some(ImageProtocolType::Kitty) => protocol::ImageProtocol::Kitty,
+            None => protocol::auto_detect(),
         }
     }
 }
