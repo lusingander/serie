@@ -17,6 +17,7 @@ use std::path::Path;
 use app::App;
 use clap::{Parser, ValueEnum};
 use graph::GraphImageManager;
+use serde::Deserialize;
 
 /// Serie - A rich git commit graph in your terminal, like magic 📚
 #[derive(Parser)]
@@ -39,8 +40,9 @@ struct Args {
     preload: bool,
 }
 
-#[derive(Debug, Clone, ValueEnum)]
-enum ImageProtocolType {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ImageProtocolType {
     Auto,
     Iterm,
     Kitty,
@@ -57,8 +59,9 @@ impl From<Option<ImageProtocolType>> for protocol::ImageProtocol {
     }
 }
 
-#[derive(Debug, Clone, ValueEnum)]
-enum CommitOrderType {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CommitOrderType {
     Chrono,
     Topo,
 }
@@ -73,7 +76,8 @@ impl From<Option<CommitOrderType>> for git::SortCommit {
     }
 }
 
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum GraphWidthType {
     Auto,
     Double,
@@ -87,14 +91,17 @@ pub fn run() -> Result<()> {
     let (core_config, ui_config, graph_config, color_theme, key_bind_patch) = config::load()?;
     let key_bind = keybind::KeyBind::new(key_bind_patch);
 
-    let graph_color_set = color::GraphColorSet::new(&graph_config.color);
-    let image_protocol = args.protocol.into();
+    let image_protocol = args.protocol.or(core_config.option.protocol).into();
+    let order = args.order.or(core_config.option.order).into();
+    let graph_width = args.graph_width.or(core_config.option.graph_width);
 
-    let repository = git::Repository::load(Path::new("."), args.order.into())?;
+    let graph_color_set = color::GraphColorSet::new(&graph_config.color);
+
+    let repository = git::Repository::load(Path::new("."), order)?;
 
     let graph = graph::calc_graph(&repository);
 
-    let cell_width_type = check::decide_cell_width_type(&graph, args.graph_width)?;
+    let cell_width_type = check::decide_cell_width_type(&graph, graph_width)?;
 
     let graph_image_manager = GraphImageManager::new(
         &graph,

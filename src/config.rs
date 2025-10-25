@@ -11,7 +11,7 @@ use umbra::optional;
 use crate::{
     color::{ColorTheme, OptionalColorTheme},
     keybind::KeyBind,
-    Result,
+    CommitOrderType, GraphWidthType, ImageProtocolType, Result,
 };
 
 const XDG_CONFIG_HOME_ENV_NAME: &str = "XDG_CONFIG_HOME";
@@ -93,9 +93,19 @@ struct Config {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CoreConfig {
     #[nested]
+    pub option: CoreOptionConfig,
+    #[nested]
     pub search: CoreSearchConfig,
     #[nested]
     pub user_command: CoreUserCommandConfig,
+}
+
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+pub struct CoreOptionConfig {
+    pub protocol: Option<ImageProtocolType>,
+    pub order: Option<CommitOrderType>,
+    pub graph_width: Option<GraphWidthType>,
 }
 
 #[optional(derives = [Deserialize])]
@@ -296,6 +306,11 @@ mod tests {
         let actual = Config::default();
         let expected = Config {
             core: CoreConfig {
+                option: CoreOptionConfig {
+                    protocol: None,
+                    order: None,
+                    graph_width: None,
+                },
                 search: CoreSearchConfig {
                     ignore_case: false,
                     fuzzy: false,
@@ -360,6 +375,10 @@ mod tests {
     #[test]
     fn test_config_complete_toml() {
         let toml = r##"
+            [core.option]
+            protocol = "kitty"
+            order = "topo"
+            graph_width = "single"
             [core.search]
             ignore_case = true
             fuzzy = true
@@ -392,6 +411,11 @@ mod tests {
         let actual: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
         let expected = Config {
             core: CoreConfig {
+                option: CoreOptionConfig {
+                    protocol: Some(ImageProtocolType::Kitty),
+                    order: Some(CommitOrderType::Topo),
+                    graph_width: Some(GraphWidthType::Single),
+                },
                 search: CoreSearchConfig {
                     ignore_case: true,
                     fuzzy: true,
@@ -469,6 +493,11 @@ mod tests {
         let actual: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
         let expected = Config {
             core: CoreConfig {
+                option: CoreOptionConfig {
+                    protocol: None,
+                    order: None,
+                    graph_width: None,
+                },
                 search: CoreSearchConfig {
                     ignore_case: false,
                     fuzzy: false,

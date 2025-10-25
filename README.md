@@ -261,6 +261,20 @@ If the config file exists but some items are not set, the default values will be
 The values set in this example are the default values.
 
 ```toml
+[core.option]
+# The protocol type for rendering images of commit graphs.
+# The value specified in the command line argument takes precedence.
+# type: enum (possible values: "auto", "iterm", "kitty")
+protocol = "auto"
+# The commit ordering algorithm.
+# The value specified in the command line argument takes precedence.
+# type: enum (possible values: "chrono", "topo")
+order = "chrono"
+# The character width that a graph image unit cell occupies.
+# The value specified in the command line argument takes precedence.
+# type: enum (possible values: "auto", "double", "single")
+graph_width = "auto"
+
 [core.search]
 # Whether to enable ignore case by default.
 # type: boolean
