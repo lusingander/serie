@@ -17,20 +17,21 @@ use std::path::Path;
 use app::App;
 use clap::{Parser, ValueEnum};
 use graph::GraphImageManager;
+use serde::Deserialize;
 
 /// Serie - A rich git commit graph in your terminal, like magic 📚
 #[derive(Parser)]
 #[command(version)]
 struct Args {
-    /// Image protocol to render graph
-    #[arg(short, long, value_name = "TYPE", default_value = "auto")]
-    protocol: ImageProtocolType,
+    /// Image protocol to render graph [default: auto]
+    #[arg(short, long, value_name = "TYPE")]
+    protocol: Option<ImageProtocolType>,
 
-    /// Commit ordering algorithm
-    #[arg(short, long, value_name = "TYPE", default_value = "chrono")]
-    order: CommitOrderType,
+    /// Commit ordering algorithm [default: chrono]
+    #[arg(short, long, value_name = "TYPE")]
+    order: Option<CommitOrderType>,
 
-    /// Commit graph image cell width
+    /// Commit graph image cell width [default: auto]
     #[arg(short, long, value_name = "TYPE")]
     graph_width: Option<GraphWidthType>,
 
@@ -39,51 +40,48 @@ struct Args {
     preload: bool,
 }
 
-#[derive(Debug, Clone, ValueEnum)]
-enum ImageProtocolType {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ImageProtocolType {
     Auto,
     Iterm,
     Kitty,
 }
 
-impl From<ImageProtocolType> for protocol::ImageProtocol {
-    fn from(protocol: ImageProtocolType) -> Self {
+impl From<Option<ImageProtocolType>> for protocol::ImageProtocol {
+    fn from(protocol: Option<ImageProtocolType>) -> Self {
         match protocol {
-            ImageProtocolType::Auto => protocol::auto_detect(),
-            ImageProtocolType::Iterm => protocol::ImageProtocol::Iterm2,
-            ImageProtocolType::Kitty => protocol::ImageProtocol::Kitty,
+            Some(ImageProtocolType::Auto) => protocol::auto_detect(),
+            Some(ImageProtocolType::Iterm) => protocol::ImageProtocol::Iterm2,
+            Some(ImageProtocolType::Kitty) => protocol::ImageProtocol::Kitty,
+            None => protocol::auto_detect(),
         }
     }
 }
 
-#[derive(Debug, Clone, ValueEnum)]
-enum CommitOrderType {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CommitOrderType {
     Chrono,
     Topo,
 }
 
-impl From<CommitOrderType> for git::SortCommit {
-    fn from(order: CommitOrderType) -> Self {
+impl From<Option<CommitOrderType>> for git::SortCommit {
+    fn from(order: Option<CommitOrderType>) -> Self {
         match order {
-            CommitOrderType::Chrono => git::SortCommit::Chronological,
-            CommitOrderType::Topo => git::SortCommit::Topological,
+            Some(CommitOrderType::Chrono) => git::SortCommit::Chronological,
+            Some(CommitOrderType::Topo) => git::SortCommit::Topological,
+            None => git::SortCommit::Chronological,
         }
     }
 }
 
-#[derive(Debug, Clone, ValueEnum)]
-enum GraphWidthType {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GraphWidthType {
+    Auto,
     Double,
     Single,
-}
-
-impl From<GraphWidthType> for graph::CellWidthType {
-    fn from(width: GraphWidthType) -> Self {
-        match width {
-            GraphWidthType::Double => graph::CellWidthType::Double,
-            GraphWidthType::Single => graph::CellWidthType::Single,
-        }
-    }
 }
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -93,15 +91,17 @@ pub fn run() -> Result<()> {
     let (core_config, ui_config, graph_config, color_theme, key_bind_patch) = config::load()?;
     let key_bind = keybind::KeyBind::new(key_bind_patch);
 
-    let graph_color_set = color::GraphColorSet::new(&graph_config.color);
-    let image_protocol = args.protocol.into();
+    let image_protocol = args.protocol.or(core_config.option.protocol).into();
+    let order = args.order.or(core_config.option.order).into();
+    let graph_width = args.graph_width.or(core_config.option.graph_width);
 
-    let repository = git::Repository::load(Path::new("."), args.order.into())?;
+    let graph_color_set = color::GraphColorSet::new(&graph_config.color);
+
+    let repository = git::Repository::load(Path::new("."), order)?;
 
     let graph = graph::calc_graph(&repository);
 
-    let cell_width_type =
-        check::decide_cell_width_type(&graph, args.graph_width.map(|w| w.into()))?;
+    let cell_width_type = check::decide_cell_width_type(&graph, graph_width)?;
 
     let graph_image_manager = GraphImageManager::new(
         &graph,

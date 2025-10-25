@@ -8,6 +8,42 @@
       "type": "object",
       "description": "Core application settings",
       "properties": {
+        "option": {
+          "type": "object",
+          "description": "General core settings",
+          "properties": {
+            "protocol": {
+              "type": "string",
+              "description": "The protocol type for rendering images of commit graphs.",
+              "enum": [
+                "auto",
+                "iterm",
+                "kitty"
+              ],
+              "default": "auto"
+            },
+            "order": {
+              "type": "string",
+              "description": "The commit ordering algorithm.",
+              "enum": [
+                "chrono",
+                "topo"
+              ],
+              "default": "chrono"
+            },
+            "graph_width": {
+              "type": "string",
+              "description": "The character width that a graph image unit cell occupies.",
+              "enum": [
+                "auto",
+                "double",
+                "single"
+              ],
+              "default": "auto"
+            }
+          },
+          "additionalProperties": false
+        },
         "search": {
           "type": "object",
           "description": "Default search settings",

@@ -104,7 +104,7 @@ Usage: serie [OPTIONS]
 Options:
   -p, --protocol <TYPE>     Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty]
   -o, --order <TYPE>        Commit ordering algorithm [default: chrono] [possible values: chrono, topo]
-  -g, --graph-width <TYPE>  Commit graph image cell width [possible values: double, single]
+  -g, --graph-width <TYPE>  Commit graph image cell width [default: auto] [possible values: auto, double, single]
       --preload             Preload all graph images
   -h, --help                Print help
   -V, --version             Print version
@@ -139,7 +139,7 @@ By default `auto` will guess the best supported protocol for the current termina
 
 The character width that a graph image unit cell occupies.
 
-If not specified, `double` will be used automatically if there is enough width to display it, `single` otherwise.
+If not specified or `auto` is specified, `double` will be used automatically if there is enough width to display it, `single` otherwise.
 
 <details>
 <summary>Screenshots</summary>
@@ -261,6 +261,20 @@ If the config file exists but some items are not set, the default values will be
 The values set in this example are the default values.
 
 ```toml
+[core.option]
+# The protocol type for rendering images of commit graphs.
+# The value specified in the command line argument takes precedence.
+# type: enum (possible values: "auto", "iterm", "kitty")
+protocol = "auto"
+# The commit ordering algorithm.
+# The value specified in the command line argument takes precedence.
+# type: enum (possible values: "chrono", "topo")
+order = "chrono"
+# The character width that a graph image unit cell occupies.
+# The value specified in the command line argument takes precedence.
+# type: enum (possible values: "auto", "double", "single")
+graph_width = "auto"
+
 [core.search]
 # Whether to enable ignore case by default.
 # type: boolean
