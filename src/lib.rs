@@ -30,7 +30,7 @@ struct Args {
     #[arg(short, long, value_name = "TYPE")]
     order: Option<CommitOrderType>,
 
-    /// Commit graph image cell width
+    /// Commit graph image cell width [default: auto]
     #[arg(short, long, value_name = "TYPE")]
     graph_width: Option<GraphWidthType>,
 
@@ -74,18 +74,10 @@ impl From<Option<CommitOrderType>> for git::SortCommit {
 }
 
 #[derive(Debug, Clone, ValueEnum)]
-enum GraphWidthType {
+pub enum GraphWidthType {
+    Auto,
     Double,
     Single,
-}
-
-impl From<GraphWidthType> for graph::CellWidthType {
-    fn from(width: GraphWidthType) -> Self {
-        match width {
-            GraphWidthType::Double => graph::CellWidthType::Double,
-            GraphWidthType::Single => graph::CellWidthType::Single,
-        }
-    }
 }
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -102,8 +94,7 @@ pub fn run() -> Result<()> {
 
     let graph = graph::calc_graph(&repository);
 
-    let cell_width_type =
-        check::decide_cell_width_type(&graph, args.graph_width.map(|w| w.into()))?;
+    let cell_width_type = check::decide_cell_width_type(&graph, args.graph_width)?;
 
     let graph_image_manager = GraphImageManager::new(
         &graph,
