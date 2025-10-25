@@ -26,9 +26,9 @@ struct Args {
     #[arg(short, long, value_name = "TYPE")]
     protocol: Option<ImageProtocolType>,
 
-    /// Commit ordering algorithm
-    #[arg(short, long, value_name = "TYPE", default_value = "chrono")]
-    order: CommitOrderType,
+    /// Commit ordering algorithm [default: chrono]
+    #[arg(short, long, value_name = "TYPE")]
+    order: Option<CommitOrderType>,
 
     /// Commit graph image cell width
     #[arg(short, long, value_name = "TYPE")]
@@ -63,11 +63,12 @@ enum CommitOrderType {
     Topo,
 }
 
-impl From<CommitOrderType> for git::SortCommit {
-    fn from(order: CommitOrderType) -> Self {
+impl From<Option<CommitOrderType>> for git::SortCommit {
+    fn from(order: Option<CommitOrderType>) -> Self {
         match order {
-            CommitOrderType::Chrono => git::SortCommit::Chronological,
-            CommitOrderType::Topo => git::SortCommit::Topological,
+            Some(CommitOrderType::Chrono) => git::SortCommit::Chronological,
+            Some(CommitOrderType::Topo) => git::SortCommit::Topological,
+            None => git::SortCommit::Chronological,
         }
     }
 }
