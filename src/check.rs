@@ -26,7 +26,7 @@ fn decide_cell_width_type_from(
         Some(GraphWidthType::Double) => {
             let required_width = double_image_cell_width + 2;
             if required_width > term_width {
-                let msg = format!("Terminal size {term_width}x{term_height} is too small. Required width is {required_width} (graph_width = double).");
+                let msg = format!("Terminal too small ({term_width}x{term_height} characters). The current graph needs at least {required_width} columns to display properly.");
                 return Err(msg.into());
             }
             Ok(CellWidthType::Double)
@@ -34,7 +34,7 @@ fn decide_cell_width_type_from(
         Some(GraphWidthType::Single) => {
             let required_width = single_image_cell_width + 2;
             if required_width > term_width {
-                let msg = format!("Terminal size {term_width}x{term_height} is too small. Required width is {required_width} (graph_width = single).");
+                let msg = format!("Terminal too small ({term_width}x{term_height} characters). The current graph needs at least {required_width} columns to display properly.");
                 return Err(msg.into());
             }
             Ok(CellWidthType::Single)
@@ -48,7 +48,7 @@ fn decide_cell_width_type_from(
             if single_required_width <= term_width {
                 return Ok(CellWidthType::Single);
             }
-            let msg = format!("Terminal size {term_width}x{term_height} is too small. Required width is {single_required_width} (graph_width = single) or {double_required_width} (graph_width = double).");
+            let msg = format!("Terminal too small ({term_width}x{term_height} characters). The current graph needs at least {single_required_width} columns to display properly.");
             Err(msg.into())
         }
     }
