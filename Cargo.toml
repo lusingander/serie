@@ -19,7 +19,7 @@ ansi-to-tui = "7.0.0"
 arboard = "3.6.1"
 base64 = "0.22.1"
 chrono = "0.4.42"
-clap = { version = "4.5.49", features = ["derive"] }
+clap = { version = "4.5.50", features = ["derive"] }
 console = "0.16.1"
 fuzzy-matcher = "0.3.7"
 image = { version = "0.25.8", default-features = false, features = [
