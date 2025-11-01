@@ -19,6 +19,8 @@ use clap::{Parser, ValueEnum};
 use graph::GraphImageManager;
 use serde::Deserialize;
 
+use crate::protocol::PassthruProtocol;
+
 /// Serie - A rich git commit graph in your terminal, like magic 📚
 #[derive(Parser)]
 #[command(version)]
@@ -53,7 +55,9 @@ impl From<Option<ImageProtocolType>> for protocol::ImageProtocol {
         match protocol {
             Some(ImageProtocolType::Auto) => protocol::auto_detect(),
             Some(ImageProtocolType::Iterm) => protocol::ImageProtocol::Iterm2,
-            Some(ImageProtocolType::Kitty) => protocol::ImageProtocol::Kitty,
+            Some(ImageProtocolType::Kitty) => protocol::ImageProtocol::Kitty {
+                passthru: PassthruProtocol::detect(),
+            },
             None => protocol::auto_detect(),
         }
     }

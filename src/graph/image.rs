@@ -7,6 +7,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
+    check::get_cell_dimensions,
     color::GraphColorSet,
     git::CommitHash,
     graph::{Edge, EdgeType, Graph},
@@ -135,10 +136,19 @@ pub enum CellWidthType {
 
 impl ImageParams {
     pub fn new(graph_color_set: &GraphColorSet, cell_width_type: CellWidthType) -> Self {
+        let (cell_width, cell_height) = get_cell_dimensions().unwrap_or((25, 50));
         let (width, height, line_width, circle_inner_radius, circle_outer_radius) =
             match cell_width_type {
-                CellWidthType::Double => (50, 50, 5, 10, 13),
-                CellWidthType::Single => (25, 50, 3, 7, 10),
+                CellWidthType::Double => (
+                    cell_width * 2,
+                    cell_height,
+                    3,
+                    cell_width * 2 / 4,
+                    cell_width * 2 / 3,
+                ),
+                CellWidthType::Single => {
+                    (cell_width, cell_height, 1, cell_width / 3, cell_width / 2)
+                }
             };
         let edge_colors = graph_color_set
             .colors
