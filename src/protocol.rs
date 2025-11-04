@@ -24,10 +24,11 @@ pub enum ImageProtocol {
 
 impl ImageProtocol {
     pub fn encode(&self, bytes: &[u8], cell_width: usize) -> String {
-        match self {
+        let raw = match self {
             ImageProtocol::Iterm2 => iterm2_encode(bytes, cell_width, 1),
             ImageProtocol::Kitty => kitty_encode(bytes, cell_width, 1),
-        }
+        };
+        wrap_for_tmux_if_needed(raw)
     }
 
     pub fn clear_line(&self, y: u16) {
@@ -83,5 +84,16 @@ fn kitty_encode(bytes: &[u8], cell_width: usize, cell_height: usize) -> String {
 
 fn kitty_clear_line(y: u16) {
     let y = y + 1; // 1-based
-    print!("\x1b_Ga=d,d=P,x=1,y={y};\x1b\\");
+    let raw = format!("\x1b_Ga=d,d=P,x=1,y={y};\x1b\\");
+    let wrapped = wrap_for_tmux_if_needed(raw);
+    print!("{}", wrapped);
+}
+
+fn wrap_for_tmux_if_needed(s: String) -> String {
+    if env::var("TMUX").is_ok() {
+        let escaped = s.replace("\x1b", "\x1b\x1b");
+        return format!("\x1bPtmux;\x1b{}\x1b\\", escaped)
+    }
+
+    s
 }
