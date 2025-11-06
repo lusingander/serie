@@ -133,13 +133,51 @@ pub enum CellWidthType {
     Single,
 }
 
+pub struct CellSize {
+    pub width: u16,
+    pub height: u16,
+}
+
+impl Default for CellSize {
+    fn default() -> Self {
+        Self {
+            width: 25,
+            height: 50,
+        }
+    }
+}
+
+impl CellSize {
+    fn new() -> Self {
+        match crate::check::detect_cell_size() {
+            Some((width, height)) => Self { width, height },
+            None => Self::default(),
+        }
+    }
+}
+
 impl ImageParams {
     pub fn new(graph_color_set: &GraphColorSet, cell_width_type: CellWidthType) -> Self {
-        let (width, height, line_width, circle_inner_radius, circle_outer_radius) =
-            match cell_width_type {
-                CellWidthType::Double => (50, 50, 5, 10, 13),
-                CellWidthType::Single => (25, 50, 3, 7, 10),
+        let mut cell_size = CellSize::new();
+
+        // Increase the cell width minimum of 25 while maintaining the aspect ratio. So we dont't
+        // end up with a too small image to draw into.
+        let aspect_ratio = cell_size.height as f32 / cell_size.width as f32;
+        cell_size.width = cell_size.width.max(25);
+        cell_size.height = (cell_size.width as f32 * aspect_ratio).round() as u16;
+
+        let (width, height, line_width, circle_inner_radius, circle_outer_radius) = {
+            let calc_image_params = |width: u16, height: u16| -> (u16, u16, u16, u16, u16) {
+                let inner_radius = ((width as f32) * 0.12 + 4.0).round() as u16;
+                let line_width = width.div_ceil(10);
+                (width, height, line_width, inner_radius, inner_radius + 3)
             };
+            match cell_width_type {
+                CellWidthType::Double => calc_image_params(cell_size.width * 2, cell_size.height),
+                CellWidthType::Single => calc_image_params(cell_size.width, cell_size.height),
+            }
+        };
+
         let edge_colors = graph_color_set
             .colors
             .iter()
