@@ -175,15 +175,11 @@ impl CellSize {
 }
 
 impl ImageParams {
-    pub fn new(graph_color_set: &GraphColorSet, cell_width_type: CellWidthType) -> Self {
-        let mut cell_size = CellSize::new();
-
-        // Increase the cell width minimum of 25 while maintaining the aspect ratio. So we dont't
-        // end up with a too small image to draw into.
-        let aspect_ratio = cell_size.height as f32 / cell_size.width as f32;
-        cell_size.width = cell_size.width.max(25);
-        cell_size.height = (cell_size.width as f32 * aspect_ratio).round() as u16;
-
+    pub fn new_with_cell_size(
+        graph_color_set: &GraphColorSet,
+        cell_width_type: CellWidthType,
+        cell_size: CellSize,
+    ) -> Self {
         let (width, height, line_width, circle_inner_radius, circle_outer_radius) = {
             let calc_image_params = |width: u16, height: u16| -> (u16, u16, u16, u16, u16) {
                 let inner_radius = ((width as f32) * 0.12 + 4.0).round() as u16;
@@ -213,6 +209,18 @@ impl ImageParams {
             circle_edge_color,
             background_color,
         }
+    }
+
+    pub fn new(graph_color_set: &GraphColorSet, cell_width_type: CellWidthType) -> Self {
+        let mut cell_size = CellSize::new();
+
+        // Increase the cell width minimum of 25 while maintaining the aspect ratio. So we dont't
+        // end up with a too small image to draw into.
+        let aspect_ratio = cell_size.height as f32 / cell_size.width as f32;
+        cell_size.width = cell_size.width.max(25);
+        cell_size.height = (cell_size.width as f32 * aspect_ratio).round() as u16;
+
+        Self::new_with_cell_size(graph_color_set, cell_width_type, cell_size)
     }
 
     fn edge_color(&self, index: usize) -> image::Rgba<u8> {
