@@ -2,7 +2,10 @@ use std::{path::Path, process::Command};
 
 use chrono::{DateTime, Days, NaiveDate, TimeZone, Utc};
 use image::{GenericImage, GenericImageView};
-use serie::{color, config, git, graph};
+use serie::{
+    color, config, git,
+    graph::{self, CellSize},
+};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -1129,7 +1132,11 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     let cell_width_type = graph::CellWidthType::Double;
     let repository = git::Repository::load(path.as_ref(), option.sort).unwrap();
     let graph = graph::calc_graph(&repository);
-    let image_params = graph::ImageParams::new(&graph_color_set, cell_width_type);
+    let image_params = graph::ImageParams::new_with_cell_size(
+        &graph_color_set,
+        cell_width_type,
+        CellSize::default(),
+    );
     let drawing_pixels = graph::DrawingPixels::new(&image_params);
     let graph_image = graph::build_graph_image(&graph, &image_params, &drawing_pixels);
 
