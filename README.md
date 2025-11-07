@@ -123,7 +123,7 @@ For more information, see [Compatibility](https://lusingander.github.io/serie/ge
 ### Unsupported environments
 
 - Sixel graphics is not supported.
-- Terminal multiplexers (screen, tmux, Zellij, etc.) are not supported.
+- Tmux is supported when using the Terminal graphics protocol (kitty, Ghosty), Other terminal multiplexers (screen, Zellij, etc.) are not supported.
 
 ## Screenshots
 
