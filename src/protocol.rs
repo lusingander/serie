@@ -1,23 +1,27 @@
 use base64::Engine;
+use libc::{fcntl, F_GETFL, F_SETFL, O_NONBLOCK};
 use once_cell::sync::OnceCell;
+use ratatui::crossterm::cursor::RestorePosition;
+use ratatui::crossterm::cursor::SavePosition;
+use ratatui::crossterm::execute;
+use ratatui::crossterm::style::Print;
+use ratatui::crossterm::terminal::disable_raw_mode;
+use ratatui::crossterm::terminal::enable_raw_mode;
 use std::env;
+use std::io;
+use std::io::stdout;
+use std::io::Read;
+use std::os::unix::io::AsRawFd;
 use std::sync::atomic::AtomicU16;
 use std::sync::atomic::Ordering;
+use std::time::Duration;
+use std::time::Instant;
 
-// By default assume the Iterm2 is the best protocol to use for all terminals *unless* an env
-// variable is set that suggests the terminal is probably Kitty.
+// Use kitty graphics protocol if we can detect it, otherwise fall back to iTerm2 protocol.
 pub fn auto_detect() -> ImageProtocol {
-    // https://sw.kovidgoyal.net/kitty/glossary/#envvar-KITTY_WINDOW_ID
-    if env::var("KITTY_WINDOW_ID").is_ok() {
-        return ImageProtocol::Kitty {
-            passthru: PassthruProtocol::detect(),
-        };
-    }
-    // https://ghostty.org/docs/help/terminfo
-    if env::var("TERM").is_ok_and(|t| t == "xterm-ghostty") {
-        return ImageProtocol::Kitty {
-            passthru: PassthruProtocol::detect(),
-        };
+    let passthru = PassthruProtocol::detect();
+    if let Ok(true) = check_kitty_support(passthru) {
+        return ImageProtocol::Kitty { passthru };
     }
     // Ghostty sets this even inside tmux where TERM gets overridden
     if env::var("GHOSTTY_RESOURCES_DIR").is_ok() {
@@ -211,4 +215,85 @@ fn kitty_image_id() -> u32 {
     let pid = PID_CACHE.get_or_init(|| std::process::id() as u16);
 
     ((*pid as u32) << 16) | (counter as u32)
+}
+
+struct RawStdIn {
+    stdin_fd: i32,
+    original_flags: i32,
+}
+
+impl RawStdIn {
+    fn new() -> io::Result<Self> {
+        enable_raw_mode()?;
+        let stdin_fd = std::io::stdin().as_raw_fd();
+        let original_flags = unsafe { fcntl(stdin_fd, F_GETFL) };
+        unsafe { fcntl(stdin_fd, F_SETFL, original_flags | O_NONBLOCK) };
+        Ok(RawStdIn {
+            stdin_fd,
+            original_flags,
+        })
+    }
+}
+
+impl Drop for RawStdIn {
+    fn drop(&mut self) {
+        unsafe { fcntl(self.stdin_fd, F_SETFL, self.original_flags) };
+        disable_raw_mode().ok();
+    }
+}
+
+// https://sw.kovidgoyal.net/kitty/graphics-protocol/#querying-support-and-available-transmission-mediums
+// All terminals emulators should respond to device attribute query, as a backup
+// read in raw mode so we can timeout if no response is received
+pub fn check_kitty_support(passthru: PassthruProtocol) -> io::Result<bool> {
+    let (start, escape, end) = passthru.escape_strings();
+    let device_attr_query = format!("{start}{escape}[0c{end}");
+    let kitty_support_query =
+        format!("{start}{escape}_Gi=9999,s=1,v=1,a=q,t=d,f=24;AAAA{escape}\\{end}");
+
+    let _raw_stdin_guard = RawStdIn::new()?;
+
+    execute!(
+        stdout(),
+        SavePosition,
+        Print(kitty_support_query),
+        Print(device_attr_query),
+        RestorePosition
+    )?;
+
+    let stdin = io::stdin();
+    let mut response = Vec::new();
+    let mut buffer = [0u8; 1];
+    let start = Instant::now();
+
+    loop {
+        if start.elapsed() > Duration::from_millis(500) {
+            break;
+        }
+
+        match stdin.lock().read(&mut buffer) {
+            Ok(0) => break, // EOF
+            Ok(_) => {
+                let byte = buffer[0];
+                response.push(byte);
+                if byte == b'c'
+                    && response.contains(&0x1b)
+                    && response
+                        .rsplitn(2, |&b| b == 0x1b)
+                        .next()
+                        .is_some_and(|s| s.starts_with(b"[?"))
+                {
+                    break;
+                }
+            }
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                std::thread::sleep(Duration::from_millis(1));
+                continue;
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
+    let response = String::from_utf8_lossy(&response).to_string();
+    Ok(response.contains("\x1b_Gi=9999;OK"))
 }
