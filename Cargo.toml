@@ -26,7 +26,7 @@ image = { version = "0.25.8", default-features = false, features = [
     "rayon",
     "png",
 ] }
-laurier = "0.1.1"
+laurier = "0.2.0"
 once_cell = "1.21.3"
 ratatui = { version = "0.29.0", features = ["serde"] }
 rayon = "1.11.0"

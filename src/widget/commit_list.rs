@@ -806,7 +806,7 @@ impl CommitList<'_> {
                     let sub_spans =
                         if let Some(pos) = state.search_matches[state.offset + i].subject.clone() {
                             highlighted_spans(
-                                subject,
+                                subject.into(),
                                 pos,
                                 self.color_theme.list_subject_fg,
                                 Modifier::empty(),
@@ -842,7 +842,7 @@ impl CommitList<'_> {
                 let spans =
                     if let Some(pos) = state.search_matches[state.offset + i].author_name.clone() {
                         highlighted_spans(
-                            name,
+                            name.into(),
                             pos,
                             self.color_theme.list_name_fg,
                             Modifier::empty(),
@@ -869,7 +869,7 @@ impl CommitList<'_> {
                 let spans =
                     if let Some(pos) = state.search_matches[state.offset + i].commit_hash.clone() {
                         highlighted_spans(
-                            hash,
+                            hash.into(),
                             pos,
                             self.color_theme.list_hash_fg,
                             Modifier::empty(),
@@ -983,7 +983,7 @@ fn refs_spans<'a>(
                 .get(name)
                 .map(|pos| {
                     highlighted_spans(
-                        name.to_string(),
+                        name.into(),
                         pos.clone(),
                         fg,
                         Modifier::BOLD,
@@ -1030,14 +1030,14 @@ fn refs_spans<'a>(
 }
 
 fn highlighted_spans(
-    s: String,
+    s: Span<'_>,
     pos: SearchMatchPosition,
     base_fg: Color,
     base_modifier: Modifier,
     color_theme: &ColorTheme,
     truncate: bool,
 ) -> Vec<Span<'static>> {
-    let mut hm = highlight_matched_text(s)
+    let mut hm = highlight_matched_text(vec![s])
         .matched_indices(pos.matched_indices)
         .not_matched_style(Style::default().fg(base_fg).add_modifier(base_modifier))
         .matched_style(

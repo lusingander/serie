@@ -918,10 +918,11 @@ dependencies = [
 
 [[package]]
 name = "laurier"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d04feaca262fd47f2d6ae07b23596dc266e99eb1764246801e8975dc1a0de46"
+checksum = "fa0e65163162b64adf94616ac29237b4212e10eb013d93db50e0a442f2c0abd0"
 dependencies = [
+ "console",
  "ratatui",
 ]
 
