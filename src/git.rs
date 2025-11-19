@@ -321,6 +321,7 @@ fn load_all_stashes(path: &Path) -> Vec<Commit> {
         .arg("-z") // use NUL as a delimiter
         .current_dir(path)
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
 
@@ -434,6 +435,7 @@ fn load_refs(path: &Path) -> (RefMap, Head) {
         .arg("--dereference")
         .current_dir(path)
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
 
@@ -494,6 +496,7 @@ fn load_stashes_as_refs(path: &Path) -> RefMap {
         .arg(format!("--format={format}"))
         .current_dir(path)
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
 
@@ -572,6 +575,7 @@ fn get_current_branch(path: &Path) -> Option<String> {
         .arg("--show-current")
         .current_dir(path)
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
 
@@ -606,6 +610,7 @@ pub fn get_diff_summary(path: &Path, commit_hash: &CommitHash) -> Vec<FileChange
         .arg(&commit_hash.0)
         .current_dir(path)
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
 
@@ -650,6 +655,7 @@ pub fn get_initial_commit_additions(path: &Path, commit_hash: &CommitHash) -> Ve
         .arg(&commit_hash.0)
         .current_dir(path)
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
 
