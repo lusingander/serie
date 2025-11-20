@@ -23,7 +23,7 @@ jobs:
         run: |
           MSRV=$(grep '^rust-version' Cargo.toml | cut -d '"' -f 2)
           echo "msrv=$MSRV" >> $GITHUB_OUTPUT
-  build:
+  lint:
     needs: prepare
     strategy:
       matrix:
@@ -52,3 +52,30 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
       - name: Run tests
         run: cargo test --verbose
+
+  build:
+    strategy:
+      matrix:
+        # x86_64-unknown-linux-gnu build is included in the lint job, so skip it here
+        targets:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+    runs-on: ${{ matrix.targets.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup
+        run: rustup target add ${{ matrix.targets.target }}
+      - name: Build
+        uses: houseabsolute/actions-rust-cross@v1.0.0
+        with:
+          command: build
+          target: ${{ matrix.targets.target }}
