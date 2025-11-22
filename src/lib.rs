@@ -115,7 +115,10 @@ pub fn run() -> Result<()> {
     let image_protocol = args.protocol.or(core_config.option.protocol).into();
     let order = args.order.or(core_config.option.order).into();
     let graph_width = args.graph_width.or(core_config.option.graph_width);
-    let initial_selection = args.initial_selection.into();
+    let initial_selection = args
+        .initial_selection
+        .or(core_config.option.initial_selection)
+        .into();
 
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 

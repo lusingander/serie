@@ -11,7 +11,7 @@ use umbra::optional;
 use crate::{
     color::{ColorTheme, OptionalColorTheme},
     keybind::KeyBind,
-    CommitOrderType, GraphWidthType, ImageProtocolType, Result,
+    CommitOrderType, GraphWidthType, ImageProtocolType, InitialSelection, Result,
 };
 
 const XDG_CONFIG_HOME_ENV_NAME: &str = "XDG_CONFIG_HOME";
@@ -109,6 +109,7 @@ pub struct CoreOptionConfig {
     pub protocol: Option<ImageProtocolType>,
     pub order: Option<CommitOrderType>,
     pub graph_width: Option<GraphWidthType>,
+    pub initial_selection: Option<InitialSelection>,
 }
 
 #[optional(derives = [Deserialize])]
@@ -313,6 +314,7 @@ mod tests {
                     protocol: None,
                     order: None,
                     graph_width: None,
+                    initial_selection: None,
                 },
                 search: CoreSearchConfig {
                     ignore_case: false,
@@ -382,6 +384,7 @@ mod tests {
             protocol = "kitty"
             order = "topo"
             graph_width = "single"
+            initial_selection = "head"
             [core.search]
             ignore_case = true
             fuzzy = true
@@ -418,6 +421,7 @@ mod tests {
                     protocol: Some(ImageProtocolType::Kitty),
                     order: Some(CommitOrderType::Topo),
                     graph_width: Some(GraphWidthType::Single),
+                    initial_selection: Some(InitialSelection::Head),
                 },
                 search: CoreSearchConfig {
                     ignore_case: true,
@@ -500,6 +504,7 @@ mod tests {
                     protocol: None,
                     order: None,
                     graph_width: None,
+                    initial_selection: None,
                 },
                 search: CoreSearchConfig {
                     ignore_case: false,
