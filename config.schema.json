@@ -14,7 +14,7 @@
           "properties": {
             "protocol": {
               "type": "string",
-              "description": "The protocol type for rendering images of commit graphs.",
+              "description": "The protocol type for rendering images of commit graphs. The value specified in the command line argument takes precedence.",
               "enum": [
                 "auto",
                 "iterm",
@@ -24,7 +24,7 @@
             },
             "order": {
               "type": "string",
-              "description": "The commit ordering algorithm.",
+              "description": "The commit ordering algorithm. The value specified in the command line argument takes precedence.",
               "enum": [
                 "chrono",
                 "topo"
@@ -33,13 +33,22 @@
             },
             "graph_width": {
               "type": "string",
-              "description": "The character width that a graph image unit cell occupies.",
+              "description": "The character width that a graph image unit cell occupies. The value specified in the command line argument takes precedence.",
               "enum": [
                 "auto",
                 "double",
                 "single"
               ],
               "default": "auto"
+            },
+            "initial_selection": {
+              "type": "string",
+              "description": "The initial selection of commit when starting the application. The value specified in the command line argument takes precedence.",
+              "enum": [
+                "latest",
+                "head"
+              ],
+              "default": "latest"
             }
           },
           "additionalProperties": false

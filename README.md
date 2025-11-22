@@ -102,12 +102,13 @@ Serie - A rich git commit graph in your terminal, like magic 📚
 Usage: serie [OPTIONS]
 
 Options:
-  -p, --protocol <TYPE>     Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty]
-  -o, --order <TYPE>        Commit ordering algorithm [default: chrono] [possible values: chrono, topo]
-  -g, --graph-width <TYPE>  Commit graph image cell width [default: auto] [possible values: auto, double, single]
-      --preload             Preload all graph images
-  -h, --help                Print help
-  -V, --version             Print version
+  -p, --protocol <TYPE>           Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty]
+  -o, --order <TYPE>              Commit ordering algorithm [default: chrono] [possible values: chrono, topo]
+  -g, --graph-width <TYPE>        Commit graph image cell width [default: auto] [possible values: auto, double, single]
+  -i, --initial-selection <TYPE>  Initial selection of commit [default: latest] [possible values: latest, head]
+      --preload                   Preload all graph images
+  -h, --help                      Print help
+  -V, --version                   Print version
 ```
 
 #### -p, --protocol \<TYPE\>
@@ -153,6 +154,14 @@ If not specified or `auto` is specified, `double` will be used automatically if 
 `--graph-width single`
 
 </details>
+
+#### -i, --initial-selection \<TYPE\>
+
+The initial selection of commit when starting the application.
+
+`--initial-selection latest` will select the latest commit.
+
+`--initial-selection head` will select the commit at HEAD.
 
 #### --preload
 
@@ -274,6 +283,10 @@ order = "chrono"
 # The value specified in the command line argument takes precedence.
 # type: enum (possible values: "auto", "double", "single")
 graph_width = "auto"
+# The initial selection of commit when starting the application.
+# The value specified in the command line argument takes precedence.
+# type: enum (possible values: "latest", "head")
+initial_selection = "latest"
 
 [core.search]
 # Whether to enable ignore case by default.

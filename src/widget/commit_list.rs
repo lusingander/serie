@@ -396,6 +396,20 @@ impl<'a> CommitListState<'a> {
         }
     }
 
+    pub fn select_commit_hash(&mut self, commit_hash: &CommitHash) {
+        for (i, commit_info) in self.commits.iter().enumerate() {
+            if commit_info.commit.commit_hash == *commit_hash {
+                if self.total > self.height {
+                    self.selected = 0;
+                    self.offset = i;
+                } else {
+                    self.selected = i;
+                }
+                break;
+            }
+        }
+    }
+
     pub fn search_state(&self) -> SearchState {
         self.search_state
     }
