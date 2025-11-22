@@ -35,6 +35,10 @@ struct Args {
     #[arg(short, long, value_name = "TYPE")]
     graph_width: Option<GraphWidthType>,
 
+    /// Initial selection of commit [default: latest]
+    #[arg(short, long, value_name = "TYPE")]
+    initial_selection: Option<InitialSelection>,
+
     /// Preload all graph images
     #[arg(long, default_value = "false")]
     preload: bool,
@@ -84,6 +88,23 @@ pub enum GraphWidthType {
     Single,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum InitialSelection {
+    Latest,
+    Head,
+}
+
+impl From<Option<InitialSelection>> for app::InitialSelection {
+    fn from(selection: Option<InitialSelection>) -> Self {
+        match selection {
+            Some(InitialSelection::Latest) => app::InitialSelection::Latest,
+            Some(InitialSelection::Head) => app::InitialSelection::Head,
+            None => app::InitialSelection::Latest,
+        }
+    }
+}
+
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 pub fn run() -> Result<()> {
@@ -94,6 +115,7 @@ pub fn run() -> Result<()> {
     let image_protocol = args.protocol.or(core_config.option.protocol).into();
     let order = args.order.or(core_config.option.order).into();
     let graph_width = args.graph_width.or(core_config.option.graph_width);
+    let initial_selection = args.initial_selection.into();
 
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 
@@ -126,6 +148,7 @@ pub fn run() -> Result<()> {
         &graph_color_set,
         cell_width_type,
         image_protocol,
+        initial_selection,
         tx,
     );
     let ret = app.run(&mut terminal, rx);

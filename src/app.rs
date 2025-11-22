@@ -15,7 +15,7 @@ use crate::{
     config::{CoreConfig, CursorType, UiConfig},
     event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
     external::copy_to_clipboard,
-    git::Repository,
+    git::{Head, Repository},
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -31,6 +31,11 @@ enum StatusLine {
     NotificationSuccess(String),
     NotificationWarn(String),
     NotificationError(String),
+}
+
+pub enum InitialSelection {
+    Latest,
+    Head,
 }
 
 #[derive(Debug)]
@@ -62,6 +67,7 @@ impl<'a> App<'a> {
         graph_color_set: &'a GraphColorSet,
         cell_width_type: CellWidthType,
         image_protocol: ImageProtocol,
+        initial_selection: InitialSelection,
         tx: Sender,
     ) -> Self {
         let mut ref_name_to_commit_index_map = HashMap::new();
@@ -84,7 +90,7 @@ impl<'a> App<'a> {
             CellWidthType::Single => (graph.max_pos_x + 1) as u16,
         };
         let head = repository.head();
-        let commit_list_state = CommitListState::new(
+        let mut commit_list_state = CommitListState::new(
             commits,
             graph_image_manager,
             graph_cell_width,
@@ -93,6 +99,12 @@ impl<'a> App<'a> {
             core_config.search.ignore_case,
             core_config.search.fuzzy,
         );
+        if let InitialSelection::Head = initial_selection {
+            match repository.head() {
+                Head::Branch { name } => commit_list_state.select_ref(name),
+                Head::Detached { target } => commit_list_state.select_commit_hash(target),
+            }
+        }
         let view = View::of_list(commit_list_state, ui_config, color_theme, tx.clone());
 
         Self {
