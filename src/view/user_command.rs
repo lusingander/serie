@@ -122,6 +122,12 @@ impl<'a> UserCommandView<'a> {
             UserEvent::GoToBottom => {
                 self.commit_user_command_state.select_last();
             }
+            UserEvent::SelectDown => {
+                self.tx.send(AppEvent::SelectOlderCommit);
+            }
+            UserEvent::SelectUp => {
+                self.tx.send(AppEvent::SelectNewerCommit);
+            }
             UserEvent::HelpToggle => {
                 self.tx.send(AppEvent::OpenHelp);
             }

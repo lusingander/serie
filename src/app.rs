@@ -230,6 +230,12 @@ impl App<'_> {
                 AppEvent::ClearHelp => {
                     self.clear_help();
                 }
+                AppEvent::SelectOlderCommit => {
+                    self.select_older_commit();
+                }
+                AppEvent::SelectNewerCommit => {
+                    self.select_newer_commit();
+                }
                 AppEvent::CopyToClipboard { name, value } => {
                     self.copy_to_clipboard(name, value);
                 }
@@ -530,6 +536,10 @@ impl App<'_> {
             view.clear();
         }
     }
+
+    fn select_older_commit(&mut self) {}
+
+    fn select_newer_commit(&mut self) {}
 
     fn clear_status_line(&mut self) {
         self.status_line = StatusLine::None;

@@ -99,6 +99,12 @@ impl<'a> DetailView<'a> {
             UserEvent::GoToBottom => {
                 self.commit_detail_state.select_last();
             }
+            UserEvent::SelectDown => {
+                self.tx.send(AppEvent::SelectOlderCommit);
+            }
+            UserEvent::SelectUp => {
+                self.tx.send(AppEvent::SelectNewerCommit);
+            }
             UserEvent::ShortCopy => {
                 self.copy_commit_short_hash();
             }

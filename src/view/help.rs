@@ -72,12 +72,12 @@ impl HelpView<'_> {
                 self.tx.send(AppEvent::ClearHelp); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseHelp);
             }
-            UserEvent::NavigateDown => {
+            UserEvent::NavigateDown | UserEvent::SelectDown => {
                 for _ in 0..count {
                     self.scroll_down();
                 }
             }
-            UserEvent::NavigateUp => {
+            UserEvent::NavigateUp | UserEvent::SelectUp => {
                 for _ in 0..count {
                     self.scroll_up();
                 }
