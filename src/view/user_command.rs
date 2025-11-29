@@ -187,26 +187,23 @@ impl<'a> UserCommandView<'a> {
     }
 
     pub fn select_older_commit(&mut self, repository: &Repository, view_area: Rect) {
-        let commit_list_state = self.as_mut_list_state();
-        commit_list_state.select_next();
-        let selected = commit_list_state.selected_commit_hash().clone();
-        let (commit, _) = repository.commit_detail(&selected);
-        self.user_command_output_lines = build_user_command_output_lines(
-            &commit,
-            self.user_command_number,
-            view_area,
-            self.core_config,
-            self.ui_config,
-        )
-        .unwrap_or_else(|err| {
-            self.tx.send(AppEvent::NotifyError(err));
-            vec![]
-        });
+        self.update_selected_commit(repository, view_area, |state| state.select_next());
     }
 
     pub fn select_newer_commit(&mut self, repository: &Repository, view_area: Rect) {
+        self.update_selected_commit(repository, view_area, |state| state.select_prev());
+    }
+
+    fn update_selected_commit<F>(
+        &mut self,
+        repository: &Repository,
+        view_area: Rect,
+        update_commit_list_state: F,
+    ) where
+        F: FnOnce(&mut CommitListState<'a>),
+    {
         let commit_list_state = self.as_mut_list_state();
-        commit_list_state.select_prev();
+        update_commit_list_state(commit_list_state);
         let selected = commit_list_state.selected_commit_hash().clone();
         let (commit, _) = repository.commit_detail(&selected);
         self.user_command_output_lines = build_user_command_output_lines(

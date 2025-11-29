@@ -164,19 +164,19 @@ impl<'a> DetailView<'a> {
     }
 
     pub fn select_older_commit(&mut self, repository: &Repository) {
-        let commit_list_state = self.as_mut_list_state();
-        commit_list_state.select_next();
-        let selected = commit_list_state.selected_commit_hash().clone();
-        let (commit, changes) = repository.commit_detail(&selected);
-        let refs = repository.refs(&selected).into_iter().cloned().collect();
-        self.commit = commit;
-        self.changes = changes;
-        self.refs = refs;
+        self.update_selected_commit(repository, |state| state.select_next());
     }
 
     pub fn select_newer_commit(&mut self, repository: &Repository) {
+        self.update_selected_commit(repository, |state| state.select_prev());
+    }
+
+    fn update_selected_commit<F>(&mut self, repository: &Repository, update_commit_list_state: F)
+    where
+        F: FnOnce(&mut CommitListState<'a>),
+    {
         let commit_list_state = self.as_mut_list_state();
-        commit_list_state.select_prev();
+        update_commit_list_state(commit_list_state);
         let selected = commit_list_state.selected_commit_hash().clone();
         let (commit, changes) = repository.commit_detail(&selected);
         let refs = repository.refs(&selected).into_iter().cloned().collect();
