@@ -9,7 +9,7 @@ use crate::{
     color::ColorTheme,
     config::UiConfig,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
-    git::{Commit, FileChange, Ref},
+    git::{Commit, FileChange, Ref, Repository},
     protocol::ImageProtocol,
     widget::{
         commit_detail::{CommitDetail, CommitDetailState},
@@ -161,6 +161,28 @@ impl<'a> DetailView<'a> {
 
     fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {
         self.commit_list_state.as_mut().unwrap()
+    }
+
+    pub fn select_older_commit(&mut self, repository: &Repository) {
+        let commit_list_state = self.as_mut_list_state();
+        commit_list_state.select_next();
+        let selected = commit_list_state.selected_commit_hash().clone();
+        let (commit, changes) = repository.commit_detail(&selected);
+        let refs = repository.refs(&selected).into_iter().cloned().collect();
+        self.commit = commit;
+        self.changes = changes;
+        self.refs = refs;
+    }
+
+    pub fn select_newer_commit(&mut self, repository: &Repository) {
+        let commit_list_state = self.as_mut_list_state();
+        commit_list_state.select_prev();
+        let selected = commit_list_state.selected_commit_hash().clone();
+        let (commit, changes) = repository.commit_detail(&selected);
+        let refs = repository.refs(&selected).into_iter().cloned().collect();
+        self.commit = commit;
+        self.changes = changes;
+        self.refs = refs;
     }
 
     pub fn clear(&mut self) {

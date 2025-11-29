@@ -537,9 +537,21 @@ impl App<'_> {
         }
     }
 
-    fn select_older_commit(&mut self) {}
+    fn select_older_commit(&mut self) {
+        if let View::Detail(ref mut view) = self.view {
+            view.select_older_commit(self.repository);
+        } else if let View::UserCommand(ref mut view) = self.view {
+            view.select_older_commit(self.repository, self.view_area);
+        }
+    }
 
-    fn select_newer_commit(&mut self) {}
+    fn select_newer_commit(&mut self) {
+        if let View::Detail(ref mut view) = self.view {
+            view.select_newer_commit(self.repository);
+        } else if let View::UserCommand(ref mut view) = self.view {
+            view.select_newer_commit(self.repository, self.view_area);
+        }
+    }
 
     fn clear_status_line(&mut self) {
         self.status_line = StatusLine::None;
