@@ -217,6 +217,8 @@ impl<'a> UserCommandView<'a> {
             self.tx.send(AppEvent::NotifyError(err));
             vec![]
         });
+
+        self.commit_user_command_state.select_first();
     }
 
     pub fn clear(&mut self) {

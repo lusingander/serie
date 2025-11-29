@@ -183,6 +183,8 @@ impl<'a> DetailView<'a> {
         self.commit = commit;
         self.changes = changes;
         self.refs = refs;
+
+        self.commit_detail_state.select_first();
     }
 
     pub fn clear(&mut self) {
