@@ -216,7 +216,7 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 | <kbd>Ctrl-f/b</kbd>                 | Scroll page down/up             | `page_down` `page_up`           |
 | <kbd>Ctrl-d/u</kbd>                 | Scroll half page down/up        | `half_page_down` `half_page_up` |
 | <kbd>g/G</kbd>                      | Go to top/bottom                | `go_to_top` `go_to_bottom`      |
-| <kbd>J/K</kbd>                      | Select next/previous commit     | `select_down` `select_up`       |
+| <kbd>J/K</kbd>                      | Select older/newer commit       | `select_down` `select_up`       |
 | <kbd>c/C</kbd>                      | Copy commit short/full hash     | `short_copy` `full_copy`        |
 | <kbd>d</kbd>                        | Toggle custom user command view | `user_command_view_toggle_1`    |
 
@@ -240,7 +240,7 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 | <kbd>Ctrl-f/b</kbd>                              | Scroll page down/up         | `page_down` `page_up`           |
 | <kbd>Ctrl-d/u</kbd>                              | Scroll half page down/up    | `half_page_down` `half_page_up` |
 | <kbd>g/G</kbd>                                   | Go to top/bottom            | `go_to_top` `go_to_bottom`      |
-| <kbd>J/K</kbd>                                   | Select next/previous commit | `select_down` `select_up`       |
+| <kbd>J/K</kbd>                                   | Select older/newer commit   | `select_down` `select_up`       |
 
 #### Help
 
