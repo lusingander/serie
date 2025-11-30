@@ -230,6 +230,12 @@ impl App<'_> {
                 AppEvent::ClearHelp => {
                     self.clear_help();
                 }
+                AppEvent::SelectOlderCommit => {
+                    self.select_older_commit();
+                }
+                AppEvent::SelectNewerCommit => {
+                    self.select_newer_commit();
+                }
                 AppEvent::CopyToClipboard { name, value } => {
                     self.copy_to_clipboard(name, value);
                 }
@@ -528,6 +534,22 @@ impl App<'_> {
     fn clear_help(&mut self) {
         if let View::Help(ref mut view) = self.view {
             view.clear();
+        }
+    }
+
+    fn select_older_commit(&mut self) {
+        if let View::Detail(ref mut view) = self.view {
+            view.select_older_commit(self.repository);
+        } else if let View::UserCommand(ref mut view) = self.view {
+            view.select_older_commit(self.repository, self.view_area);
+        }
+    }
+
+    fn select_newer_commit(&mut self) {
+        if let View::Detail(ref mut view) = self.view {
+            view.select_newer_commit(self.repository);
+        } else if let View::UserCommand(ref mut view) = self.view {
+            view.select_newer_commit(self.repository, self.view_area);
         }
     }
 

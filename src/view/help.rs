@@ -72,12 +72,12 @@ impl HelpView<'_> {
                 self.tx.send(AppEvent::ClearHelp); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseHelp);
             }
-            UserEvent::NavigateDown => {
+            UserEvent::NavigateDown | UserEvent::SelectDown => {
                 for _ in 0..count {
                     self.scroll_down();
                 }
             }
-            UserEvent::NavigateUp => {
+            UserEvent::NavigateUp | UserEvent::SelectUp => {
                 for _ in 0..count {
                     self.scroll_up();
                 }
@@ -238,8 +238,8 @@ fn build_lines(
 
     let help_helps = vec![
         (vec![UserEvent::HelpToggle, UserEvent::Cancel, UserEvent::Close], "Close help".into()),
-        (vec![UserEvent::NavigateDown], "Scroll down".into()),
-        (vec![UserEvent::NavigateUp], "Scroll up".into()),
+        (vec![UserEvent::NavigateDown, UserEvent::SelectDown], "Scroll down".into()),
+        (vec![UserEvent::NavigateUp, UserEvent::SelectUp], "Scroll up".into()),
         (vec![UserEvent::PageDown], "Scroll page down".into()),
         (vec![UserEvent::PageUp], "Scroll page up".into()),
         (vec![UserEvent::HalfPageDown], "Scroll half page down".into()),
@@ -250,8 +250,8 @@ fn build_lines(
     let (help_key_lines, help_value_lines) = build_block_lines("Help:", help_helps, color_theme, keybind);
 
     let mut list_helps = vec![
-        (vec![UserEvent::NavigateDown], "Move down".into()),
-        (vec![UserEvent::NavigateUp], "Move up".into()),
+        (vec![UserEvent::NavigateDown, UserEvent::SelectDown], "Move down".into()),
+        (vec![UserEvent::NavigateUp, UserEvent::SelectUp], "Move up".into()),
         (vec![UserEvent::GoToParent], "Go to parent".into()),
         (vec![UserEvent::GoToTop], "Go to top".into()),
         (vec![UserEvent::GoToBottom], "Go to bottom".into()),
@@ -288,6 +288,8 @@ fn build_lines(
         (vec![UserEvent::HalfPageUp], "Scroll half page up".into()),
         (vec![UserEvent::GoToTop], "Go to top".into()),
         (vec![UserEvent::GoToBottom], "Go to bottom".into()),
+        (vec![UserEvent::SelectDown], "Select older commit".into()),
+        (vec![UserEvent::SelectUp], "Select newer commit".into()),
         (vec![UserEvent::ShortCopy], "Copy commit short hash".into()),
         (vec![UserEvent::FullCopy], "Copy commit hash".into()),
     ];
@@ -296,8 +298,8 @@ fn build_lines(
 
     let refs_helps = vec![
         (vec![UserEvent::Cancel, UserEvent::Close, UserEvent::RefListToggle], "Close refs list".into()),
-        (vec![UserEvent::NavigateDown], "Move down".into()),
-        (vec![UserEvent::NavigateUp], "Move up".into()),
+        (vec![UserEvent::NavigateDown, UserEvent::SelectDown], "Move down".into()),
+        (vec![UserEvent::NavigateUp, UserEvent::SelectUp], "Move up".into()),
         (vec![UserEvent::GoToTop], "Go to top".into()),
         (vec![UserEvent::GoToBottom], "Go to bottom".into()),
         (vec![UserEvent::NavigateRight], "Open node".into()),
@@ -316,6 +318,8 @@ fn build_lines(
         (vec![UserEvent::HalfPageUp], "Scroll half page up".into()),
         (vec![UserEvent::GoToTop], "Go to top".into()),
         (vec![UserEvent::GoToBottom], "Go to bottom".into()),
+        (vec![UserEvent::SelectDown], "Select older commit".into()),
+        (vec![UserEvent::SelectUp], "Select newer commit".into()),
     ];
     user_command_helps.extend(user_command_view_toggle_helps);
     let (user_command_key_lines, user_command_value_lines) = build_block_lines("User Command:", user_command_helps, color_theme, keybind);

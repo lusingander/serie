@@ -9,7 +9,7 @@ use crate::{
     color::ColorTheme,
     config::UiConfig,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
-    git::{Commit, FileChange, Ref},
+    git::{Commit, FileChange, Ref, Repository},
     protocol::ImageProtocol,
     widget::{
         commit_detail::{CommitDetail, CommitDetailState},
@@ -99,6 +99,12 @@ impl<'a> DetailView<'a> {
             UserEvent::GoToBottom => {
                 self.commit_detail_state.select_last();
             }
+            UserEvent::SelectDown => {
+                self.tx.send(AppEvent::SelectOlderCommit);
+            }
+            UserEvent::SelectUp => {
+                self.tx.send(AppEvent::SelectNewerCommit);
+            }
             UserEvent::ShortCopy => {
                 self.copy_commit_short_hash();
             }
@@ -155,6 +161,30 @@ impl<'a> DetailView<'a> {
 
     fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {
         self.commit_list_state.as_mut().unwrap()
+    }
+
+    pub fn select_older_commit(&mut self, repository: &Repository) {
+        self.update_selected_commit(repository, |state| state.select_next());
+    }
+
+    pub fn select_newer_commit(&mut self, repository: &Repository) {
+        self.update_selected_commit(repository, |state| state.select_prev());
+    }
+
+    fn update_selected_commit<F>(&mut self, repository: &Repository, update_commit_list_state: F)
+    where
+        F: FnOnce(&mut CommitListState<'a>),
+    {
+        let commit_list_state = self.as_mut_list_state();
+        update_commit_list_state(commit_list_state);
+        let selected = commit_list_state.selected_commit_hash().clone();
+        let (commit, changes) = repository.commit_detail(&selected);
+        let refs = repository.refs(&selected).into_iter().cloned().collect();
+        self.commit = commit;
+        self.changes = changes;
+        self.refs = refs;
+
+        self.commit_detail_state.select_first();
     }
 
     pub fn clear(&mut self) {

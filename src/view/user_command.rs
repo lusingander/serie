@@ -12,7 +12,7 @@ use crate::{
     config::{CoreConfig, UiConfig},
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     external::exec_user_command,
-    git::Commit,
+    git::{Commit, Repository},
     protocol::ImageProtocol,
     widget::{
         commit_list::{CommitList, CommitListState},
@@ -34,6 +34,7 @@ pub struct UserCommandView<'a> {
     user_command_number: usize,
     user_command_output_lines: Vec<Line<'a>>,
 
+    core_config: &'a CoreConfig,
     ui_config: &'a UiConfig,
     color_theme: &'a ColorTheme,
     image_protocol: ImageProtocol,
@@ -72,6 +73,7 @@ impl<'a> UserCommandView<'a> {
             commit_user_command_state: CommitUserCommandState::default(),
             user_command_number,
             user_command_output_lines,
+            core_config,
             ui_config,
             color_theme,
             image_protocol,
@@ -121,6 +123,12 @@ impl<'a> UserCommandView<'a> {
             }
             UserEvent::GoToBottom => {
                 self.commit_user_command_state.select_last();
+            }
+            UserEvent::SelectDown => {
+                self.tx.send(AppEvent::SelectOlderCommit);
+            }
+            UserEvent::SelectUp => {
+                self.tx.send(AppEvent::SelectNewerCommit);
             }
             UserEvent::HelpToggle => {
                 self.tx.send(AppEvent::OpenHelp);
@@ -176,6 +184,41 @@ impl<'a> UserCommandView<'a> {
 
     fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {
         self.commit_list_state.as_mut().unwrap()
+    }
+
+    pub fn select_older_commit(&mut self, repository: &Repository, view_area: Rect) {
+        self.update_selected_commit(repository, view_area, |state| state.select_next());
+    }
+
+    pub fn select_newer_commit(&mut self, repository: &Repository, view_area: Rect) {
+        self.update_selected_commit(repository, view_area, |state| state.select_prev());
+    }
+
+    fn update_selected_commit<F>(
+        &mut self,
+        repository: &Repository,
+        view_area: Rect,
+        update_commit_list_state: F,
+    ) where
+        F: FnOnce(&mut CommitListState<'a>),
+    {
+        let commit_list_state = self.as_mut_list_state();
+        update_commit_list_state(commit_list_state);
+        let selected = commit_list_state.selected_commit_hash().clone();
+        let (commit, _) = repository.commit_detail(&selected);
+        self.user_command_output_lines = build_user_command_output_lines(
+            &commit,
+            self.user_command_number,
+            view_area,
+            self.core_config,
+            self.ui_config,
+        )
+        .unwrap_or_else(|err| {
+            self.tx.send(AppEvent::NotifyError(err));
+            vec![]
+        });
+
+        self.commit_user_command_state.select_first();
     }
 
     pub fn clear(&mut self) {

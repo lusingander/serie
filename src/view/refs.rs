@@ -56,13 +56,13 @@ impl<'a> RefsView<'a> {
             UserEvent::Cancel | UserEvent::Close | UserEvent::RefListToggle => {
                 self.tx.send(AppEvent::CloseRefs);
             }
-            UserEvent::NavigateDown => {
+            UserEvent::NavigateDown | UserEvent::SelectDown => {
                 for _ in 0..count {
                     self.ref_list_state.select_next();
                 }
                 self.update_commit_list_selected();
             }
-            UserEvent::NavigateUp => {
+            UserEvent::NavigateUp | UserEvent::SelectUp => {
                 for _ in 0..count {
                     self.ref_list_state.select_prev();
                 }

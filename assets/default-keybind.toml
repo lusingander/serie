@@ -9,6 +9,8 @@ navigate_down = ["j", "down"]
 navigate_right = ["l", "right"]
 navigate_left = ["h", "left"]
 go_to_parent = ["alt-j", "alt-down"]
+select_up = ["shift-k"]
+select_down = ["shift-j"]
 
 go_to_top = ["g"]
 go_to_bottom = ["shift-g"]
