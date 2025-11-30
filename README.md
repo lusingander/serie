@@ -226,6 +226,7 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 | -------------------------------------------------- | ---------------- | ---------------------------------- |
 | <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>Tab</kbd> | Close refs list  | `close` `cancel` `ref_list_toggle` |
 | <kbd>Down/Up</kbd> <kbd>j/k</kbd>                  | Move down/up     | `navigate_down` `navigate_up`      |
+| <kbd>J/K</kbd>                                     | Move down/up     | `select_down` `select_up`          |
 | <kbd>g/G</kbd>                                     | Go to top/bottom | `go_to_top` `go_to_bottom`         |
 | <kbd>Right/Left</kbd> <kbd>l/h</kbd>               | Open/Close node  | `navigate_right` `navigate_left`   |
 | <kbd>c</kbd>                                       | Copy ref name    | `short_copy`                       |
