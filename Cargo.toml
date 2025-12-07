@@ -16,7 +16,7 @@ exclude = ["/.github", "/img"]
 
 [dependencies]
 ansi-to-tui = "7.0.0"
-arboard = "3.6.1"
+arboard = { version = "3.6.1", features = ["wayland-data-control"] }
 base64 = "0.22.1"
 chrono = "0.4.42"
 clap = { version = "4.5.53", features = ["derive"] }
