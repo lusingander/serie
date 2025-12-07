@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{cell::RefCell, process::Command};
 
 use arboard::Clipboard;
 
@@ -7,10 +7,24 @@ const USER_COMMAND_FIRST_PARENT_HASH_MARKER: &str = "{{first_parent_hash}}";
 const USER_COMMAND_AREA_WIDTH_MARKER: &str = "{{area_width}}";
 const USER_COMMAND_AREA_HEIGHT_MARKER: &str = "{{area_height}}";
 
+thread_local! {
+    static CLIPBOARD: RefCell<Option<Clipboard>> = const { RefCell::new(None) };
+}
+
 pub fn copy_to_clipboard(value: String) -> Result<(), String> {
-    Clipboard::new()
-        .and_then(|mut c| c.set_text(value))
-        .map_err(|e| format!("Failed to copy to clipboard: {e:?}"))
+    CLIPBOARD.with_borrow_mut(|clipboard| {
+        if clipboard.is_none() {
+            *clipboard = Clipboard::new()
+                .map(Some)
+                .map_err(|e| format!("Failed to create clipboard: {e:?}"))?;
+        }
+
+        clipboard
+            .as_mut()
+            .expect("The clipboard should have been initialized above")
+            .set_text(value)
+            .map_err(|e| format!("Failed to copy to clipboard: {e:?}"))
+    })
 }
 
 pub fn exec_user_command(
