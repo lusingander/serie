@@ -290,6 +290,7 @@ fn build_lines(
         (vec![UserEvent::GoToBottom], "Go to bottom".into()),
         (vec![UserEvent::SelectDown], "Select older commit".into()),
         (vec![UserEvent::SelectUp], "Select newer commit".into()),
+        (vec![UserEvent::GoToParent], "Select parent commit".into()),
         (vec![UserEvent::ShortCopy], "Copy commit short hash".into()),
         (vec![UserEvent::FullCopy], "Copy commit hash".into()),
     ];
@@ -320,6 +321,7 @@ fn build_lines(
         (vec![UserEvent::GoToBottom], "Go to bottom".into()),
         (vec![UserEvent::SelectDown], "Select older commit".into()),
         (vec![UserEvent::SelectUp], "Select newer commit".into()),
+        (vec![UserEvent::GoToParent], "Select parent commit".into()),
     ];
     user_command_helps.extend(user_command_view_toggle_helps);
     let (user_command_key_lines, user_command_value_lines) = build_block_lines("User Command:", user_command_helps, color_theme, keybind);
