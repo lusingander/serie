@@ -27,6 +27,7 @@ pub enum AppEvent {
     ClearHelp,
     SelectNewerCommit,
     SelectOlderCommit,
+    SelectParentCommit,
     CopyToClipboard { name: String, value: String },
     ClearStatusLine,
     UpdateStatusInput(String, Option<u16>, Option<String>),

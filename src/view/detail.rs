@@ -105,6 +105,9 @@ impl<'a> DetailView<'a> {
             UserEvent::SelectUp => {
                 self.tx.send(AppEvent::SelectNewerCommit);
             }
+            UserEvent::GoToParent => {
+                self.tx.send(AppEvent::SelectParentCommit);
+            }
             UserEvent::ShortCopy => {
                 self.copy_commit_short_hash();
             }
@@ -169,6 +172,10 @@ impl<'a> DetailView<'a> {
 
     pub fn select_newer_commit(&mut self, repository: &Repository) {
         self.update_selected_commit(repository, |state| state.select_prev());
+    }
+
+    pub fn select_parent_commit(&mut self, repository: &Repository) {
+        self.update_selected_commit(repository, |state| state.select_parent());
     }
 
     fn update_selected_commit<F>(&mut self, repository: &Repository, update_commit_list_state: F)
