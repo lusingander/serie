@@ -236,6 +236,9 @@ impl App<'_> {
                 AppEvent::SelectNewerCommit => {
                     self.select_newer_commit();
                 }
+                AppEvent::SelectParentCommit => {
+                    self.select_parent_commit();
+                }
                 AppEvent::CopyToClipboard { name, value } => {
                     self.copy_to_clipboard(name, value);
                 }
@@ -550,6 +553,14 @@ impl App<'_> {
             view.select_newer_commit(self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
             view.select_newer_commit(self.repository, self.view_area);
+        }
+    }
+
+    fn select_parent_commit(&mut self) {
+        if let View::Detail(ref mut view) = self.view {
+            view.select_parent_commit(self.repository);
+        } else if let View::UserCommand(ref mut view) = self.view {
+            view.select_parent_commit(self.repository, self.view_area);
         }
     }
 
