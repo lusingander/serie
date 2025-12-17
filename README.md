@@ -205,6 +205,8 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 | <kbd>Ctrl-g</kbd>                    | Toggle ignore case (if searching)                  | `ignore_case_toggle`                         |
 | <kbd>Ctrl-x</kbd>                    | Toggle fuzzy match (if searching)                  | `fuzzy_toggle`                               |
 | <kbd>c/C</kbd>                       | Copy commit short/full hash                        | `short_copy` `full_copy`                     |
+| <kbd>t</kbd>                         | Create tag on commit                               | `create_tag`                                 |
+| <kbd>Ctrl-t</kbd>                    | Delete tag from commit                             | `delete_tag`                                 |
 | <kbd>d</kbd>                         | Toggle custom user command view                    | `user_command_view_toggle_1`                 |
 
 #### Commit Detail
