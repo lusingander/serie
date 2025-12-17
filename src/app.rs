@@ -76,7 +76,11 @@ impl<'a> App<'a> {
             .iter()
             .enumerate()
             .map(|(i, commit)| {
-                let refs: Vec<_> = repository.refs(&commit.commit_hash).into_iter().cloned().collect();
+                let refs: Vec<_> = repository
+                    .refs(&commit.commit_hash)
+                    .into_iter()
+                    .cloned()
+                    .collect();
                 for r in &refs {
                     ref_name_to_commit_index_map.insert(r.name().to_string(), i);
                 }
@@ -171,8 +175,9 @@ impl App<'_> {
                             self.numeric_prefix.clear();
                         }
                         None => {
-                            let is_input_mode = matches!(self.status_line, StatusLine::Input(_, _, _))
-                                || matches!(self.view, View::CreateTag(_));
+                            let is_input_mode =
+                                matches!(self.status_line, StatusLine::Input(_, _, _))
+                                    || matches!(self.view, View::CreateTag(_));
                             if is_input_mode {
                                 // In input mode, pass all key events to the view
                                 self.numeric_prefix.clear();
@@ -227,7 +232,10 @@ impl App<'_> {
                 AppEvent::CloseCreateTag => {
                     self.close_create_tag();
                 }
-                AppEvent::AddTagToCommit { commit_hash, tag_name } => {
+                AppEvent::AddTagToCommit {
+                    commit_hash,
+                    tag_name,
+                } => {
                     self.add_tag_to_commit(&commit_hash, &tag_name);
                 }
                 AppEvent::OpenDeleteTag => {
@@ -236,7 +244,10 @@ impl App<'_> {
                 AppEvent::CloseDeleteTag => {
                     self.close_delete_tag();
                 }
-                AppEvent::RemoveTagFromCommit { commit_hash, tag_name } => {
+                AppEvent::RemoveTagFromCommit {
+                    commit_hash,
+                    tag_name,
+                } => {
                     self.remove_tag_from_commit(&commit_hash, &tag_name);
                 }
                 AppEvent::OpenHelp => {
@@ -591,7 +602,8 @@ impl App<'_> {
                     self.color_theme,
                     self.tx.clone(),
                 );
-                self.tx.send(AppEvent::NotifyWarn("No tags on this commit".into()));
+                self.tx
+                    .send(AppEvent::NotifyWarn("No tags on this commit".into()));
                 return;
             }
             self.view = View::of_delete_tag(

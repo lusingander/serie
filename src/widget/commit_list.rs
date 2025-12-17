@@ -240,7 +240,8 @@ impl<'a> CommitListState<'a> {
     pub fn add_ref_to_commit(&mut self, commit_hash: &CommitHash, new_ref: Ref) {
         for (index, commit_info) in self.commits.iter_mut().enumerate() {
             if commit_info.commit_hash() == commit_hash {
-                self.ref_name_to_commit_index_map.insert(new_ref.name().to_string(), index);
+                self.ref_name_to_commit_index_map
+                    .insert(new_ref.name().to_string(), index);
                 commit_info.refs.push(new_ref);
                 commit_info.refs.sort();
                 break;
@@ -998,7 +999,9 @@ fn refs_spans<'a>(
     if refs.len() == 1 {
         if let Ref::Stash { name, .. } = &refs[0] {
             return vec![
-                Span::raw(name.clone()).fg(color_theme.list_ref_stash_fg).bold(),
+                Span::raw(name.clone())
+                    .fg(color_theme.list_ref_stash_fg)
+                    .bold(),
                 Span::raw(" "),
             ];
         }

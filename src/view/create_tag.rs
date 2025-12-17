@@ -210,7 +210,11 @@ impl<'a> CreateTagView<'a> {
             .title(" Create Tag ")
             .borders(Borders::ALL)
             .border_style(Style::default().fg(self.color_theme.divider_fg))
-            .style(Style::default().bg(self.color_theme.bg).fg(self.color_theme.fg))
+            .style(
+                Style::default()
+                    .bg(self.color_theme.bg)
+                    .fg(self.color_theme.fg),
+            )
             .padding(Padding::horizontal(1));
 
         let inner_area = block.inner(dialog_area);
@@ -233,15 +237,29 @@ impl<'a> CreateTagView<'a> {
         f.render_widget(Paragraph::new(commit_line), commit_area);
 
         // Tag name input
-        let tag_input_area = self.render_input_field(f, tag_name_area, "Tag name:", self.tag_name_input.value(), FocusedField::TagName);
+        let tag_input_area = self.render_input_field(
+            f,
+            tag_name_area,
+            "Tag name:",
+            self.tag_name_input.value(),
+            FocusedField::TagName,
+        );
 
         // Message input
-        let msg_input_area = self.render_input_field(f, message_area, "Message:", self.tag_message_input.value(), FocusedField::Message);
+        let msg_input_area = self.render_input_field(
+            f,
+            message_area,
+            "Message:",
+            self.tag_message_input.value(),
+            FocusedField::Message,
+        );
 
         // Push checkbox
         let checkbox = if self.push_to_remote { "[x]" } else { "[ ]" };
         let checkbox_style = if self.focused_field == FocusedField::PushCheckbox {
-            Style::default().add_modifier(Modifier::BOLD).fg(self.color_theme.status_success_fg)
+            Style::default()
+                .add_modifier(Modifier::BOLD)
+                .fg(self.color_theme.status_success_fg)
         } else {
             Style::default().fg(self.color_theme.fg)
         };
@@ -265,26 +283,38 @@ impl<'a> CreateTagView<'a> {
         // Cursor positioning
         if self.focused_field == FocusedField::TagName {
             let cursor_x = tag_input_area.x + 1 + self.tag_name_input.visual_cursor() as u16;
-            f.set_cursor_position((cursor_x.min(tag_input_area.right().saturating_sub(1)), tag_input_area.y));
+            f.set_cursor_position((
+                cursor_x.min(tag_input_area.right().saturating_sub(1)),
+                tag_input_area.y,
+            ));
         } else if self.focused_field == FocusedField::Message {
             let cursor_x = msg_input_area.x + 1 + self.tag_message_input.visual_cursor() as u16;
-            f.set_cursor_position((cursor_x.min(msg_input_area.right().saturating_sub(1)), msg_input_area.y));
+            f.set_cursor_position((
+                cursor_x.min(msg_input_area.right().saturating_sub(1)),
+                msg_input_area.y,
+            ));
         }
     }
 
-    fn render_input_field(&self, f: &mut Frame, area: Rect, label: &str, value: &str, field: FocusedField) -> Rect {
+    fn render_input_field(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        label: &str,
+        value: &str,
+        field: FocusedField,
+    ) -> Rect {
         let is_focused = self.focused_field == field;
         let label_style = if is_focused {
-            Style::default().add_modifier(Modifier::BOLD).fg(self.color_theme.status_success_fg)
+            Style::default()
+                .add_modifier(Modifier::BOLD)
+                .fg(self.color_theme.status_success_fg)
         } else {
             Style::default().fg(self.color_theme.fg)
         };
 
-        let [label_area, input_area] = Layout::vertical([
-            Constraint::Length(1),
-            Constraint::Length(1),
-        ])
-        .areas(area);
+        let [label_area, input_area] =
+            Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).areas(area);
 
         f.render_widget(
             Paragraph::new(Line::from(Span::styled(label, label_style))),
@@ -305,8 +335,7 @@ impl<'a> CreateTagView<'a> {
         };
 
         f.render_widget(
-            Paragraph::new(Line::from(Span::raw(format!(" {}", display_value))))
-                .style(input_style),
+            Paragraph::new(Line::from(Span::raw(format!(" {}", display_value)))).style(input_style),
             input_area,
         );
 
@@ -324,6 +353,7 @@ impl<'a> CreateTagView<'a> {
     }
 
     pub fn add_ref_to_commit(&mut self, commit_hash: &CommitHash, new_ref: Ref) {
-        self.as_mut_list_state().add_ref_to_commit(commit_hash, new_ref);
+        self.as_mut_list_state()
+            .add_ref_to_commit(commit_hash, new_ref);
     }
 }

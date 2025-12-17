@@ -159,7 +159,11 @@ impl<'a> DeleteTagView<'a> {
             .title(" Delete Tag ")
             .borders(Borders::ALL)
             .border_style(Style::default().fg(self.color_theme.divider_fg))
-            .style(Style::default().bg(self.color_theme.bg).fg(self.color_theme.fg))
+            .style(
+                Style::default()
+                    .bg(self.color_theme.bg)
+                    .fg(self.color_theme.fg),
+            )
             .padding(Padding::horizontal(1));
 
         let inner_area = block.inner(dialog_area);
@@ -206,7 +210,11 @@ impl<'a> DeleteTagView<'a> {
             f.render_widget(Paragraph::new(tag_lines), list_area);
         }
 
-        let checkbox = if self.delete_from_remote { "[x]" } else { "[ ]" };
+        let checkbox = if self.delete_from_remote {
+            "[x]"
+        } else {
+            "[ ]"
+        };
         let checkbox_style = Style::default().fg(self.color_theme.fg);
         let checkbox_line = Line::from(vec![
             Span::styled(checkbox, checkbox_style),
@@ -238,7 +246,8 @@ impl<'a> DeleteTagView<'a> {
     }
 
     pub fn remove_ref_from_commit(&mut self, commit_hash: &CommitHash, tag_name: &str) {
-        self.as_mut_list_state().remove_ref_from_commit(commit_hash, tag_name);
+        self.as_mut_list_state()
+            .remove_ref_from_commit(commit_hash, tag_name);
     }
 }
 
@@ -250,12 +259,13 @@ fn compare_semver(a: &str, b: &str) -> std::cmp::Ordering {
             let major = parts[0].parse::<u64>().ok()?;
             let minor = parts[1].parse::<u64>().ok()?;
             let patch_str = parts[2];
-            let (patch_num, suffix) = if let Some(idx) = patch_str.find(|c: char| !c.is_ascii_digit()) {
-                let (num, suf) = patch_str.split_at(idx);
-                (num.parse::<u64>().ok()?, suf.to_string())
-            } else {
-                (patch_str.parse::<u64>().ok()?, String::new())
-            };
+            let (patch_num, suffix) =
+                if let Some(idx) = patch_str.find(|c: char| !c.is_ascii_digit()) {
+                    let (num, suf) = patch_str.split_at(idx);
+                    (num.parse::<u64>().ok()?, suf.to_string())
+                } else {
+                    (patch_str.parse::<u64>().ok()?, String::new())
+                };
             Some((major, minor, patch_num, suffix))
         } else {
             None
