@@ -25,17 +25,77 @@ static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(|| SkimMatcherV2::default(
 const ELLIPSIS: &str = "...";
 
 #[derive(Debug)]
+pub enum CommitRefs<'a> {
+    Borrowed(Vec<&'a Ref>),
+    Owned(Vec<Ref>),
+}
+
+impl<'a> CommitRefs<'a> {
+    fn make_owned(&mut self) {
+        if let CommitRefs::Borrowed(refs) = self {
+            *self = CommitRefs::Owned(refs.iter().map(|r| (*r).clone()).collect());
+        }
+    }
+
+    fn push(&mut self, r: Ref) {
+        self.make_owned();
+        if let CommitRefs::Owned(refs) = self {
+            refs.push(r);
+            refs.sort();
+        }
+    }
+
+    fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&Ref) -> bool,
+    {
+        self.make_owned();
+        if let CommitRefs::Owned(refs) = self {
+            refs.retain(f);
+        }
+    }
+
+    fn iter(&self) -> Box<dyn Iterator<Item = &Ref> + '_> {
+        match self {
+            CommitRefs::Borrowed(refs) => Box::new(refs.iter().copied()),
+            CommitRefs::Owned(refs) => Box::new(refs.iter()),
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            CommitRefs::Borrowed(refs) => refs.len(),
+            CommitRefs::Owned(refs) => refs.len(),
+        }
+    }
+
+    fn get(&self, index: usize) -> Option<&Ref> {
+        match self {
+            CommitRefs::Borrowed(refs) => refs.get(index).copied(),
+            CommitRefs::Owned(refs) => refs.get(index),
+        }
+    }
+
+    fn to_vec(&self) -> Vec<Ref> {
+        match self {
+            CommitRefs::Borrowed(refs) => refs.iter().map(|r| (*r).clone()).collect(),
+            CommitRefs::Owned(refs) => refs.clone(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct CommitInfo<'a> {
     commit: &'a Commit,
-    refs: Vec<Ref>,
+    refs: CommitRefs<'a>,
     graph_color: Color,
 }
 
 impl<'a> CommitInfo<'a> {
-    pub fn new(commit: &'a Commit, refs: Vec<Ref>, graph_color: Color) -> Self {
+    pub fn new(commit: &'a Commit, refs: Vec<&'a Ref>, graph_color: Color) -> Self {
         Self {
             commit,
-            refs,
+            refs: CommitRefs::Borrowed(refs),
             graph_color,
         }
     }
@@ -90,10 +150,15 @@ struct SearchMatch {
 }
 
 impl SearchMatch {
-    fn new(c: &Commit, refs: &[Ref], q: &str, ignore_case: bool, fuzzy: bool) -> Self {
+    fn new<'a>(
+        c: &Commit,
+        refs: impl Iterator<Item = &'a Ref>,
+        q: &str,
+        ignore_case: bool,
+        fuzzy: bool,
+    ) -> Self {
         let matcher = SearchMatcher::new(q, ignore_case, fuzzy);
         let refs = refs
-            .iter()
             .filter(|r| !matches!(r, Ref::Stash { .. }))
             .filter_map(|r| {
                 matcher
@@ -243,7 +308,6 @@ impl<'a> CommitListState<'a> {
                 self.ref_name_to_commit_index_map
                     .insert(new_ref.name().to_string(), index);
                 commit_info.refs.push(new_ref);
-                commit_info.refs.sort();
                 break;
             }
         }
@@ -408,7 +472,7 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn selected_commit_refs(&self) -> Vec<Ref> {
-        self.commits[self.current_selected_index()].refs.clone()
+        self.commits[self.current_selected_index()].refs.to_vec()
     }
 
     fn current_selected_index(&self) -> usize {
@@ -611,7 +675,7 @@ impl<'a> CommitListState<'a> {
         for (i, commit_info) in self.commits.iter().enumerate() {
             let mut m = SearchMatch::new(
                 commit_info.commit,
-                commit_info.refs.as_slice(),
+                commit_info.refs.iter(),
                 q,
                 ignore_case,
                 fuzzy,
@@ -997,7 +1061,7 @@ fn refs_spans<'a>(
     let refs = &commit_info.refs;
 
     if refs.len() == 1 {
-        if let Ref::Stash { name, .. } = &refs[0] {
+        if let Some(Ref::Stash { name, .. }) = refs.get(0) {
             return vec![
                 Span::raw(name.clone())
                     .fg(color_theme.list_ref_stash_fg)
@@ -1053,6 +1117,7 @@ fn refs_spans<'a>(
         }
     }
 
+    let refs_len = refs.len();
     for (i, ss) in ref_spans.into_iter().enumerate() {
         let (ref_spans, ref_name) = ss;
         if let Head::Branch { name } = head {
@@ -1061,7 +1126,7 @@ fn refs_spans<'a>(
             }
         }
         spans.extend(ref_spans);
-        if i < refs.len() - 1 {
+        if i < refs_len - 1 {
             spans.push(Span::raw(", ").fg(color_theme.list_ref_paren_fg).bold());
         }
     }

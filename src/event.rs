@@ -50,6 +50,8 @@ pub enum AppEvent {
     NotifySuccess(String),
     NotifyWarn(String),
     NotifyError(String),
+    ShowPendingOverlay { message: String },
+    HidePendingOverlay,
 }
 
 #[derive(Clone)]

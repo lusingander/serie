@@ -20,7 +20,10 @@ use crate::{
     keybind::KeyBind,
     protocol::ImageProtocol,
     view::View,
-    widget::commit_list::{CommitInfo, CommitListState},
+    widget::{
+        commit_list::{CommitInfo, CommitListState},
+        pending_overlay::PendingOverlay,
+    },
 };
 
 #[derive(Debug)]
@@ -43,6 +46,7 @@ pub struct App<'a> {
     repository: &'a Repository,
     view: View<'a>,
     status_line: StatusLine,
+    pending_message: Option<String>,
 
     keybind: &'a KeyBind,
     core_config: &'a CoreConfig,
@@ -76,11 +80,7 @@ impl<'a> App<'a> {
             .iter()
             .enumerate()
             .map(|(i, commit)| {
-                let refs: Vec<_> = repository
-                    .refs(&commit.commit_hash)
-                    .into_iter()
-                    .cloned()
-                    .collect();
+                let refs = repository.refs(&commit.commit_hash);
                 for r in &refs {
                     ref_name_to_commit_index_map.insert(r.name().to_string(), i);
                 }
@@ -114,6 +114,7 @@ impl<'a> App<'a> {
         Self {
             repository,
             status_line: StatusLine::None,
+            pending_message: None,
             view,
             keybind,
             core_config,
@@ -137,6 +138,19 @@ impl App<'_> {
             terminal.draw(|f| self.render(f))?;
             match rx.recv() {
                 AppEvent::Key(key) => {
+                    // Handle pending overlay - Esc hides it
+                    if self.pending_message.is_some() {
+                        if let Some(UserEvent::Cancel) = self.keybind.get(&key) {
+                            self.pending_message = None;
+                            self.tx.send(AppEvent::NotifyInfo(
+                                "Operation continues in background".into(),
+                            ));
+                            continue;
+                        }
+                        // Block other keys while pending
+                        continue;
+                    }
+
                     match self.status_line {
                         StatusLine::None | StatusLine::Input(_, _, _) => {
                             // do nothing
@@ -289,6 +303,12 @@ impl App<'_> {
                 AppEvent::NotifyError(msg) => {
                     self.error_notification(msg);
                 }
+                AppEvent::ShowPendingOverlay { message } => {
+                    self.pending_message = Some(message);
+                }
+                AppEvent::HidePendingOverlay => {
+                    self.pending_message = None;
+                }
             }
         }
     }
@@ -306,6 +326,11 @@ impl App<'_> {
 
         self.view.render(f, view_area);
         self.render_status_line(f, status_line_area);
+
+        if let Some(message) = &self.pending_message {
+            let overlay = PendingOverlay::new(message, self.color_theme);
+            f.render_widget(overlay, f.area());
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, thread};
 
 use ratatui::{
     crossterm::event::KeyEvent,
@@ -97,42 +97,62 @@ impl<'a> DeleteTagView<'a> {
             return;
         }
 
-        let tag_name = &self.tags[self.selected_index];
+        let tag_name = self.tags[self.selected_index].clone();
 
-        if let Err(e) = delete_tag(&self.repo_path, tag_name) {
-            self.tx.send(AppEvent::NotifyError(e));
-            return;
-        }
+        // Prepare data for background thread
+        let repo_path = self.repo_path.clone();
+        let commit_hash = self.commit_hash.clone();
+        let delete_from_remote = self.delete_from_remote;
+        let tx = self.tx.clone();
 
-        if self.delete_from_remote {
-            if let Err(e) = delete_remote_tag(&self.repo_path, tag_name) {
-                self.tx.send(AppEvent::NotifyError(format!(
-                    "Local tag deleted, but failed to delete from remote: {}",
-                    e
-                )));
-            }
-        }
-
-        self.tx.send(AppEvent::RemoveTagFromCommit {
-            commit_hash: self.commit_hash.clone(),
-            tag_name: tag_name.clone(),
-        });
-
-        let msg = if self.delete_from_remote {
-            format!("Tag '{}' deleted from local and remote", tag_name)
+        // Show pending overlay and close dialog
+        let pending_msg = if delete_from_remote {
+            format!("Deleting tag '{}' from local and remote...", tag_name)
         } else {
-            format!("Tag '{}' deleted locally", tag_name)
+            format!("Deleting tag '{}'...", tag_name)
         };
-        self.tx.send(AppEvent::NotifySuccess(msg));
+        self.tx
+            .send(AppEvent::ShowPendingOverlay { message: pending_msg });
+        self.tx.send(AppEvent::CloseDeleteTag);
 
-        self.tags.remove(self.selected_index);
-        if self.selected_index >= self.tags.len() && self.selected_index > 0 {
-            self.selected_index -= 1;
-        }
+        // Run git commands in background
+        thread::spawn(move || {
+            if let Err(e) = delete_tag(&repo_path, &tag_name) {
+                tx.send(AppEvent::HidePendingOverlay);
+                tx.send(AppEvent::NotifyError(e));
+                return;
+            }
 
-        if self.tags.is_empty() {
-            self.tx.send(AppEvent::CloseDeleteTag);
-        }
+            if delete_from_remote {
+                if let Err(e) = delete_remote_tag(&repo_path, &tag_name) {
+                    tx.send(AppEvent::HidePendingOverlay);
+                    tx.send(AppEvent::NotifyError(format!(
+                        "Local tag deleted, but failed to delete from remote: {}",
+                        e
+                    )));
+                    // Still remove tag from UI since local deletion succeeded
+                    tx.send(AppEvent::RemoveTagFromCommit {
+                        commit_hash,
+                        tag_name,
+                    });
+                    return;
+                }
+            }
+
+            // Success
+            tx.send(AppEvent::RemoveTagFromCommit {
+                commit_hash,
+                tag_name: tag_name.clone(),
+            });
+
+            let msg = if delete_from_remote {
+                format!("Tag '{}' deleted from local and remote", tag_name)
+            } else {
+                format!("Tag '{}' deleted locally", tag_name)
+            };
+            tx.send(AppEvent::NotifySuccess(msg));
+            tx.send(AppEvent::HidePendingOverlay);
+        });
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {

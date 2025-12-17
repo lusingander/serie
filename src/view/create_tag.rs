@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, thread};
 
 use ratatui::{
     crossterm::event::{Event, KeyEvent},
@@ -152,37 +152,67 @@ impl<'a> CreateTagView<'a> {
         }
 
         let message = self.tag_message_input.value().trim();
-        let message = if message.is_empty() {
+        let message: Option<String> = if message.is_empty() {
             None
         } else {
-            Some(message)
+            Some(message.to_string())
         };
 
-        if let Err(e) = create_tag(&self.repo_path, tag_name, &self.commit_hash, message) {
-            self.tx.send(AppEvent::NotifyError(e));
-            return;
-        }
+        // Prepare data for background thread
+        let repo_path = self.repo_path.clone();
+        let tag_name = tag_name.to_string();
+        let commit_hash = self.commit_hash.clone();
+        let push_to_remote = self.push_to_remote;
+        let tx = self.tx.clone();
 
-        if self.push_to_remote {
-            if let Err(e) = push_tag(&self.repo_path, tag_name) {
-                self.tx.send(AppEvent::NotifyError(e));
+        // Show pending overlay and close dialog
+        let pending_msg = if push_to_remote {
+            format!("Creating and pushing tag '{}'...", tag_name)
+        } else {
+            format!("Creating tag '{}'...", tag_name)
+        };
+        self.tx
+            .send(AppEvent::ShowPendingOverlay { message: pending_msg });
+        self.tx.send(AppEvent::CloseCreateTag);
+
+        // Run git commands in background
+        thread::spawn(move || {
+            if let Err(e) = create_tag(&repo_path, &tag_name, &commit_hash, message.as_deref()) {
+                tx.send(AppEvent::HidePendingOverlay);
+                tx.send(AppEvent::NotifyError(e));
                 return;
             }
-        }
 
-        // Update UI with new tag
-        self.tx.send(AppEvent::AddTagToCommit {
-            commit_hash: self.commit_hash.clone(),
-            tag_name: tag_name.to_string(),
+            if push_to_remote {
+                if let Err(e) = push_tag(&repo_path, &tag_name) {
+                    tx.send(AppEvent::HidePendingOverlay);
+                    tx.send(AppEvent::NotifyError(format!(
+                        "Tag created locally, but push failed: {}",
+                        e
+                    )));
+                    // Still add tag to UI since local creation succeeded
+                    tx.send(AppEvent::AddTagToCommit {
+                        commit_hash,
+                        tag_name,
+                    });
+                    return;
+                }
+            }
+
+            // Success
+            tx.send(AppEvent::AddTagToCommit {
+                commit_hash,
+                tag_name: tag_name.clone(),
+            });
+
+            let msg = if push_to_remote {
+                format!("Tag '{}' created and pushed to origin", tag_name)
+            } else {
+                format!("Tag '{}' created", tag_name)
+            };
+            tx.send(AppEvent::NotifySuccess(msg));
+            tx.send(AppEvent::HidePendingOverlay);
         });
-
-        let msg = if self.push_to_remote {
-            format!("Tag '{}' created and pushed to origin", tag_name)
-        } else {
-            format!("Tag '{}' created", tag_name)
-        };
-        self.tx.send(AppEvent::NotifySuccess(msg));
-        self.tx.send(AppEvent::CloseCreateTag);
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
