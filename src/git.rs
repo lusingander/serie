@@ -4,6 +4,7 @@ use std::{
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    rc::Rc,
 };
 
 use chrono::{DateTime, FixedOffset};
@@ -104,14 +105,15 @@ pub enum SortCommit {
     Topological,
 }
 
-type CommitMap = HashMap<CommitHash, Commit>;
+type CommitMap = HashMap<CommitHash, Rc<Commit>>;
 type CommitsMap = HashMap<CommitHash, Vec<CommitHash>>;
 
-type RefMap = HashMap<CommitHash, Vec<Ref>>;
+type RefMap = HashMap<CommitHash, Vec<Rc<Ref>>>;
 
 #[derive(Debug)]
 pub struct Repository {
     path: PathBuf,
+    sort: SortCommit,
     commit_map: CommitMap,
 
     parents_map: CommitsMap,
@@ -140,42 +142,23 @@ impl Repository {
         let stash_ref_map = load_stashes_as_refs(path);
         merge_ref_maps(&mut ref_map, stash_ref_map);
 
-        Ok(Self::new(
-            path.to_path_buf(),
+        Ok(Self {
+            path: path.to_path_buf(),
+            sort,
             commit_map,
             parents_map,
             children_map,
             ref_map,
             head,
             commit_hashes,
-        ))
+        })
     }
 
-    pub fn new(
-        path: PathBuf,
-        commit_map: CommitMap,
-        parents_map: CommitsMap,
-        children_map: CommitsMap,
-        ref_map: RefMap,
-        head: Head,
-        commit_hashes: Vec<CommitHash>,
-    ) -> Self {
-        Self {
-            path,
-            commit_map,
-            parents_map,
-            children_map,
-            ref_map,
-            head,
-            commit_hashes,
-        }
+    pub fn commit(&self, commit_hash: &CommitHash) -> Option<Rc<Commit>> {
+        self.commit_map.get(commit_hash).cloned()
     }
 
-    pub fn commit(&self, commit_hash: &CommitHash) -> Option<&Commit> {
-        self.commit_map.get(commit_hash)
-    }
-
-    pub fn all_commits(&self) -> Vec<&Commit> {
+    pub fn all_commits(&self) -> Vec<Rc<Commit>> {
         self.commit_hashes
             .iter()
             .filter_map(|hash| self.commit(hash))
@@ -196,33 +179,37 @@ impl Repository {
             .unwrap_or_default()
     }
 
-    pub fn refs(&self, commit_hash: &CommitHash) -> Vec<&Ref> {
+    pub fn refs(&self, commit_hash: &CommitHash) -> Vec<Rc<Ref>> {
         self.ref_map
             .get(commit_hash)
-            .map(|refs| refs.iter().collect::<Vec<&Ref>>())
+            .cloned()
             .unwrap_or_default()
     }
 
-    pub fn all_refs(&self) -> Vec<&Ref> {
-        self.ref_map.values().flatten().collect()
+    pub fn all_refs(&self) -> Vec<Rc<Ref>> {
+        self.ref_map.values().flatten().cloned().collect()
     }
 
-    pub fn head(&self) -> &Head {
-        &self.head
+    pub fn head(&self) -> Head {
+        self.head.clone()
     }
 
     pub fn path(&self) -> &Path {
         &self.path
     }
 
-    pub fn commit_detail(&self, commit_hash: &CommitHash) -> (Commit, Vec<FileChange>) {
-        let commit = self.commit(commit_hash).unwrap().clone();
+    pub fn commit_detail(&self, commit_hash: &CommitHash) -> (Rc<Commit>, Vec<FileChange>) {
+        let commit = self.commit(commit_hash).unwrap();
         let changes = if commit.parent_commit_hashes.is_empty() {
             get_initial_commit_additions(&self.path, commit_hash)
         } else {
             get_diff_summary(&self.path, commit_hash)
         };
         (commit, changes)
+    }
+
+    pub fn sort_order(&self) -> SortCommit {
+        self.sort
     }
 }
 
@@ -407,7 +394,7 @@ fn build_commits_maps(commits: &Vec<Commit>) -> (CommitsMap, CommitsMap) {
 fn to_commit_map(commits: Vec<Commit>) -> CommitMap {
     commits
         .into_iter()
-        .map(|commit| (commit.commit_hash.clone(), commit))
+        .map(|commit| (commit.commit_hash.clone(), Rc::new(commit)))
         .collect()
 }
 
@@ -471,7 +458,7 @@ fn load_refs(path: &Path) -> (RefMap, Head) {
                 })
             };
         } else if let Some(r) = parse_branch_refs(hash, refs) {
-            ref_map.entry(hash.into()).or_default().push(r);
+            ref_map.entry(hash.into()).or_default().push(Rc::new(r));
         } else if let Some(r) = parse_tag_refs(hash, refs) {
             // if annotated tag exists, it will be overwritten by the following line of the same tag
             // this will make the tag point to the commit that the annotated tag points to
@@ -482,10 +469,10 @@ fn load_refs(path: &Path) -> (RefMap, Head) {
     let head = head.expect("HEAD not found in `git show-ref --head` output");
 
     for tag in tag_map.into_values() {
-        ref_map.entry(tag.target().clone()).or_default().push(tag);
+        ref_map.entry(tag.target().clone()).or_default().push(Rc::new(tag));
     }
 
-    ref_map.values_mut().for_each(|refs| refs.sort());
+    ref_map.values_mut().for_each(|refs| refs.sort_by(|a, b| a.cmp(b)));
 
     cmd.wait().unwrap();
 
@@ -528,7 +515,7 @@ fn load_stashes_as_refs(path: &Path) -> RefMap {
             target: hash.into(),
         };
 
-        ref_map.entry(hash.into()).or_default().push(r);
+        ref_map.entry(hash.into()).or_default().push(Rc::new(r));
     }
 
     cmd.wait().unwrap();

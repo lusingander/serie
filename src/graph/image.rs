@@ -1,6 +1,7 @@
 use std::{
     fmt::{self, Debug, Formatter},
     io::Cursor,
+    rc::Rc,
 };
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -14,19 +15,19 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct GraphImageManager<'a> {
+pub struct GraphImageManager {
     encoded_image_map: FxHashMap<CommitHash, String>,
 
-    graph: &'a Graph<'a>,
+    graph: Rc<Graph>,
     cell_width_type: CellWidthType,
     image_params: ImageParams,
     drawing_pixels: DrawingPixels,
     image_protocol: ImageProtocol,
 }
 
-impl<'a> GraphImageManager<'a> {
+impl GraphImageManager {
     pub fn new(
-        graph: &'a Graph,
+        graph: Rc<Graph>,
         graph_color_set: &GraphColorSet,
         cell_width_type: CellWidthType,
         image_protocol: ImageProtocol,
@@ -54,7 +55,7 @@ impl<'a> GraphImageManager<'a> {
     }
 
     pub fn load_all_encoded_image(&mut self) {
-        let graph_image = build_graph_image(self.graph, &self.image_params, &self.drawing_pixels);
+        let graph_image = build_graph_image(&self.graph, &self.image_params, &self.drawing_pixels);
         self.encoded_image_map = self
             .graph
             .commits
@@ -74,7 +75,7 @@ impl<'a> GraphImageManager<'a> {
             return;
         }
         let graph_row_image = build_single_graph_row_image(
-            self.graph,
+            &self.graph,
             &self.image_params,
             &self.drawing_pixels,
             commit_hash,
@@ -173,7 +174,7 @@ impl ImageParams {
 }
 
 fn build_single_graph_row_image(
-    graph: &Graph<'_>,
+    graph: &Graph,
     image_params: &ImageParams,
     drawing_pixels: &DrawingPixels,
     commit_hash: &CommitHash,
@@ -187,7 +188,7 @@ fn build_single_graph_row_image(
 }
 
 pub fn build_graph_image(
-    graph: &Graph<'_>,
+    graph: &Graph,
     image_params: &ImageParams,
     drawing_pixels: &DrawingPixels,
 ) -> GraphImage {

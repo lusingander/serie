@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ratatui::{
     crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
@@ -17,10 +19,10 @@ use crate::{
 
 #[derive(Debug)]
 pub struct RefsView<'a> {
-    commit_list_state: Option<CommitListState<'a>>,
+    commit_list_state: Option<CommitListState>,
     ref_list_state: RefListState,
 
-    refs: Vec<Ref>,
+    refs: Vec<Rc<Ref>>,
 
     ui_config: &'a UiConfig,
     color_theme: &'a ColorTheme,
@@ -29,8 +31,8 @@ pub struct RefsView<'a> {
 
 impl<'a> RefsView<'a> {
     pub fn new(
-        commit_list_state: CommitListState<'a>,
-        refs: Vec<Ref>,
+        commit_list_state: CommitListState,
+        refs: Vec<Rc<Ref>>,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
         tx: Sender,
@@ -110,15 +112,15 @@ impl<'a> RefsView<'a> {
 }
 
 impl<'a> RefsView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState<'a> {
+    pub fn take_list_state(&mut self) -> CommitListState {
         self.commit_list_state.take().unwrap()
     }
 
-    fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {
+    fn as_mut_list_state(&mut self) -> &mut CommitListState {
         self.commit_list_state.as_mut().unwrap()
     }
 
-    fn as_list_state(&self) -> &CommitListState<'a> {
+    fn as_list_state(&self) -> &CommitListState {
         self.commit_list_state.as_ref().unwrap()
     }
 

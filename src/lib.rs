@@ -12,7 +12,7 @@ mod keybind;
 mod view;
 mod widget;
 
-use std::path::Path;
+use std::{path::Path, rc::Rc};
 
 use app::App;
 use clap::{Parser, ValueEnum};
@@ -124,12 +124,12 @@ pub fn run() -> Result<()> {
 
     let repository = git::Repository::load(Path::new("."), order)?;
 
-    let graph = graph::calc_graph(&repository);
+    let graph = Rc::new(graph::calc_graph(&repository));
 
     let cell_width_type = check::decide_cell_width_type(&graph, graph_width)?;
 
     let graph_image_manager = GraphImageManager::new(
-        &graph,
+        Rc::clone(&graph),
         &graph_color_set,
         cell_width_type,
         image_protocol,

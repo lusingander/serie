@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use laurier::highlight::highlight_matched_text;
@@ -25,83 +25,36 @@ static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(|| SkimMatcherV2::default(
 const ELLIPSIS: &str = "...";
 
 #[derive(Debug)]
-pub enum CommitRefs<'a> {
-    Borrowed(Vec<&'a Ref>),
-    Owned(Vec<Ref>),
-}
-
-impl<'a> CommitRefs<'a> {
-    fn make_owned(&mut self) {
-        if let CommitRefs::Borrowed(refs) = self {
-            *self = CommitRefs::Owned(refs.iter().map(|r| (*r).clone()).collect());
-        }
-    }
-
-    fn push(&mut self, r: Ref) {
-        self.make_owned();
-        if let CommitRefs::Owned(refs) = self {
-            refs.push(r);
-            refs.sort();
-        }
-    }
-
-    fn retain<F>(&mut self, f: F)
-    where
-        F: FnMut(&Ref) -> bool,
-    {
-        self.make_owned();
-        if let CommitRefs::Owned(refs) = self {
-            refs.retain(f);
-        }
-    }
-
-    fn iter(&self) -> Box<dyn Iterator<Item = &Ref> + '_> {
-        match self {
-            CommitRefs::Borrowed(refs) => Box::new(refs.iter().copied()),
-            CommitRefs::Owned(refs) => Box::new(refs.iter()),
-        }
-    }
-
-    fn len(&self) -> usize {
-        match self {
-            CommitRefs::Borrowed(refs) => refs.len(),
-            CommitRefs::Owned(refs) => refs.len(),
-        }
-    }
-
-    fn get(&self, index: usize) -> Option<&Ref> {
-        match self {
-            CommitRefs::Borrowed(refs) => refs.get(index).copied(),
-            CommitRefs::Owned(refs) => refs.get(index),
-        }
-    }
-
-    fn to_vec(&self) -> Vec<Ref> {
-        match self {
-            CommitRefs::Borrowed(refs) => refs.iter().map(|r| (*r).clone()).collect(),
-            CommitRefs::Owned(refs) => refs.clone(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct CommitInfo<'a> {
-    commit: &'a Commit,
-    refs: CommitRefs<'a>,
+pub struct CommitInfo {
+    commit: Rc<Commit>,
+    refs: Vec<Rc<Ref>>,
     graph_color: Color,
 }
 
-impl<'a> CommitInfo<'a> {
-    pub fn new(commit: &'a Commit, refs: Vec<&'a Ref>, graph_color: Color) -> Self {
+impl CommitInfo {
+    pub fn new(commit: Rc<Commit>, refs: Vec<Rc<Ref>>, graph_color: Color) -> Self {
         Self {
             commit,
-            refs: CommitRefs::Borrowed(refs),
+            refs,
             graph_color,
         }
     }
 
     pub fn commit_hash(&self) -> &CommitHash {
         &self.commit.commit_hash
+    }
+
+    fn add_ref(&mut self, r: Rc<Ref>) {
+        self.refs.push(r);
+        self.refs.sort_by(|a, b| a.cmp(b));
+    }
+
+    fn remove_ref(&mut self, name: &str) {
+        self.refs.retain(|r| r.name() != name);
+    }
+
+    fn refs_to_vec(&self) -> Vec<Rc<Ref>> {
+        self.refs.clone()
     }
 }
 
@@ -248,11 +201,11 @@ impl SearchMatcher {
 }
 
 #[derive(Debug)]
-pub struct CommitListState<'a> {
-    commits: Vec<CommitInfo<'a>>,
-    graph_image_manager: GraphImageManager<'a>,
+pub struct CommitListState {
+    commits: Vec<CommitInfo>,
+    graph_image_manager: GraphImageManager,
     graph_cell_width: u16,
-    head: &'a Head,
+    head: Head,
 
     ref_name_to_commit_index_map: HashMap<String, usize>,
 
@@ -269,16 +222,16 @@ pub struct CommitListState<'a> {
     default_fuzzy: bool,
 }
 
-impl<'a> CommitListState<'a> {
+impl CommitListState {
     pub fn new(
-        commits: Vec<CommitInfo<'a>>,
-        graph_image_manager: GraphImageManager<'a>,
+        commits: Vec<CommitInfo>,
+        graph_image_manager: GraphImageManager,
         graph_cell_width: u16,
-        head: &'a Head,
+        head: Head,
         ref_name_to_commit_index_map: HashMap<String, usize>,
         default_ignore_case: bool,
         default_fuzzy: bool,
-    ) -> CommitListState<'a> {
+    ) -> CommitListState {
         let total = commits.len();
         CommitListState {
             commits,
@@ -307,7 +260,7 @@ impl<'a> CommitListState<'a> {
             if commit_info.commit_hash() == commit_hash {
                 self.ref_name_to_commit_index_map
                     .insert(new_ref.name().to_string(), index);
-                commit_info.refs.push(new_ref);
+                commit_info.add_ref(Rc::new(new_ref));
                 break;
             }
         }
@@ -317,7 +270,7 @@ impl<'a> CommitListState<'a> {
         for commit_info in self.commits.iter_mut() {
             if commit_info.commit_hash() == commit_hash {
                 self.ref_name_to_commit_index_map.remove(tag_name);
-                commit_info.refs.retain(|r| r.name() != tag_name);
+                commit_info.remove_ref(tag_name);
                 break;
             }
         }
@@ -471,8 +424,8 @@ impl<'a> CommitListState<'a> {
             .commit_hash
     }
 
-    pub fn selected_commit_refs(&self) -> Vec<Ref> {
-        self.commits[self.current_selected_index()].refs.to_vec()
+    pub fn selected_commit_refs(&self) -> Vec<Rc<Ref>> {
+        self.commits[self.current_selected_index()].refs_to_vec()
     }
 
     fn current_selected_index(&self) -> usize {
@@ -674,8 +627,8 @@ impl<'a> CommitListState<'a> {
         let mut match_index = 1;
         for (i, commit_info) in self.commits.iter().enumerate() {
             let mut m = SearchMatch::new(
-                commit_info.commit,
-                commit_info.refs.iter(),
+                &commit_info.commit,
+                commit_info.refs.iter().map(|r| r.as_ref()),
                 q,
                 ignore_case,
                 fuzzy,
@@ -736,7 +689,7 @@ impl<'a> CommitListState<'a> {
         }
     }
 
-    fn encoded_image(&self, commit_info: &'a CommitInfo) -> &str {
+    fn encoded_image(&self, commit_info: &CommitInfo) -> &str {
         self.graph_image_manager
             .encoded_image(&commit_info.commit.commit_hash)
     }
@@ -757,7 +710,7 @@ impl<'a> CommitList<'a> {
 }
 
 impl<'a> StatefulWidget for CommitList<'a> {
-    type State = CommitListState<'a>;
+    type State = CommitListState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         self.update_state(area, state);
@@ -896,13 +849,13 @@ impl CommitList<'_> {
             .map(|(i, commit_info)| {
                 let mut spans = refs_spans(
                     commit_info,
-                    state.head,
+                    &state.head,
                     &state.search_matches[state.offset + i].refs,
                     self.color_theme,
                 );
                 let ref_spans_width: usize = spans.iter().map(|s| s.width()).sum();
                 let max_width = max_width.saturating_sub(ref_spans_width);
-                let commit = commit_info.commit;
+                let commit = &commit_info.commit;
                 if max_width > ELLIPSIS.len() {
                     let truncate = console::measure_text_width(&commit.subject) > max_width;
                     let subject = if truncate {
@@ -1013,10 +966,10 @@ impl CommitList<'_> {
         Widget::render(List::new(items), area, buf);
     }
 
-    fn rendering_commit_info_iter<'a>(
-        &'a self,
-        state: &'a CommitListState,
-    ) -> impl Iterator<Item = (usize, &'a CommitInfo<'a>)> {
+    fn rendering_commit_info_iter<'b>(
+        &'b self,
+        state: &'b CommitListState,
+    ) -> impl Iterator<Item = (usize, &'b CommitInfo)> {
         state
             .commits
             .iter()
@@ -1025,12 +978,12 @@ impl CommitList<'_> {
             .enumerate()
     }
 
-    fn rendering_commit_iter<'a>(
-        &'a self,
-        state: &'a CommitListState,
-    ) -> impl Iterator<Item = (usize, &'a Commit)> {
+    fn rendering_commit_iter<'b>(
+        &'b self,
+        state: &'b CommitListState,
+    ) -> impl Iterator<Item = (usize, &'b Commit)> {
         self.rendering_commit_info_iter(state)
-            .map(|(i, commit_info)| (i, commit_info.commit))
+            .map(|(i, commit_info)| (i, commit_info.commit.as_ref()))
     }
 
     fn to_commit_list_item<'a, 'b>(
@@ -1061,7 +1014,7 @@ fn refs_spans<'a>(
     let refs = &commit_info.refs;
 
     if refs.len() == 1 {
-        if let Some(Ref::Stash { name, .. }) = refs.get(0) {
+        if let Ref::Stash { name, .. } = refs[0].as_ref() {
             return vec![
                 Span::raw(name.clone())
                     .fg(color_theme.list_ref_stash_fg)
@@ -1073,7 +1026,7 @@ fn refs_spans<'a>(
 
     let ref_spans: Vec<(Vec<Span>, &String)> = refs
         .iter()
-        .filter_map(|r| match r {
+        .filter_map(|r| match r.as_ref() {
             Ref::Branch { name, .. } => {
                 let fg = color_theme.list_ref_branch_fg;
                 Some((name, fg))

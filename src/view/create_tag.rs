@@ -27,7 +27,7 @@ enum FocusedField {
 
 #[derive(Debug)]
 pub struct CreateTagView<'a> {
-    commit_list_state: Option<CommitListState<'a>>,
+    commit_list_state: Option<CommitListState>,
     commit_hash: CommitHash,
     repo_path: PathBuf,
 
@@ -43,7 +43,7 @@ pub struct CreateTagView<'a> {
 
 impl<'a> CreateTagView<'a> {
     pub fn new(
-        commit_list_state: CommitListState<'a>,
+        commit_list_state: CommitListState,
         commit_hash: CommitHash,
         repo_path: PathBuf,
         ui_config: &'a UiConfig,
@@ -372,13 +372,13 @@ impl<'a> CreateTagView<'a> {
         input_area
     }
 
-    fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {
+    fn as_mut_list_state(&mut self) -> &mut CommitListState {
         self.commit_list_state.as_mut().unwrap()
     }
 }
 
 impl<'a> CreateTagView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState<'a> {
+    pub fn take_list_state(&mut self) -> CommitListState {
         self.commit_list_state.take().unwrap()
     }
 

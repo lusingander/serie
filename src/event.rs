@@ -52,6 +52,7 @@ pub enum AppEvent {
     NotifyError(String),
     ShowPendingOverlay { message: String },
     HidePendingOverlay,
+    Refresh,
 }
 
 #[derive(Clone)]
@@ -145,6 +146,7 @@ pub enum UserEvent {
     FullCopy,
     CreateTag,
     DeleteTag,
+    Refresh,
     Unknown,
 }
 
@@ -209,6 +211,7 @@ impl<'de> Deserialize<'de> for UserEvent {
                         "full_copy" => Ok(UserEvent::FullCopy),
                         "create_tag" => Ok(UserEvent::CreateTag),
                         "delete_tag" => Ok(UserEvent::DeleteTag),
+                        "refresh" => Ok(UserEvent::Refresh),
                         _ => {
                             let msg = format!("Unknown user event: {}", value);
                             Err(de::Error::custom(msg))

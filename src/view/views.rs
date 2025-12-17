@@ -1,6 +1,6 @@
-use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
+use std::{path::PathBuf, rc::Rc};
 
-use std::path::PathBuf;
+use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
 use crate::{
     color::ColorTheme,
@@ -62,7 +62,7 @@ impl<'a> View<'a> {
     }
 
     pub fn of_list(
-        commit_list_state: CommitListState<'a>,
+        commit_list_state: CommitListState,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
         tx: Sender,
@@ -76,10 +76,10 @@ impl<'a> View<'a> {
     }
 
     pub fn of_detail(
-        commit_list_state: CommitListState<'a>,
-        commit: Commit,
+        commit_list_state: CommitListState,
+        commit: Rc<Commit>,
         changes: Vec<FileChange>,
-        refs: Vec<Ref>,
+        refs: Vec<Rc<Ref>>,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
         image_protocol: ImageProtocol,
@@ -98,8 +98,8 @@ impl<'a> View<'a> {
     }
 
     pub fn of_user_command_from_list(
-        commit_list_state: CommitListState<'a>,
-        commit: Commit,
+        commit_list_state: CommitListState,
+        commit: Rc<Commit>,
         user_command_number: usize,
         view_area: Rect,
         core_config: &'a CoreConfig,
@@ -123,8 +123,8 @@ impl<'a> View<'a> {
     }
 
     pub fn of_user_command_from_detail(
-        commit_list_state: CommitListState<'a>,
-        commit: Commit,
+        commit_list_state: CommitListState,
+        commit: Rc<Commit>,
         user_command_number: usize,
         view_area: Rect,
         core_config: &'a CoreConfig,
@@ -148,8 +148,8 @@ impl<'a> View<'a> {
     }
 
     pub fn of_refs(
-        commit_list_state: CommitListState<'a>,
-        refs: Vec<Ref>,
+        commit_list_state: CommitListState,
+        refs: Vec<Rc<Ref>>,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
         tx: Sender,
@@ -164,7 +164,7 @@ impl<'a> View<'a> {
     }
 
     pub fn of_create_tag(
-        commit_list_state: CommitListState<'a>,
+        commit_list_state: CommitListState,
         commit_hash: CommitHash,
         repo_path: PathBuf,
         ui_config: &'a UiConfig,
@@ -182,9 +182,9 @@ impl<'a> View<'a> {
     }
 
     pub fn of_delete_tag(
-        commit_list_state: CommitListState<'a>,
+        commit_list_state: CommitListState,
         commit_hash: CommitHash,
-        tags: Vec<Ref>,
+        tags: Vec<Rc<Ref>>,
         repo_path: PathBuf,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,

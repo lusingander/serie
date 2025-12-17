@@ -40,3 +40,5 @@ full_copy = ["shift-c"]
 
 create_tag = ["t"]
 delete_tag = ["ctrl-t"]
+
+refresh = ["r"]

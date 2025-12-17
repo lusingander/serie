@@ -1,4 +1,4 @@
-use std::{path::PathBuf, thread};
+use std::{path::PathBuf, rc::Rc, thread};
 
 use ratatui::{
     crossterm::event::KeyEvent,
@@ -19,7 +19,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct DeleteTagView<'a> {
-    commit_list_state: Option<CommitListState<'a>>,
+    commit_list_state: Option<CommitListState>,
     commit_hash: CommitHash,
     repo_path: PathBuf,
 
@@ -34,9 +34,9 @@ pub struct DeleteTagView<'a> {
 
 impl<'a> DeleteTagView<'a> {
     pub fn new(
-        commit_list_state: CommitListState<'a>,
+        commit_list_state: CommitListState,
         commit_hash: CommitHash,
-        tags: Vec<Ref>,
+        tags: Vec<Rc<Ref>>,
         repo_path: PathBuf,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
@@ -44,8 +44,8 @@ impl<'a> DeleteTagView<'a> {
     ) -> DeleteTagView<'a> {
         let mut tag_names: Vec<String> = tags
             .into_iter()
-            .filter_map(|r| match r {
-                Ref::Tag { name, .. } => Some(name),
+            .filter_map(|r| match r.as_ref() {
+                Ref::Tag { name, .. } => Some(name.clone()),
                 _ => None,
             })
             .collect();
@@ -255,13 +255,13 @@ impl<'a> DeleteTagView<'a> {
         f.render_widget(Paragraph::new(hint_line).centered(), hint_area);
     }
 
-    fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {
+    fn as_mut_list_state(&mut self) -> &mut CommitListState {
         self.commit_list_state.as_mut().unwrap()
     }
 }
 
 impl<'a> DeleteTagView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState<'a> {
+    pub fn take_list_state(&mut self) -> CommitListState {
         self.commit_list_state.take().unwrap()
     }
 

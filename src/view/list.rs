@@ -10,7 +10,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct ListView<'a> {
-    commit_list_state: Option<CommitListState<'a>>,
+    commit_list_state: Option<CommitListState>,
 
     ui_config: &'a UiConfig,
     color_theme: &'a ColorTheme,
@@ -19,7 +19,7 @@ pub struct ListView<'a> {
 
 impl<'a> ListView<'a> {
     pub fn new(
-        commit_list_state: CommitListState<'a>,
+        commit_list_state: CommitListState,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
         tx: Sender,
@@ -156,6 +156,9 @@ impl<'a> ListView<'a> {
                 UserEvent::DeleteTag => {
                     self.tx.send(AppEvent::OpenDeleteTag);
                 }
+                UserEvent::Refresh => {
+                    self.tx.send(AppEvent::Refresh);
+                }
                 _ => {}
             }
         }
@@ -183,7 +186,7 @@ impl<'a> ListView<'a> {
 }
 
 impl<'a> ListView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState<'a> {
+    pub fn take_list_state(&mut self) -> CommitListState {
         self.commit_list_state.take().unwrap()
     }
 
@@ -197,11 +200,11 @@ impl<'a> ListView<'a> {
             .remove_ref_from_commit(commit_hash, tag_name);
     }
 
-    fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {
+    fn as_mut_list_state(&mut self) -> &mut CommitListState {
         self.commit_list_state.as_mut().unwrap()
     }
 
-    fn as_list_state(&self) -> &CommitListState<'a> {
+    fn as_list_state(&self) -> &CommitListState {
         self.commit_list_state.as_ref().unwrap()
     }
 

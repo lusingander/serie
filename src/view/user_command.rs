@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ansi_to_tui::IntoText as _;
 use ratatui::{
     crossterm::event::KeyEvent,
@@ -28,7 +30,7 @@ pub enum UserCommandViewBeforeView {
 
 #[derive(Debug)]
 pub struct UserCommandView<'a> {
-    commit_list_state: Option<CommitListState<'a>>,
+    commit_list_state: Option<CommitListState>,
     commit_user_command_state: CommitUserCommandState,
 
     user_command_number: usize,
@@ -45,8 +47,8 @@ pub struct UserCommandView<'a> {
 
 impl<'a> UserCommandView<'a> {
     pub fn new(
-        commit_list_state: CommitListState<'a>,
-        commit: Commit,
+        commit_list_state: CommitListState,
+        commit: Rc<Commit>,
         user_command_number: usize,
         view_area: Rect,
         core_config: &'a CoreConfig,
@@ -181,11 +183,11 @@ impl<'a> UserCommandView<'a> {
 }
 
 impl<'a> UserCommandView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState<'a> {
+    pub fn take_list_state(&mut self) -> CommitListState {
         self.commit_list_state.take().unwrap()
     }
 
-    fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {
+    fn as_mut_list_state(&mut self) -> &mut CommitListState {
         self.commit_list_state.as_mut().unwrap()
     }
 
@@ -207,7 +209,7 @@ impl<'a> UserCommandView<'a> {
         view_area: Rect,
         update_commit_list_state: F,
     ) where
-        F: FnOnce(&mut CommitListState<'a>),
+        F: FnOnce(&mut CommitListState),
     {
         let commit_list_state = self.as_mut_list_state();
         update_commit_list_state(commit_list_state);

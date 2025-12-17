@@ -62,8 +62,8 @@ pub struct App<'a> {
 impl<'a> App<'a> {
     pub fn new(
         repository: &'a Repository,
-        graph_image_manager: GraphImageManager<'a>,
-        graph: &'a Graph,
+        graph_image_manager: GraphImageManager,
+        graph: &Graph,
         keybind: &'a KeyBind,
         core_config: &'a CoreConfig,
         ui_config: &'a UiConfig,
@@ -86,7 +86,7 @@ impl<'a> App<'a> {
                 }
                 let (pos_x, _) = graph.commit_pos_map[&commit.commit_hash];
                 let graph_color = graph_color_set.get(pos_x).to_ratatui_color();
-                CommitInfo::new(commit, refs, graph_color)
+                CommitInfo::new(commit.clone(), refs, graph_color)
             })
             .collect();
         let graph_cell_width = match cell_width_type {
@@ -105,8 +105,8 @@ impl<'a> App<'a> {
         );
         if let InitialSelection::Head = initial_selection {
             match repository.head() {
-                Head::Branch { name } => commit_list_state.select_ref(name),
-                Head::Detached { target } => commit_list_state.select_commit_hash(target),
+                Head::Branch { name } => commit_list_state.select_ref(&name),
+                Head::Detached { target } => commit_list_state.select_commit_hash(&target),
             }
         }
         let view = View::of_list(commit_list_state, ui_config, color_theme, tx.clone());
@@ -309,6 +309,9 @@ impl App<'_> {
                 AppEvent::HidePendingOverlay => {
                     self.pending_message = None;
                 }
+                AppEvent::Refresh => {
+                    self.refresh();
+                }
             }
         }
     }
@@ -405,12 +408,7 @@ impl App<'_> {
             let commit_list_state = view.take_list_state();
             let selected = commit_list_state.selected_commit_hash().clone();
             let (commit, changes) = self.repository.commit_detail(&selected);
-            let refs = self
-                .repository
-                .refs(&selected)
-                .into_iter()
-                .cloned()
-                .collect();
+            let refs = self.repository.refs(&selected);
             self.view = View::of_detail(
                 commit_list_state,
                 commit,
@@ -510,12 +508,7 @@ impl App<'_> {
             let commit_list_state = view.take_list_state();
             let selected = commit_list_state.selected_commit_hash().clone();
             let (commit, changes) = self.repository.commit_detail(&selected);
-            let refs = self
-                .repository
-                .refs(&selected)
-                .into_iter()
-                .cloned()
-                .collect();
+            let refs = self.repository.refs(&selected);
             if view.before_view_is_list() {
                 self.view = View::of_list(
                     commit_list_state,
@@ -547,7 +540,7 @@ impl App<'_> {
     fn open_refs(&mut self) {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            let refs = self.repository.all_refs().into_iter().cloned().collect();
+            let refs = self.repository.all_refs();
             self.view = View::of_refs(
                 commit_list_state,
                 refs,
@@ -619,7 +612,7 @@ impl App<'_> {
             let commit_list_state = view.take_list_state();
             let commit_hash = commit_list_state.selected_commit_hash().clone();
             let tags = commit_list_state.selected_commit_refs();
-            let has_tags = tags.iter().any(|r| matches!(r, Ref::Tag { .. }));
+            let has_tags = tags.iter().any(|r| matches!(r.as_ref(), Ref::Tag { .. }));
             if !has_tags {
                 self.view = View::of_list(
                     commit_list_state,
@@ -754,6 +747,13 @@ impl App<'_> {
                 self.tx.send(AppEvent::NotifyError(msg));
             }
         }
+    }
+
+    fn refresh(&mut self) {
+        // TODO: Implement full refresh - requires App to own Repository and Graph
+        self.tx.send(AppEvent::NotifyInfo(
+            "Refresh: relaunch serie to reload repository".into(),
+        ));
     }
 }
 

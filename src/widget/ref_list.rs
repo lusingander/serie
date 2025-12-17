@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -89,7 +91,7 @@ pub struct RefList<'a> {
 }
 
 impl<'a> RefList<'a> {
-    pub fn new(refs: &'a [Ref], color_theme: &'a ColorTheme) -> RefList<'a> {
+    pub fn new(refs: &'a [Rc<Ref>], color_theme: &'a ColorTheme) -> RefList<'a> {
         let items = build_ref_tree_items(refs, color_theme);
         RefList { items, color_theme }
     }
@@ -120,7 +122,7 @@ impl StatefulWidget for RefList<'_> {
 }
 
 fn build_ref_tree_items<'a>(
-    refs: &'a [Ref],
+    refs: &'a [Rc<Ref>],
     color_theme: &'a ColorTheme,
 ) -> Vec<TreeItem<'a, String>> {
     let mut branch_refs = Vec::new();
@@ -129,11 +131,11 @@ fn build_ref_tree_items<'a>(
     let mut stash_refs = Vec::new();
 
     for r in refs {
-        match r {
-            Ref::Tag { name, .. } => tag_refs.push(name.into()),
-            Ref::Branch { name, .. } => branch_refs.push(name.into()),
-            Ref::RemoteBranch { name, .. } => remote_refs.push(name.into()),
-            Ref::Stash { name, message, .. } => stash_refs.push((name.into(), message.into())),
+        match r.as_ref() {
+            Ref::Tag { name, .. } => tag_refs.push(name.clone()),
+            Ref::Branch { name, .. } => branch_refs.push(name.clone()),
+            Ref::RemoteBranch { name, .. } => remote_refs.push(name.clone()),
+            Ref::Stash { name, message, .. } => stash_refs.push((name.clone(), message.clone())),
         }
     }
 
