@@ -274,10 +274,12 @@ fn build_lines(
         (vec![UserEvent::FuzzyToggle], "Toggle fuzzy match".into()),
         (vec![UserEvent::ShortCopy], "Copy commit short hash".into()),
         (vec![UserEvent::FullCopy], "Copy commit hash".into()),
+        (vec![UserEvent::CreateTag], "Create tag on commit".into()),
+        (vec![UserEvent::DeleteTag], "Delete tag from commit".into()),
     ];
     list_helps.extend(user_command_view_toggle_helps.clone());
     let (list_key_lines, list_value_lines) = build_block_lines("Commit List:", list_helps, color_theme, keybind);
-    
+
     let mut detail_helps = vec![
         (vec![UserEvent::Cancel, UserEvent::Close], "Close commit details".into()),
         (vec![UserEvent::NavigateDown], "Scroll down".into()),
@@ -308,9 +310,10 @@ fn build_lines(
         (vec![UserEvent::ShortCopy], "Copy ref name".into()),
     ];
     let (refs_key_lines, refs_value_lines) = build_block_lines("Refs List:", refs_helps, color_theme, keybind);
-    
+
     let mut user_command_helps = vec![
         (vec![UserEvent::Cancel, UserEvent::Close], "Close user command".into()),
+        (vec![UserEvent::CreateTag], "Create tag dialog".into()),
         (vec![UserEvent::NavigateDown], "Scroll down".into()),
         (vec![UserEvent::NavigateUp], "Scroll up".into()),
         (vec![UserEvent::PageDown], "Scroll page down".into()),

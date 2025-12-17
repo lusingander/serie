@@ -1,5 +1,7 @@
 mod views;
 
+mod create_tag;
+mod delete_tag;
 mod detail;
 mod help;
 mod list;

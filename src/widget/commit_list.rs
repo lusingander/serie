@@ -27,17 +27,21 @@ const ELLIPSIS: &str = "...";
 #[derive(Debug)]
 pub struct CommitInfo<'a> {
     commit: &'a Commit,
-    refs: Vec<&'a Ref>,
+    refs: Vec<Ref>,
     graph_color: Color,
 }
 
 impl<'a> CommitInfo<'a> {
-    pub fn new(commit: &'a Commit, refs: Vec<&'a Ref>, graph_color: Color) -> Self {
+    pub fn new(commit: &'a Commit, refs: Vec<Ref>, graph_color: Color) -> Self {
         Self {
             commit,
             refs,
             graph_color,
         }
+    }
+
+    pub fn commit_hash(&self) -> &CommitHash {
+        &self.commit.commit_hash
     }
 }
 
@@ -86,11 +90,11 @@ struct SearchMatch {
 }
 
 impl SearchMatch {
-    fn new(c: &Commit, refs: &[&Ref], q: &str, ignore_case: bool, fuzzy: bool) -> Self {
+    fn new(c: &Commit, refs: &[Ref], q: &str, ignore_case: bool, fuzzy: bool) -> Self {
         let matcher = SearchMatcher::new(q, ignore_case, fuzzy);
         let refs = refs
             .iter()
-            .filter(|r| !matches!(*r, Ref::Stash { .. }))
+            .filter(|r| !matches!(r, Ref::Stash { .. }))
             .filter_map(|r| {
                 matcher
                     .matched_position(r.name())
@@ -185,7 +189,7 @@ pub struct CommitListState<'a> {
     graph_cell_width: u16,
     head: &'a Head,
 
-    ref_name_to_commit_index_map: HashMap<&'a str, usize>,
+    ref_name_to_commit_index_map: HashMap<String, usize>,
 
     search_state: SearchState,
     search_input: Input,
@@ -206,7 +210,7 @@ impl<'a> CommitListState<'a> {
         graph_image_manager: GraphImageManager<'a>,
         graph_cell_width: u16,
         head: &'a Head,
-        ref_name_to_commit_index_map: HashMap<&'a str, usize>,
+        ref_name_to_commit_index_map: HashMap<String, usize>,
         default_ignore_case: bool,
         default_fuzzy: bool,
     ) -> CommitListState<'a> {
@@ -231,6 +235,27 @@ impl<'a> CommitListState<'a> {
 
     pub fn graph_area_cell_width(&self) -> u16 {
         self.graph_cell_width + 1 // right pad
+    }
+
+    pub fn add_ref_to_commit(&mut self, commit_hash: &CommitHash, new_ref: Ref) {
+        for (index, commit_info) in self.commits.iter_mut().enumerate() {
+            if commit_info.commit_hash() == commit_hash {
+                self.ref_name_to_commit_index_map.insert(new_ref.name().to_string(), index);
+                commit_info.refs.push(new_ref);
+                commit_info.refs.sort();
+                break;
+            }
+        }
+    }
+
+    pub fn remove_ref_from_commit(&mut self, commit_hash: &CommitHash, tag_name: &str) {
+        for commit_info in self.commits.iter_mut() {
+            if commit_info.commit_hash() == commit_hash {
+                self.ref_name_to_commit_index_map.remove(tag_name);
+                commit_info.refs.retain(|r| r.name() != tag_name);
+                break;
+            }
+        }
     }
 
     pub fn select_next(&mut self) {
@@ -379,6 +404,10 @@ impl<'a> CommitListState<'a> {
         &self.commits[self.current_selected_index()]
             .commit
             .commit_hash
+    }
+
+    pub fn selected_commit_refs(&self) -> Vec<Ref> {
+        self.commits[self.current_selected_index()].refs.clone()
     }
 
     fn current_selected_index(&self) -> usize {
@@ -967,9 +996,9 @@ fn refs_spans<'a>(
     let refs = &commit_info.refs;
 
     if refs.len() == 1 {
-        if let Ref::Stash { name, .. } = refs[0] {
+        if let Ref::Stash { name, .. } = &refs[0] {
             return vec![
-                Span::raw(name).fg(color_theme.list_ref_stash_fg).bold(),
+                Span::raw(name.clone()).fg(color_theme.list_ref_stash_fg).bold(),
                 Span::raw(" "),
             ];
         }

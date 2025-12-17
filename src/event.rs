@@ -22,6 +22,18 @@ pub enum AppEvent {
     ClearUserCommand,
     OpenRefs,
     CloseRefs,
+    OpenCreateTag,
+    CloseCreateTag,
+    AddTagToCommit {
+        commit_hash: crate::git::CommitHash,
+        tag_name: String,
+    },
+    OpenDeleteTag,
+    CloseDeleteTag,
+    RemoveTagFromCommit {
+        commit_hash: crate::git::CommitHash,
+        tag_name: String,
+    },
     OpenHelp,
     CloseHelp,
     ClearHelp,
@@ -126,6 +138,8 @@ pub enum UserEvent {
     FuzzyToggle,
     ShortCopy,
     FullCopy,
+    CreateTag,
+    DeleteTag,
     Unknown,
 }
 
@@ -188,6 +202,8 @@ impl<'de> Deserialize<'de> for UserEvent {
                         "fuzzy_toggle" => Ok(UserEvent::FuzzyToggle),
                         "short_copy" => Ok(UserEvent::ShortCopy),
                         "full_copy" => Ok(UserEvent::FullCopy),
+                        "create_tag" => Ok(UserEvent::CreateTag),
+                        "delete_tag" => Ok(UserEvent::DeleteTag),
                         _ => {
                             let msg = format!("Unknown user event: {}", value);
                             Err(de::Error::custom(msg))

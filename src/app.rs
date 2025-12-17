@@ -15,7 +15,7 @@ use crate::{
     config::{CoreConfig, CursorType, UiConfig},
     event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
     external::copy_to_clipboard,
-    git::{Head, Repository},
+    git::{CommitHash, Head, Ref, Repository},
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -76,9 +76,9 @@ impl<'a> App<'a> {
             .iter()
             .enumerate()
             .map(|(i, commit)| {
-                let refs = repository.refs(&commit.commit_hash);
+                let refs: Vec<_> = repository.refs(&commit.commit_hash).into_iter().cloned().collect();
                 for r in &refs {
-                    ref_name_to_commit_index_map.insert(r.name(), i);
+                    ref_name_to_commit_index_map.insert(r.name().to_string(), i);
                 }
                 let (pos_x, _) = graph.commit_pos_map[&commit.commit_hash];
                 let graph_color = graph_color_set.get(pos_x).to_ratatui_color();
@@ -171,10 +171,10 @@ impl App<'_> {
                             self.numeric_prefix.clear();
                         }
                         None => {
-                            if let StatusLine::Input(_, _, _) = self.status_line {
+                            let is_input_mode = matches!(self.status_line, StatusLine::Input(_, _, _))
+                                || matches!(self.view, View::CreateTag(_));
+                            if is_input_mode {
                                 // In input mode, pass all key events to the view
-                                // fixme: currently, the only thing that processes key_event is searching the list,
-                                //        so this probably works, but it's not the right process...
                                 self.numeric_prefix.clear();
                                 self.view.handle_event(
                                     UserEventWithCount::from_event(UserEvent::Unknown),
@@ -220,6 +220,24 @@ impl App<'_> {
                 }
                 AppEvent::CloseRefs => {
                     self.close_refs();
+                }
+                AppEvent::OpenCreateTag => {
+                    self.open_create_tag();
+                }
+                AppEvent::CloseCreateTag => {
+                    self.close_create_tag();
+                }
+                AppEvent::AddTagToCommit { commit_hash, tag_name } => {
+                    self.add_tag_to_commit(&commit_hash, &tag_name);
+                }
+                AppEvent::OpenDeleteTag => {
+                    self.open_delete_tag();
+                }
+                AppEvent::CloseDeleteTag => {
+                    self.close_delete_tag();
+                }
+                AppEvent::RemoveTagFromCommit { commit_hash, tag_name } => {
+                    self.remove_tag_from_commit(&commit_hash, &tag_name);
                 }
                 AppEvent::OpenHelp => {
                     self.open_help();
@@ -513,6 +531,102 @@ impl App<'_> {
                 self.color_theme,
                 self.tx.clone(),
             );
+        }
+    }
+
+    fn open_create_tag(&mut self) {
+        if let View::List(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let commit_hash = commit_list_state.selected_commit_hash().clone();
+            self.view = View::of_create_tag(
+                commit_list_state,
+                commit_hash,
+                self.repository.path().to_path_buf(),
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
+        }
+    }
+
+    fn close_create_tag(&mut self) {
+        if let View::CreateTag(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            self.view = View::of_list(
+                commit_list_state,
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
+        }
+    }
+
+    fn add_tag_to_commit(&mut self, commit_hash: &CommitHash, tag_name: &str) {
+        let new_tag = Ref::Tag {
+            name: tag_name.to_string(),
+            target: commit_hash.clone(),
+        };
+
+        match &mut self.view {
+            View::List(view) => {
+                view.add_ref_to_commit(commit_hash, new_tag);
+            }
+            View::CreateTag(view) => {
+                view.add_ref_to_commit(commit_hash, new_tag);
+            }
+            _ => {}
+        }
+    }
+
+    fn open_delete_tag(&mut self) {
+        if let View::List(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let commit_hash = commit_list_state.selected_commit_hash().clone();
+            let tags = commit_list_state.selected_commit_refs();
+            let has_tags = tags.iter().any(|r| matches!(r, Ref::Tag { .. }));
+            if !has_tags {
+                self.view = View::of_list(
+                    commit_list_state,
+                    self.ui_config,
+                    self.color_theme,
+                    self.tx.clone(),
+                );
+                self.tx.send(AppEvent::NotifyWarn("No tags on this commit".into()));
+                return;
+            }
+            self.view = View::of_delete_tag(
+                commit_list_state,
+                commit_hash,
+                tags,
+                self.repository.path().to_path_buf(),
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
+        }
+    }
+
+    fn close_delete_tag(&mut self) {
+        if let View::DeleteTag(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            self.view = View::of_list(
+                commit_list_state,
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
+        }
+    }
+
+    fn remove_tag_from_commit(&mut self, commit_hash: &CommitHash, tag_name: &str) {
+        match &mut self.view {
+            View::List(view) => {
+                view.remove_ref_from_commit(commit_hash, tag_name);
+            }
+            View::DeleteTag(view) => {
+                view.remove_ref_from_commit(commit_hash, tag_name);
+            }
+            _ => {}
         }
     }
 

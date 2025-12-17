@@ -1,13 +1,17 @@
 use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
+use std::path::PathBuf;
+
 use crate::{
     color::ColorTheme,
     config::{CoreConfig, UiConfig},
     event::{Sender, UserEventWithCount},
-    git::{Commit, FileChange, Ref},
+    git::{Commit, CommitHash, FileChange, Ref},
     keybind::KeyBind,
     protocol::ImageProtocol,
     view::{
+        create_tag::CreateTagView,
+        delete_tag::DeleteTagView,
         detail::DetailView,
         help::HelpView,
         list::ListView,
@@ -25,6 +29,8 @@ pub enum View<'a> {
     Detail(Box<DetailView<'a>>),
     UserCommand(Box<UserCommandView<'a>>),
     Refs(Box<RefsView<'a>>),
+    CreateTag(Box<CreateTagView<'a>>),
+    DeleteTag(Box<DeleteTagView<'a>>),
     Help(Box<HelpView<'a>>),
 }
 
@@ -36,6 +42,8 @@ impl<'a> View<'a> {
             View::Detail(view) => view.handle_event(event_with_count, key_event),
             View::UserCommand(view) => view.handle_event(event_with_count, key_event),
             View::Refs(view) => view.handle_event(event_with_count, key_event),
+            View::CreateTag(view) => view.handle_event(event_with_count, key_event),
+            View::DeleteTag(view) => view.handle_event(event_with_count, key_event),
             View::Help(view) => view.handle_event(event_with_count, key_event),
         }
     }
@@ -47,6 +55,8 @@ impl<'a> View<'a> {
             View::Detail(view) => view.render(f, area),
             View::UserCommand(view) => view.render(f, area),
             View::Refs(view) => view.render(f, area),
+            View::CreateTag(view) => view.render(f, area),
+            View::DeleteTag(view) => view.render(f, area),
             View::Help(view) => view.render(f, area),
         }
     }
@@ -147,6 +157,44 @@ impl<'a> View<'a> {
         View::Refs(Box::new(RefsView::new(
             commit_list_state,
             refs,
+            ui_config,
+            color_theme,
+            tx,
+        )))
+    }
+
+    pub fn of_create_tag(
+        commit_list_state: CommitListState<'a>,
+        commit_hash: CommitHash,
+        repo_path: PathBuf,
+        ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
+        tx: Sender,
+    ) -> Self {
+        View::CreateTag(Box::new(CreateTagView::new(
+            commit_list_state,
+            commit_hash,
+            repo_path,
+            ui_config,
+            color_theme,
+            tx,
+        )))
+    }
+
+    pub fn of_delete_tag(
+        commit_list_state: CommitListState<'a>,
+        commit_hash: CommitHash,
+        tags: Vec<Ref>,
+        repo_path: PathBuf,
+        ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
+        tx: Sender,
+    ) -> Self {
+        View::DeleteTag(Box::new(DeleteTagView::new(
+            commit_list_state,
+            commit_hash,
+            tags,
+            repo_path,
             ui_config,
             color_theme,
             tx,

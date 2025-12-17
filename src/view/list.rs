@@ -4,6 +4,7 @@ use crate::{
     color::ColorTheme,
     config::UiConfig,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
+    git::{CommitHash, Ref},
     widget::commit_list::{CommitList, CommitListState, SearchState},
 };
 
@@ -149,6 +150,12 @@ impl<'a> ListView<'a> {
                 UserEvent::RefListToggle => {
                     self.tx.send(AppEvent::OpenRefs);
                 }
+                UserEvent::CreateTag => {
+                    self.tx.send(AppEvent::OpenCreateTag);
+                }
+                UserEvent::DeleteTag => {
+                    self.tx.send(AppEvent::OpenDeleteTag);
+                }
                 _ => {}
             }
         }
@@ -178,6 +185,14 @@ impl<'a> ListView<'a> {
 impl<'a> ListView<'a> {
     pub fn take_list_state(&mut self) -> CommitListState<'a> {
         self.commit_list_state.take().unwrap()
+    }
+
+    pub fn add_ref_to_commit(&mut self, commit_hash: &CommitHash, new_ref: Ref) {
+        self.as_mut_list_state().add_ref_to_commit(commit_hash, new_ref);
+    }
+
+    pub fn remove_ref_from_commit(&mut self, commit_hash: &CommitHash, tag_name: &str) {
+        self.as_mut_list_state().remove_ref_from_commit(commit_hash, tag_name);
     }
 
     fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {

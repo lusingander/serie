@@ -211,6 +211,10 @@ impl Repository {
         &self.head
     }
 
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
     pub fn commit_detail(&self, commit_hash: &CommitHash) -> (Commit, Vec<FileChange>) {
         let commit = self.commit(commit_hash).unwrap().clone();
         let changes = if commit.parent_commit_hashes.is_empty() {
@@ -673,4 +677,79 @@ pub fn get_initial_commit_additions(path: &Path, commit_hash: &CommitHash) -> Ve
     cmd.wait().unwrap();
 
     changes
+}
+
+pub fn create_tag(
+    path: &Path,
+    name: &str,
+    commit_hash: &CommitHash,
+    message: Option<&str>,
+) -> std::result::Result<(), String> {
+    let mut cmd = Command::new("git");
+    cmd.arg("tag");
+    if let Some(msg) = message {
+        if !msg.is_empty() {
+            cmd.arg("-a").arg("-m").arg(msg);
+        }
+    }
+    cmd.arg(name).arg(commit_hash.as_str()).current_dir(path);
+
+    let output = cmd
+        .output()
+        .map_err(|e| format!("Failed to execute git tag: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to create tag: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn push_tag(path: &Path, tag_name: &str) -> std::result::Result<(), String> {
+    let output = Command::new("git")
+        .arg("push")
+        .arg("origin")
+        .arg(tag_name)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git push: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to push tag: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn delete_tag(path: &Path, tag_name: &str) -> std::result::Result<(), String> {
+    let output = Command::new("git")
+        .arg("tag")
+        .arg("-d")
+        .arg(tag_name)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git tag -d: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to delete tag: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn delete_remote_tag(path: &Path, tag_name: &str) -> std::result::Result<(), String> {
+    let output = Command::new("git")
+        .arg("push")
+        .arg("origin")
+        .arg("--delete")
+        .arg(tag_name)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git push --delete: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to delete remote tag: {stderr}"));
+    }
+    Ok(())
 }
