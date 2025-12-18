@@ -171,8 +171,9 @@ impl<'a> CreateTagView<'a> {
         } else {
             format!("Creating tag '{}'...", tag_name)
         };
-        self.tx
-            .send(AppEvent::ShowPendingOverlay { message: pending_msg });
+        self.tx.send(AppEvent::ShowPendingOverlay {
+            message: pending_msg,
+        });
         self.tx.send(AppEvent::CloseCreateTag);
 
         // Run git commands in background

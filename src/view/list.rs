@@ -5,7 +5,7 @@ use crate::{
     config::UiConfig,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     git::{CommitHash, Ref},
-    widget::commit_list::{CommitList, CommitListState, SearchState},
+    widget::commit_list::{CommitList, CommitListState, FilterState, SearchState},
 };
 
 #[derive(Debug)]
@@ -35,6 +35,35 @@ impl<'a> ListView<'a> {
     pub fn handle_event(&mut self, event_with_count: UserEventWithCount, key: KeyEvent) {
         let event = event_with_count.event;
         let count = event_with_count.count;
+
+        // Handle filter mode input
+        if let FilterState::Filtering { .. } = self.as_list_state().filter_state() {
+            match event {
+                UserEvent::Confirm => {
+                    self.as_mut_list_state().apply_filter();
+                    self.clear_filter_query();
+                }
+                UserEvent::Cancel => {
+                    self.as_mut_list_state().cancel_filter();
+                    self.clear_filter_query();
+                }
+                UserEvent::IgnoreCaseToggle => {
+                    self.as_mut_list_state().toggle_filter_ignore_case();
+                    self.update_filter_query();
+                }
+                UserEvent::FuzzyToggle => {
+                    self.as_mut_list_state().toggle_filter_fuzzy();
+                    self.update_filter_query();
+                }
+                _ => {
+                    self.as_mut_list_state().handle_filter_input(key);
+                    self.update_filter_query();
+                }
+            }
+            return;
+        }
+
+        // Handle search mode input
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
             match event {
                 UserEvent::Confirm => {
@@ -59,108 +88,114 @@ impl<'a> ListView<'a> {
                 }
             }
             return;
-        } else {
-            match event {
-                UserEvent::Quit => {
-                    self.tx.send(AppEvent::Quit);
-                }
-                UserEvent::NavigateDown | UserEvent::SelectDown => {
-                    for _ in 0..count {
-                        self.as_mut_list_state().select_next();
-                    }
-                }
-                UserEvent::NavigateUp | UserEvent::SelectUp => {
-                    for _ in 0..count {
-                        self.as_mut_list_state().select_prev();
-                    }
-                }
-                UserEvent::GoToParent => {
-                    for _ in 0..count {
-                        self.as_mut_list_state().select_parent();
-                    }
-                }
-                UserEvent::GoToTop => {
-                    self.as_mut_list_state().select_first();
-                }
-                UserEvent::GoToBottom => {
-                    self.as_mut_list_state().select_last();
-                }
-                UserEvent::ScrollDown => {
-                    for _ in 0..count {
-                        self.as_mut_list_state().scroll_down();
-                    }
-                }
-                UserEvent::ScrollUp => {
-                    for _ in 0..count {
-                        self.as_mut_list_state().scroll_up();
-                    }
-                }
-                UserEvent::PageDown => {
-                    for _ in 0..count {
-                        self.as_mut_list_state().scroll_down_page();
-                    }
-                }
-                UserEvent::PageUp => {
-                    for _ in 0..count {
-                        self.as_mut_list_state().scroll_up_page();
-                    }
-                }
-                UserEvent::HalfPageDown => {
-                    for _ in 0..count {
-                        self.as_mut_list_state().scroll_down_half();
-                    }
-                }
-                UserEvent::HalfPageUp => {
-                    for _ in 0..count {
-                        self.as_mut_list_state().scroll_up_half();
-                    }
-                }
-                UserEvent::SelectTop => {
-                    self.as_mut_list_state().select_high();
-                }
-                UserEvent::SelectMiddle => {
-                    self.as_mut_list_state().select_middle();
-                }
-                UserEvent::SelectBottom => {
-                    self.as_mut_list_state().select_low();
-                }
-                UserEvent::ShortCopy => {
-                    self.copy_commit_short_hash();
-                }
-                UserEvent::FullCopy => {
-                    self.copy_commit_hash();
-                }
-                UserEvent::Search => {
-                    self.as_mut_list_state().start_search();
-                    self.update_search_query();
-                }
-                UserEvent::UserCommandViewToggle(n) => {
-                    self.tx.send(AppEvent::OpenUserCommand(n));
-                }
-                UserEvent::HelpToggle => {
-                    self.tx.send(AppEvent::OpenHelp);
-                }
-                UserEvent::Cancel => {
-                    self.as_mut_list_state().cancel_search();
-                    self.clear_search_query();
-                }
-                UserEvent::Confirm => {
-                    self.tx.send(AppEvent::OpenDetail);
-                }
-                UserEvent::RefListToggle => {
-                    self.tx.send(AppEvent::OpenRefs);
-                }
-                UserEvent::CreateTag => {
-                    self.tx.send(AppEvent::OpenCreateTag);
-                }
-                UserEvent::DeleteTag => {
-                    self.tx.send(AppEvent::OpenDeleteTag);
-                }
-                UserEvent::Refresh => {
-                    self.tx.send(AppEvent::Refresh);
-                }
-                _ => {}
+        }
+
+        // Normal mode
+        match event {
+            UserEvent::Quit => {
+                self.tx.send(AppEvent::Quit);
             }
+            UserEvent::NavigateDown | UserEvent::SelectDown => {
+                for _ in 0..count {
+                    self.as_mut_list_state().select_next();
+                }
+            }
+            UserEvent::NavigateUp | UserEvent::SelectUp => {
+                for _ in 0..count {
+                    self.as_mut_list_state().select_prev();
+                }
+            }
+            UserEvent::GoToParent => {
+                for _ in 0..count {
+                    self.as_mut_list_state().select_parent();
+                }
+            }
+            UserEvent::GoToTop => {
+                self.as_mut_list_state().select_first();
+            }
+            UserEvent::GoToBottom => {
+                self.as_mut_list_state().select_last();
+            }
+            UserEvent::ScrollDown => {
+                for _ in 0..count {
+                    self.as_mut_list_state().scroll_down();
+                }
+            }
+            UserEvent::ScrollUp => {
+                for _ in 0..count {
+                    self.as_mut_list_state().scroll_up();
+                }
+            }
+            UserEvent::PageDown => {
+                for _ in 0..count {
+                    self.as_mut_list_state().scroll_down_page();
+                }
+            }
+            UserEvent::PageUp => {
+                for _ in 0..count {
+                    self.as_mut_list_state().scroll_up_page();
+                }
+            }
+            UserEvent::HalfPageDown => {
+                for _ in 0..count {
+                    self.as_mut_list_state().scroll_down_half();
+                }
+            }
+            UserEvent::HalfPageUp => {
+                for _ in 0..count {
+                    self.as_mut_list_state().scroll_up_half();
+                }
+            }
+            UserEvent::SelectTop => {
+                self.as_mut_list_state().select_high();
+            }
+            UserEvent::SelectMiddle => {
+                self.as_mut_list_state().select_middle();
+            }
+            UserEvent::SelectBottom => {
+                self.as_mut_list_state().select_low();
+            }
+            UserEvent::ShortCopy => {
+                self.copy_commit_short_hash();
+            }
+            UserEvent::FullCopy => {
+                self.copy_commit_hash();
+            }
+            UserEvent::Search => {
+                self.as_mut_list_state().start_search();
+                self.update_search_query();
+            }
+            UserEvent::Filter => {
+                self.as_mut_list_state().start_filter();
+                self.update_filter_query();
+            }
+            UserEvent::UserCommandViewToggle(n) => {
+                self.tx.send(AppEvent::OpenUserCommand(n));
+            }
+            UserEvent::HelpToggle => {
+                self.tx.send(AppEvent::OpenHelp);
+            }
+            UserEvent::Cancel => {
+                self.as_mut_list_state().cancel_search();
+                self.as_mut_list_state().cancel_filter();
+                self.clear_search_query();
+            }
+            UserEvent::Confirm => {
+                self.tx.send(AppEvent::OpenDetail);
+            }
+            UserEvent::RefListToggle => {
+                self.tx.send(AppEvent::OpenRefs);
+            }
+            UserEvent::CreateTag => {
+                self.tx.send(AppEvent::OpenCreateTag);
+            }
+            UserEvent::DeleteTag => {
+                self.tx.send(AppEvent::OpenDeleteTag);
+            }
+            UserEvent::Refresh => {
+                self.tx.send(AppEvent::Refresh);
+            }
+            _ => {}
         }
 
         if let SearchState::Applied { .. } = self.as_list_state().search_state() {
@@ -224,6 +259,25 @@ impl<'a> ListView<'a> {
     }
 
     fn clear_search_query(&self) {
+        self.tx.send(AppEvent::ClearStatusLine);
+    }
+
+    fn update_filter_query(&self) {
+        if let FilterState::Filtering { .. } = self.as_list_state().filter_state() {
+            let list_state = self.as_list_state();
+            if let Some(query) = list_state.filter_query_string() {
+                let cursor_pos = list_state.filter_query_cursor_position();
+                let transient_msg = list_state.filter_transient_message_string();
+                self.tx.send(AppEvent::UpdateStatusInput(
+                    query,
+                    Some(cursor_pos),
+                    transient_msg,
+                ));
+            }
+        }
+    }
+
+    fn clear_filter_query(&self) {
         self.tx.send(AppEvent::ClearStatusLine);
     }
 

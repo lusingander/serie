@@ -69,9 +69,7 @@ impl Widget for PendingOverlay<'_> {
             Span::raw(" hide").fg(self.color_theme.fg),
         ]));
 
-        Paragraph::new(lines)
-            .centered()
-            .render(inner_area, buf);
+        Paragraph::new(lines).centered().render(inner_area, buf);
     }
 }
 

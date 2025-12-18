@@ -59,10 +59,7 @@ pub fn calc_graph(repository: &Repository) -> Graph {
     }
 }
 
-fn calc_commit_positions(
-    commits: &[Rc<Commit>],
-    repository: &Repository,
-) -> CommitPosMap {
+fn calc_commit_positions(commits: &[Rc<Commit>], repository: &Repository) -> CommitPosMap {
     let mut commit_pos_map: CommitPosMap = FxHashMap::default();
     let mut commit_line_state: Vec<Option<CommitHash>> = Vec::new();
 
@@ -81,10 +78,7 @@ fn calc_commit_positions(
     commit_pos_map
 }
 
-fn filtered_children_hash<'a>(
-    commit: &Commit,
-    repository: &'a Repository,
-) -> Vec<&'a CommitHash> {
+fn filtered_children_hash<'a>(commit: &Commit, repository: &'a Repository) -> Vec<&'a CommitHash> {
     repository
         .children_hash(&commit.commit_hash)
         .into_iter()
@@ -102,11 +96,7 @@ fn get_first_vacant_line(commit_line_state: &[Option<CommitHash>]) -> usize {
         .unwrap_or(commit_line_state.len())
 }
 
-fn add_commit_line(
-    commit: &Commit,
-    commit_line_state: &mut Vec<Option<CommitHash>>,
-    pos_x: usize,
-) {
+fn add_commit_line(commit: &Commit, commit_line_state: &mut Vec<Option<CommitHash>>, pos_x: usize) {
     if commit_line_state.len() <= pos_x {
         commit_line_state.push(Some(commit.commit_hash.clone()));
     } else {
@@ -179,9 +169,19 @@ fn calc_edges(
                 // commit
                 edges[pos_y].push(WrappedEdge::new(EdgeType::Up, pos_x, pos_x, hash.clone()));
                 for y in ((child_pos_y + 1)..pos_y).rev() {
-                    edges[y].push(WrappedEdge::new(EdgeType::Vertical, pos_x, pos_x, hash.clone()));
+                    edges[y].push(WrappedEdge::new(
+                        EdgeType::Vertical,
+                        pos_x,
+                        pos_x,
+                        hash.clone(),
+                    ));
                 }
-                edges[child_pos_y].push(WrappedEdge::new(EdgeType::Down, pos_x, pos_x, hash.clone()));
+                edges[child_pos_y].push(WrappedEdge::new(
+                    EdgeType::Down,
+                    pos_x,
+                    pos_x,
+                    hash.clone(),
+                ));
             } else {
                 let child_first_parent_hash = &commits[child_pos_y].parent_commit_hashes[0];
                 if *child_first_parent_hash == *hash {
@@ -320,7 +320,12 @@ fn calc_edges(
 
                     if overlap {
                         // detour
-                        edges[pos_y].push(WrappedEdge::new(EdgeType::Right, pos_x, pos_x, hash.clone()));
+                        edges[pos_y].push(WrappedEdge::new(
+                            EdgeType::Right,
+                            pos_x,
+                            pos_x,
+                            hash.clone(),
+                        ));
                         for x in (pos_x + 1)..new_pos_x {
                             edges[pos_y].push(WrappedEdge::new(
                                 EdgeType::Horizontal,
@@ -368,9 +373,19 @@ fn calc_edges(
                             max_pos_x = new_pos_x;
                         }
                     } else {
-                        edges[pos_y].push(WrappedEdge::new(EdgeType::Up, pos_x, pos_x, hash.clone()));
+                        edges[pos_y].push(WrappedEdge::new(
+                            EdgeType::Up,
+                            pos_x,
+                            pos_x,
+                            hash.clone(),
+                        ));
                         for y in ((child_pos_y + 1)..pos_y).rev() {
-                            edges[y].push(WrappedEdge::new(EdgeType::Vertical, pos_x, pos_x, hash.clone()));
+                            edges[y].push(WrappedEdge::new(
+                                EdgeType::Vertical,
+                                pos_x,
+                                pos_x,
+                                hash.clone(),
+                            ));
                         }
                         if pos_x < child_pos_x {
                             edges[child_pos_y].push(WrappedEdge::new(

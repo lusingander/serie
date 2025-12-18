@@ -111,8 +111,9 @@ impl<'a> DeleteTagView<'a> {
         } else {
             format!("Deleting tag '{}'...", tag_name)
         };
-        self.tx
-            .send(AppEvent::ShowPendingOverlay { message: pending_msg });
+        self.tx.send(AppEvent::ShowPendingOverlay {
+            message: pending_msg,
+        });
         self.tx.send(AppEvent::CloseDeleteTag);
 
         // Run git commands in background

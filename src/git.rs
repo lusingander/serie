@@ -5,14 +5,16 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
     rc::Rc,
+    sync::Arc,
 };
 
 use chrono::{DateTime, FixedOffset};
 
 use crate::Result;
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CommitHash(String);
+/// Arc<str> for cheap cloning and Send trait (required by mpsc::Sender<AppEvent>)
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CommitHash(Arc<str>);
 
 impl CommitHash {
     pub fn as_short_hash(&self) -> String {
@@ -24,9 +26,15 @@ impl CommitHash {
     }
 }
 
+impl Default for CommitHash {
+    fn default() -> Self {
+        Self(Arc::from(""))
+    }
+}
+
 impl From<&str> for CommitHash {
     fn from(s: &str) -> Self {
-        Self(s.to_string())
+        Self(Arc::from(s))
     }
 }
 
@@ -180,10 +188,7 @@ impl Repository {
     }
 
     pub fn refs(&self, commit_hash: &CommitHash) -> Vec<Rc<Ref>> {
-        self.ref_map
-            .get(commit_hash)
-            .cloned()
-            .unwrap_or_default()
+        self.ref_map.get(commit_hash).cloned().unwrap_or_default()
     }
 
     pub fn all_refs(&self) -> Vec<Rc<Ref>> {
@@ -469,10 +474,13 @@ fn load_refs(path: &Path) -> (RefMap, Head) {
     let head = head.expect("HEAD not found in `git show-ref --head` output");
 
     for tag in tag_map.into_values() {
-        ref_map.entry(tag.target().clone()).or_default().push(Rc::new(tag));
+        ref_map
+            .entry(tag.target().clone())
+            .or_default()
+            .push(Rc::new(tag));
     }
 
-    ref_map.values_mut().for_each(|refs| refs.sort_by(|a, b| a.cmp(b)));
+    ref_map.values_mut().for_each(|refs| refs.sort());
 
     cmd.wait().unwrap();
 
@@ -597,8 +605,8 @@ pub fn get_diff_summary(path: &Path, commit_hash: &CommitHash) -> Vec<FileChange
     let mut cmd = Command::new("git")
         .arg("diff")
         .arg("--name-status")
-        .arg(format!("{}^", commit_hash.0))
-        .arg(&commit_hash.0)
+        .arg(format!("{}^", commit_hash.as_str()))
+        .arg(commit_hash.as_str())
         .current_dir(path)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -643,7 +651,7 @@ pub fn get_initial_commit_additions(path: &Path, commit_hash: &CommitHash) -> Ve
         .arg("ls-tree")
         .arg("--name-status")
         .arg("-r") // the empty tree hash
-        .arg(&commit_hash.0)
+        .arg(commit_hash.as_str())
         .current_dir(path)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())

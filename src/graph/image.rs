@@ -179,7 +179,7 @@ fn build_single_graph_row_image(
     drawing_pixels: &DrawingPixels,
     commit_hash: &CommitHash,
 ) -> GraphRowImage {
-    let (pos_x, pos_y) = graph.commit_pos_map[&commit_hash];
+    let (pos_x, pos_y) = graph.commit_pos_map[commit_hash];
     let edges = &graph.edges[pos_y];
 
     let cell_count = graph.max_pos_x + 1;

@@ -50,7 +50,9 @@ pub enum AppEvent {
     NotifySuccess(String),
     NotifyWarn(String),
     NotifyError(String),
-    ShowPendingOverlay { message: String },
+    ShowPendingOverlay {
+        message: String,
+    },
     HidePendingOverlay,
     Refresh,
 }
@@ -139,6 +141,7 @@ pub enum UserEvent {
     Confirm,
     RefListToggle,
     Search,
+    Filter,
     UserCommandViewToggle(usize),
     IgnoreCaseToggle,
     FuzzyToggle,
@@ -205,6 +208,7 @@ impl<'de> Deserialize<'de> for UserEvent {
                         "confirm" => Ok(UserEvent::Confirm),
                         "ref_list_toggle" => Ok(UserEvent::RefListToggle),
                         "search" => Ok(UserEvent::Search),
+                        "filter" => Ok(UserEvent::Filter),
                         "ignore_case_toggle" => Ok(UserEvent::IgnoreCaseToggle),
                         "fuzzy_toggle" => Ok(UserEvent::FuzzyToggle),
                         "short_copy" => Ok(UserEvent::ShortCopy),
