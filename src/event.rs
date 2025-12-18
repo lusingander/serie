@@ -72,7 +72,7 @@ pub struct Sender {
 
 impl Sender {
     pub fn send(&self, event: AppEvent) {
-        self.tx.send(event).unwrap();
+        let _ = self.tx.send(event);
     }
 }
 
@@ -88,7 +88,7 @@ pub struct Receiver {
 
 impl Receiver {
     pub fn recv(&self) -> AppEvent {
-        self.rx.recv().unwrap()
+        self.rx.recv().unwrap_or(AppEvent::Quit)
     }
 }
 

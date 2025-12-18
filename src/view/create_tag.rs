@@ -217,9 +217,13 @@ impl<'a> CreateTagView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
+        let Some(list_state) = self.commit_list_state.as_mut() else {
+            return;
+        };
+
         // Render commit list in background
         let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
-        f.render_stateful_widget(commit_list, area, self.as_mut_list_state());
+        f.render_stateful_widget(commit_list, area, list_state);
 
         // Dialog dimensions
         let dialog_width = 50u16.min(area.width.saturating_sub(4));
@@ -373,18 +377,16 @@ impl<'a> CreateTagView<'a> {
         input_area
     }
 
-    fn as_mut_list_state(&mut self) -> &mut CommitListState {
-        self.commit_list_state.as_mut().unwrap()
-    }
 }
 
 impl<'a> CreateTagView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState {
-        self.commit_list_state.take().unwrap()
+    pub fn take_list_state(&mut self) -> Option<CommitListState> {
+        self.commit_list_state.take()
     }
 
     pub fn add_ref_to_commit(&mut self, commit_hash: &CommitHash, new_ref: Ref) {
-        self.as_mut_list_state()
-            .add_ref_to_commit(commit_hash, new_ref);
+        if let Some(list_state) = self.commit_list_state.as_mut() {
+            list_state.add_ref_to_commit(commit_hash, new_ref);
+        }
     }
 }

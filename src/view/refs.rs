@@ -141,14 +141,18 @@ impl<'a> RefsView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        let graph_width = self.as_list_state().graph_area_cell_width() + 1; // graph area + marker
+        let Some(list_state) = self.commit_list_state.as_mut() else {
+            return;
+        };
+
+        let graph_width = list_state.graph_area_cell_width() + 1; // graph area + marker
         let refs_width = (area.width.saturating_sub(graph_width)).min(self.ui_config.refs.width);
 
         let [list_area, refs_area] =
             Layout::horizontal([Constraint::Min(0), Constraint::Length(refs_width)]).areas(area);
 
         let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
-        f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
+        f.render_stateful_widget(commit_list, list_area, list_state);
 
         let ref_list = RefList::new(&self.refs, self.color_theme);
         f.render_stateful_widget(ref_list, refs_area, &mut self.ref_list_state);
@@ -156,8 +160,8 @@ impl<'a> RefsView<'a> {
 }
 
 impl<'a> RefsView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState {
-        self.commit_list_state.take().unwrap()
+    pub fn take_list_state(&mut self) -> Option<CommitListState> {
+        self.commit_list_state.take()
     }
 
     pub fn take_ref_list_state(&mut self) -> RefListState {
@@ -169,21 +173,20 @@ impl<'a> RefsView<'a> {
     }
 
     pub fn remove_ref(&mut self, ref_name: &str) {
+        if let Some(target) = self.refs.iter().find(|r| r.name() == ref_name).map(|r| r.target().clone()) {
+            if let Some(list_state) = self.commit_list_state.as_mut() {
+                list_state.remove_ref_from_commit(&target, ref_name);
+            }
+        }
         self.refs.retain(|r| r.name() != ref_name);
         self.ref_list_state.adjust_selection_after_delete();
     }
 
-    fn as_mut_list_state(&mut self) -> &mut CommitListState {
-        self.commit_list_state.as_mut().unwrap()
-    }
-
-    fn as_list_state(&self) -> &CommitListState {
-        self.commit_list_state.as_ref().unwrap()
-    }
-
     fn update_commit_list_selected(&mut self) {
         if let Some(selected) = self.ref_list_state.selected_ref_name() {
-            self.as_mut_list_state().select_ref(&selected)
+            if let Some(list_state) = self.commit_list_state.as_mut() {
+                list_state.select_ref(&selected);
+            }
         }
     }
 

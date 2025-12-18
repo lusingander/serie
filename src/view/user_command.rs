@@ -154,13 +154,17 @@ impl<'a> UserCommandView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
+        let Some(list_state) = self.commit_list_state.as_mut() else {
+            return;
+        };
+
         let user_command_height = (area.height - 1).min(self.ui_config.user_command.height);
         let [list_area, user_command_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(user_command_height)])
                 .areas(area);
 
         let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
-        f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
+        f.render_stateful_widget(commit_list, list_area, list_state);
 
         let commit_user_command =
             CommitUserCommand::new(&self.user_command_output_lines, self.color_theme);
@@ -183,12 +187,8 @@ impl<'a> UserCommandView<'a> {
 }
 
 impl<'a> UserCommandView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState {
-        self.commit_list_state.take().unwrap()
-    }
-
-    fn as_mut_list_state(&mut self) -> &mut CommitListState {
-        self.commit_list_state.as_mut().unwrap()
+    pub fn take_list_state(&mut self) -> Option<CommitListState> {
+        self.commit_list_state.take()
     }
 
     pub fn select_older_commit(&mut self, repository: &Repository, view_area: Rect) {
@@ -211,7 +211,9 @@ impl<'a> UserCommandView<'a> {
     ) where
         F: FnOnce(&mut CommitListState),
     {
-        let commit_list_state = self.as_mut_list_state();
+        let Some(commit_list_state) = self.commit_list_state.as_mut() else {
+            return;
+        };
         update_commit_list_state(commit_list_state);
         let selected = commit_list_state.selected_commit_hash().clone();
         let (commit, _) = repository.commit_detail(&selected);

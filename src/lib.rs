@@ -145,7 +145,7 @@ pub fn run() -> Result<()> {
     let (tx, rx) = event::init();
 
     let mut app = App::new(
-        &repository,
+        repository,
         graph_image_manager,
         &graph,
         &key_bind,

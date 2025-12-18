@@ -131,12 +131,16 @@ impl<'a> DetailView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
+        let Some(list_state) = self.commit_list_state.as_mut() else {
+            return;
+        };
+
         let detail_height = (area.height - 1).min(self.ui_config.detail.height);
         let [list_area, detail_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(detail_height)]).areas(area);
 
         let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
-        f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
+        f.render_stateful_widget(commit_list, list_area, list_state);
 
         if self.clear {
             f.render_widget(Clear, detail_area);
@@ -160,12 +164,8 @@ impl<'a> DetailView<'a> {
 }
 
 impl<'a> DetailView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState {
-        self.commit_list_state.take().unwrap()
-    }
-
-    fn as_mut_list_state(&mut self) -> &mut CommitListState {
-        self.commit_list_state.as_mut().unwrap()
+    pub fn take_list_state(&mut self) -> Option<CommitListState> {
+        self.commit_list_state.take()
     }
 
     pub fn select_older_commit(&mut self, repository: &Repository) {
@@ -184,7 +184,9 @@ impl<'a> DetailView<'a> {
     where
         F: FnOnce(&mut CommitListState),
     {
-        let commit_list_state = self.as_mut_list_state();
+        let Some(commit_list_state) = self.commit_list_state.as_mut() else {
+            return;
+        };
         update_commit_list_state(commit_list_state);
         let selected = commit_list_state.selected_commit_hash().clone();
         let (commit, changes) = repository.commit_detail(&selected);

@@ -223,6 +223,21 @@ impl Repository {
     pub fn sort_order(&self) -> SortCommit {
         self.sort
     }
+
+    pub fn add_ref(&mut self, new_ref: Ref) {
+        let target = new_ref.target().clone();
+        let rc_ref = Rc::new(new_ref);
+        self.ref_map
+            .entry(target)
+            .or_default()
+            .push(rc_ref);
+    }
+
+    pub fn remove_ref(&mut self, ref_name: &str) {
+        for refs in self.ref_map.values_mut() {
+            refs.retain(|r| r.name() != ref_name);
+        }
+    }
 }
 
 fn check_git_repository(path: &Path) -> Result<()> {

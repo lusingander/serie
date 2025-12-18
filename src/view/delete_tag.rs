@@ -157,8 +157,12 @@ impl<'a> DeleteTagView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
+        let Some(list_state) = self.commit_list_state.as_mut() else {
+            return;
+        };
+
         let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
-        f.render_stateful_widget(commit_list, area, self.as_mut_list_state());
+        f.render_stateful_widget(commit_list, area, list_state);
 
         let dialog_width = 50u16.min(area.width.saturating_sub(4));
         let list_height = (self.tags.len() as u16).min(8);
@@ -255,20 +259,17 @@ impl<'a> DeleteTagView<'a> {
         ]);
         f.render_widget(Paragraph::new(hint_line).centered(), hint_area);
     }
-
-    fn as_mut_list_state(&mut self) -> &mut CommitListState {
-        self.commit_list_state.as_mut().unwrap()
-    }
 }
 
 impl<'a> DeleteTagView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState {
-        self.commit_list_state.take().unwrap()
+    pub fn take_list_state(&mut self) -> Option<CommitListState> {
+        self.commit_list_state.take()
     }
 
     pub fn remove_ref_from_commit(&mut self, commit_hash: &CommitHash, tag_name: &str) {
-        self.as_mut_list_state()
-            .remove_ref_from_commit(commit_hash, tag_name);
+        if let Some(list_state) = self.commit_list_state.as_mut() {
+            list_state.remove_ref_from_commit(commit_hash, tag_name);
+        }
     }
 }
 

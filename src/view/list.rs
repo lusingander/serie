@@ -33,6 +33,10 @@ impl<'a> ListView<'a> {
     }
 
     pub fn handle_event(&mut self, event_with_count: UserEventWithCount, key: KeyEvent) {
+        if self.commit_list_state.is_none() {
+            return;
+        }
+
         let event = event_with_count.event;
         let count = event_with_count.count;
 
@@ -215,37 +219,44 @@ impl<'a> ListView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
+        let Some(list_state) = self.commit_list_state.as_mut() else {
+            return;
+        };
         let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
-        f.render_stateful_widget(commit_list, area, self.as_mut_list_state());
+        f.render_stateful_widget(commit_list, area, list_state);
     }
 }
 
 impl<'a> ListView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState {
-        self.commit_list_state.take().unwrap()
+    pub fn take_list_state(&mut self) -> Option<CommitListState> {
+        self.commit_list_state.take()
     }
 
     pub fn add_ref_to_commit(&mut self, commit_hash: &CommitHash, new_ref: Ref) {
-        self.as_mut_list_state()
-            .add_ref_to_commit(commit_hash, new_ref);
+        if let Some(list_state) = self.commit_list_state.as_mut() {
+            list_state.add_ref_to_commit(commit_hash, new_ref);
+        }
     }
 
     pub fn remove_ref_from_commit(&mut self, commit_hash: &CommitHash, tag_name: &str) {
-        self.as_mut_list_state()
-            .remove_ref_from_commit(commit_hash, tag_name);
+        if let Some(list_state) = self.commit_list_state.as_mut() {
+            list_state.remove_ref_from_commit(commit_hash, tag_name);
+        }
     }
 
     fn as_mut_list_state(&mut self) -> &mut CommitListState {
-        self.commit_list_state.as_mut().unwrap()
+        self.commit_list_state.as_mut().expect("commit_list_state already taken")
     }
 
     fn as_list_state(&self) -> &CommitListState {
-        self.commit_list_state.as_ref().unwrap()
+        self.commit_list_state.as_ref().expect("commit_list_state already taken")
     }
 
     fn update_search_query(&self) {
-        if let SearchState::Searching { .. } = self.as_list_state().search_state() {
-            let list_state = self.as_list_state();
+        let Some(list_state) = self.commit_list_state.as_ref() else {
+            return;
+        };
+        if let SearchState::Searching { .. } = list_state.search_state() {
             if let Some(query) = list_state.search_query_string() {
                 let cursor_pos = list_state.search_query_cursor_position();
                 let transient_msg = list_state.transient_message_string();

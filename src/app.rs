@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use ratatui::{
     backend::Backend,
@@ -43,7 +43,7 @@ pub enum InitialSelection {
 
 #[derive(Debug)]
 pub struct App<'a> {
-    repository: &'a Repository,
+    repository: Repository,
     view: View<'a>,
     status_line: StatusLine,
     pending_message: Option<String>,
@@ -61,7 +61,7 @@ pub struct App<'a> {
 
 impl<'a> App<'a> {
     pub fn new(
-        repository: &'a Repository,
+        repository: Repository,
         graph_image_manager: GraphImageManager,
         graph: &Graph,
         keybind: &'a KeyBind,
@@ -464,7 +464,9 @@ impl App<'_> {
 
     fn open_detail(&mut self) {
         if let View::List(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             let selected = commit_list_state.selected_commit_hash().clone();
             let (commit, changes) = self.repository.commit_detail(&selected);
             let refs = self.repository.refs(&selected);
@@ -483,7 +485,9 @@ impl App<'_> {
 
     fn close_detail(&mut self) {
         if let View::Detail(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             self.view = View::of_list(
                 commit_list_state,
                 self.ui_config,
@@ -501,7 +505,9 @@ impl App<'_> {
 
     fn open_user_command(&mut self, user_command_number: usize) {
         if let View::List(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             let selected = commit_list_state.selected_commit_hash().clone();
             let (commit, _) = self.repository.commit_detail(&selected);
             self.view = View::of_user_command_from_list(
@@ -516,7 +522,9 @@ impl App<'_> {
                 self.tx.clone(),
             );
         } else if let View::Detail(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             let selected = commit_list_state.selected_commit_hash().clone();
             let (commit, _) = self.repository.commit_detail(&selected);
             self.view = View::of_user_command_from_detail(
@@ -531,10 +539,13 @@ impl App<'_> {
                 self.tx.clone(),
             );
         } else if let View::UserCommand(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let before_view_is_list = view.before_view_is_list();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             let selected = commit_list_state.selected_commit_hash().clone();
             let (commit, _) = self.repository.commit_detail(&selected);
-            if view.before_view_is_list() {
+            if before_view_is_list {
                 self.view = View::of_user_command_from_list(
                     commit_list_state,
                     commit,
@@ -564,11 +575,14 @@ impl App<'_> {
 
     fn close_user_command(&mut self) {
         if let View::UserCommand(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let before_view_is_list = view.before_view_is_list();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             let selected = commit_list_state.selected_commit_hash().clone();
             let (commit, changes) = self.repository.commit_detail(&selected);
             let refs = self.repository.refs(&selected);
-            if view.before_view_is_list() {
+            if before_view_is_list {
                 self.view = View::of_list(
                     commit_list_state,
                     self.ui_config,
@@ -598,8 +612,10 @@ impl App<'_> {
 
     fn open_refs(&mut self) {
         if let View::List(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
-            let refs = self.repository.all_refs();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
+            let refs = self.get_current_refs();
             self.view = View::of_refs(
                 commit_list_state,
                 refs,
@@ -610,9 +626,15 @@ impl App<'_> {
         }
     }
 
+    fn get_current_refs(&self) -> Vec<Rc<Ref>> {
+        self.repository.all_refs()
+    }
+
     fn close_refs(&mut self) {
         if let View::Refs(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             self.view = View::of_list(
                 commit_list_state,
                 self.ui_config,
@@ -624,7 +646,9 @@ impl App<'_> {
 
     fn open_create_tag(&mut self) {
         if let View::List(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             let commit_hash = commit_list_state.selected_commit_hash().clone();
             self.view = View::of_create_tag(
                 commit_list_state,
@@ -639,7 +663,9 @@ impl App<'_> {
 
     fn close_create_tag(&mut self) {
         if let View::CreateTag(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             self.view = View::of_list(
                 commit_list_state,
                 self.ui_config,
@@ -655,6 +681,8 @@ impl App<'_> {
             target: commit_hash.clone(),
         };
 
+        self.repository.add_ref(new_tag.clone());
+
         match &mut self.view {
             View::List(view) => {
                 view.add_ref_to_commit(commit_hash, new_tag);
@@ -668,7 +696,9 @@ impl App<'_> {
 
     fn open_delete_tag(&mut self) {
         if let View::List(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             let commit_hash = commit_list_state.selected_commit_hash().clone();
             let tags = commit_list_state.selected_commit_refs();
             let has_tags = tags.iter().any(|r| matches!(r.as_ref(), Ref::Tag { .. }));
@@ -697,7 +727,9 @@ impl App<'_> {
 
     fn close_delete_tag(&mut self) {
         if let View::DeleteTag(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             self.view = View::of_list(
                 commit_list_state,
                 self.ui_config,
@@ -708,6 +740,8 @@ impl App<'_> {
     }
 
     fn remove_tag_from_commit(&mut self, commit_hash: &CommitHash, tag_name: &str) {
+        self.repository.remove_ref(tag_name);
+
         match &mut self.view {
             View::List(view) => {
                 view.remove_ref_from_commit(commit_hash, tag_name);
@@ -721,7 +755,9 @@ impl App<'_> {
 
     fn open_delete_ref(&mut self, ref_name: String, ref_type: RefType) {
         if let View::Refs(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             let ref_list_state = view.take_ref_list_state();
             let refs = view.take_refs();
             self.view = View::of_delete_ref(
@@ -740,7 +776,9 @@ impl App<'_> {
 
     fn close_delete_ref(&mut self) {
         if let View::DeleteRef(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
+            let Some(commit_list_state) = view.take_list_state() else {
+                return;
+            };
             let ref_list_state = view.take_ref_list_state();
             let refs = view.take_refs();
             self.view = View::of_refs_with_state(
@@ -755,6 +793,8 @@ impl App<'_> {
     }
 
     fn remove_ref_from_list(&mut self, ref_name: &str) {
+        self.repository.remove_ref(ref_name);
+
         match &mut self.view {
             View::Refs(view) => {
                 view.remove_ref(ref_name);
@@ -792,25 +832,25 @@ impl App<'_> {
 
     fn select_older_commit(&mut self) {
         if let View::Detail(ref mut view) = self.view {
-            view.select_older_commit(self.repository);
+            view.select_older_commit(&self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
-            view.select_older_commit(self.repository, self.view_area);
+            view.select_older_commit(&self.repository, self.view_area);
         }
     }
 
     fn select_newer_commit(&mut self) {
         if let View::Detail(ref mut view) = self.view {
-            view.select_newer_commit(self.repository);
+            view.select_newer_commit(&self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
-            view.select_newer_commit(self.repository, self.view_area);
+            view.select_newer_commit(&self.repository, self.view_area);
         }
     }
 
     fn select_parent_commit(&mut self) {
         if let View::Detail(ref mut view) = self.view {
-            view.select_parent_commit(self.repository);
+            view.select_parent_commit(&self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
-            view.select_parent_commit(self.repository, self.view_area);
+            view.select_parent_commit(&self.repository, self.view_area);
         }
     }
 
