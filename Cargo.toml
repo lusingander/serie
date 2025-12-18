@@ -20,7 +20,7 @@ arboard = { version = "3.6.1", features = ["wayland-data-control"] }
 base64 = "0.22.1"
 chrono = "0.4.42"
 clap = { version = "4.5.53", features = ["derive"] }
-console = "0.16.1"
+console = "0.16.2"
 fuzzy-matcher = "0.3.7"
 image = { version = "0.25.9", default-features = false, features = [
     "rayon",
@@ -43,7 +43,7 @@ umbra = "0.4.0"
 dircpy = "0.3.19"
 rstest = "0.26.1"
 tempfile = "3.23.0"
-text-to-png = "0.2.0"
+text-to-png = "0.3.0"
 
 [profile.release]
 codegen-units = 1
