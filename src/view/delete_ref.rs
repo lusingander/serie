@@ -132,10 +132,7 @@ impl<'a> DeleteRefView<'a> {
                         Err(e)
                     } else if delete_from_remote {
                         delete_remote_tag(&repo_path, &ref_name).map_err(|e| {
-                            format!(
-                                "Local tag deleted, but failed to delete from remote: {}",
-                                e
-                            )
+                            format!("Local tag deleted, but failed to delete from remote: {}", e)
                         })
                     } else {
                         Ok(())
@@ -192,8 +189,7 @@ impl<'a> DeleteRefView<'a> {
         let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
 
-        let ref_list =
-            crate::widget::ref_list::RefList::new(&self.refs, self.color_theme);
+        let ref_list = crate::widget::ref_list::RefList::new(&self.refs, self.color_theme);
         f.render_stateful_widget(ref_list, refs_area, &mut self.ref_list_state);
 
         let dialog_width = 50u16.min(area.width.saturating_sub(4));
@@ -238,11 +234,9 @@ impl<'a> DeleteRefView<'a> {
         ])
         .areas(inner_area);
 
-        let name_line = Line::from(vec![
-            Span::raw(&self.ref_name)
-                .fg(self.color_theme.fg)
-                .add_modifier(Modifier::BOLD),
-        ]);
+        let name_line = Line::from(vec![Span::raw(&self.ref_name)
+            .fg(self.color_theme.fg)
+            .add_modifier(Modifier::BOLD)]);
         f.render_widget(Paragraph::new(name_line), name_area);
 
         let checkbox_line = match self.ref_type {

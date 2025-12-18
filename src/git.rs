@@ -792,9 +792,7 @@ pub fn delete_remote_branch(path: &Path, branch_name: &str) -> std::result::Resu
     // branch_name for remote branches is like "origin/feature" - we need to split
     let parts: Vec<&str> = branch_name.splitn(2, '/').collect();
     if parts.len() != 2 {
-        return Err(format!(
-            "Invalid remote branch name format: {branch_name}"
-        ));
+        return Err(format!("Invalid remote branch name format: {branch_name}"));
     }
     let remote = parts[0];
     let branch = parts[1];

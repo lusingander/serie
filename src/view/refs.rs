@@ -134,8 +134,9 @@ impl<'a> RefsView<'a> {
                 ref_type: RefType::Tag,
             });
         } else {
-            self.tx
-                .send(AppEvent::NotifyWarn("Select a branch or tag to delete".into()));
+            self.tx.send(AppEvent::NotifyWarn(
+                "Select a branch or tag to delete".into(),
+            ));
         }
     }
 

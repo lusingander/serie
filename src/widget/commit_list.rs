@@ -874,7 +874,8 @@ impl CommitListState {
     fn select_real_index(&mut self, real_index: usize) {
         if self.filtered_indices.is_empty() {
             self.select_index(real_index);
-        } else if let Some(visible_idx) = self.filtered_indices.iter().position(|&i| i == real_index)
+        } else if let Some(visible_idx) =
+            self.filtered_indices.iter().position(|&i| i == real_index)
         {
             self.select_index(visible_idx);
         }

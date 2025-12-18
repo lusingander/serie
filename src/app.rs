@@ -432,9 +432,7 @@ impl App<'_> {
                 (UserEvent::Confirm, "confirm"),
                 (UserEvent::Cancel, "cancel"),
             ],
-            View::Help(_) => vec![
-                (UserEvent::Close, "close"),
-            ],
+            View::Help(_) => vec![(UserEvent::Close, "close")],
             _ => vec![],
         };
 
@@ -449,7 +447,10 @@ impl App<'_> {
                 }
                 spans.push(Span::styled(key.clone(), Style::default().fg(key_fg)));
                 spans.push(Span::raw(" "));
-                spans.push(Span::styled((*desc).to_string(), Style::default().fg(desc_fg)));
+                spans.push(Span::styled(
+                    (*desc).to_string(),
+                    Style::default().fg(desc_fg),
+                ));
             }
         }
         Line::from(spans)
