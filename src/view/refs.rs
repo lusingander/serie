@@ -173,7 +173,12 @@ impl<'a> RefsView<'a> {
     }
 
     pub fn remove_ref(&mut self, ref_name: &str) {
-        if let Some(target) = self.refs.iter().find(|r| r.name() == ref_name).map(|r| r.target().clone()) {
+        if let Some(target) = self
+            .refs
+            .iter()
+            .find(|r| r.name() == ref_name)
+            .map(|r| r.target().clone())
+        {
             if let Some(list_state) = self.commit_list_state.as_mut() {
                 list_state.remove_ref_from_commit(&target, ref_name);
             }

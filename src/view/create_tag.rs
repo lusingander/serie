@@ -376,7 +376,6 @@ impl<'a> CreateTagView<'a> {
 
         input_area
     }
-
 }
 
 impl<'a> CreateTagView<'a> {

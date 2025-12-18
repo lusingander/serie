@@ -227,10 +227,7 @@ impl Repository {
     pub fn add_ref(&mut self, new_ref: Ref) {
         let target = new_ref.target().clone();
         let rc_ref = Rc::new(new_ref);
-        self.ref_map
-            .entry(target)
-            .or_default()
-            .push(rc_ref);
+        self.ref_map.entry(target).or_default().push(rc_ref);
     }
 
     pub fn remove_ref(&mut self, ref_name: &str) {

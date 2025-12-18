@@ -245,11 +245,15 @@ impl<'a> ListView<'a> {
     }
 
     fn as_mut_list_state(&mut self) -> &mut CommitListState {
-        self.commit_list_state.as_mut().expect("commit_list_state already taken")
+        self.commit_list_state
+            .as_mut()
+            .expect("commit_list_state already taken")
     }
 
     fn as_list_state(&self) -> &CommitListState {
-        self.commit_list_state.as_ref().expect("commit_list_state already taken")
+        self.commit_list_state
+            .as_ref()
+            .expect("commit_list_state already taken")
     }
 
     fn update_search_query(&self) {
