@@ -15,7 +15,7 @@ use crate::{
     config::{CoreConfig, CursorType, UiConfig},
     event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
     external::copy_to_clipboard,
-    git::{CommitHash, Head, Ref, Repository},
+    git::{CommitHash, Head, Ref, RefType, Repository},
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -264,6 +264,15 @@ impl App<'_> {
                 } => {
                     self.remove_tag_from_commit(&commit_hash, &tag_name);
                 }
+                AppEvent::OpenDeleteRef { ref_name, ref_type } => {
+                    self.open_delete_ref(ref_name, ref_type);
+                }
+                AppEvent::CloseDeleteRef => {
+                    self.close_delete_ref();
+                }
+                AppEvent::RemoveRefFromList { ref_name } => {
+                    self.remove_ref_from_list(&ref_name);
+                }
                 AppEvent::OpenHelp => {
                     self.open_help();
                 }
@@ -415,10 +424,11 @@ impl App<'_> {
             ],
             View::Refs(_) => vec![
                 (UserEvent::ShortCopy, "copy"),
+                (UserEvent::UserCommandViewToggle(1), "delete"),
                 (UserEvent::Close, "close"),
                 (UserEvent::HelpToggle, "help"),
             ],
-            View::CreateTag(_) | View::DeleteTag(_) => vec![
+            View::CreateTag(_) | View::DeleteTag(_) | View::DeleteRef(_) => vec![
                 (UserEvent::Confirm, "confirm"),
                 (UserEvent::Cancel, "cancel"),
             ],
@@ -703,6 +713,53 @@ impl App<'_> {
             }
             View::DeleteTag(view) => {
                 view.remove_ref_from_commit(commit_hash, tag_name);
+            }
+            _ => {}
+        }
+    }
+
+    fn open_delete_ref(&mut self, ref_name: String, ref_type: RefType) {
+        if let View::Refs(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let ref_list_state = view.take_ref_list_state();
+            let refs = view.take_refs();
+            self.view = View::of_delete_ref(
+                commit_list_state,
+                ref_list_state,
+                refs,
+                self.repository.path().to_path_buf(),
+                ref_name,
+                ref_type,
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
+        }
+    }
+
+    fn close_delete_ref(&mut self) {
+        if let View::DeleteRef(ref mut view) = self.view {
+            let commit_list_state = view.take_list_state();
+            let ref_list_state = view.take_ref_list_state();
+            let refs = view.take_refs();
+            self.view = View::of_refs_with_state(
+                commit_list_state,
+                ref_list_state,
+                refs,
+                self.ui_config,
+                self.color_theme,
+                self.tx.clone(),
+            );
+        }
+    }
+
+    fn remove_ref_from_list(&mut self, ref_name: &str) {
+        match &mut self.view {
+            View::Refs(view) => {
+                view.remove_ref(ref_name);
+            }
+            View::DeleteRef(view) => {
+                view.remove_ref(ref_name);
             }
             _ => {}
         }

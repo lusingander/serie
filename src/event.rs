@@ -34,6 +34,14 @@ pub enum AppEvent {
         commit_hash: crate::git::CommitHash,
         tag_name: String,
     },
+    OpenDeleteRef {
+        ref_name: String,
+        ref_type: crate::git::RefType,
+    },
+    CloseDeleteRef,
+    RemoveRefFromList {
+        ref_name: String,
+    },
     OpenHelp,
     CloseHelp,
     ClearHelp,

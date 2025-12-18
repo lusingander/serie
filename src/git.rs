@@ -60,6 +60,13 @@ pub struct Commit {
     pub commit_type: CommitType,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RefType {
+    Tag,
+    Branch,
+    RemoteBranch,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Ref {
     Tag {
@@ -227,23 +234,23 @@ fn check_git_repository(path: &Path) -> Result<()> {
 }
 
 fn is_inside_work_tree(path: &Path) -> bool {
-    let output = Command::new("git")
+    Command::new("git")
         .arg("rev-parse")
         .arg("--is-inside-work-tree")
         .current_dir(path)
         .output()
-        .unwrap();
-    output.status.success() && output.stdout == b"true\n"
+        .map(|o| o.status.success() && o.stdout == b"true\n")
+        .unwrap_or(false)
 }
 
 fn is_bare_repository(path: &Path) -> bool {
-    let output = Command::new("git")
+    Command::new("git")
         .arg("rev-parse")
         .arg("--is-bare-repository")
         .current_dir(path)
         .output()
-        .unwrap();
-    output.status.success() && output.stdout == b"true\n"
+        .map(|o| o.status.success() && o.stdout == b"true\n")
+        .unwrap_or(false)
 }
 
 fn load_all_commits(path: &Path, sort: SortCommit, stashes: &[Commit]) -> Vec<Commit> {
@@ -745,6 +752,65 @@ pub fn delete_remote_tag(path: &Path, tag_name: &str) -> std::result::Result<(),
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("Failed to delete remote tag: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn delete_branch(path: &Path, branch_name: &str) -> std::result::Result<(), String> {
+    let output = Command::new("git")
+        .arg("branch")
+        .arg("-d")
+        .arg(branch_name)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git branch -d: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to delete branch: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn delete_branch_force(path: &Path, branch_name: &str) -> std::result::Result<(), String> {
+    let output = Command::new("git")
+        .arg("branch")
+        .arg("-D")
+        .arg(branch_name)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git branch -D: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to force delete branch: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn delete_remote_branch(path: &Path, branch_name: &str) -> std::result::Result<(), String> {
+    // branch_name for remote branches is like "origin/feature" - we need to split
+    let parts: Vec<&str> = branch_name.splitn(2, '/').collect();
+    if parts.len() != 2 {
+        return Err(format!(
+            "Invalid remote branch name format: {branch_name}"
+        ));
+    }
+    let remote = parts[0];
+    let branch = parts[1];
+
+    let output = Command::new("git")
+        .arg("push")
+        .arg(remote)
+        .arg("--delete")
+        .arg(branch)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git push --delete: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to delete remote branch: {stderr}"));
     }
     Ok(())
 }

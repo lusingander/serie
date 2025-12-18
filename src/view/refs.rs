@@ -10,7 +10,7 @@ use crate::{
     color::ColorTheme,
     config::UiConfig,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
-    git::Ref,
+    git::{Ref, RefType},
     widget::{
         commit_list::{CommitList, CommitListState},
         ref_list::{RefList, RefListState},
@@ -40,6 +40,24 @@ impl<'a> RefsView<'a> {
         RefsView {
             commit_list_state: Some(commit_list_state),
             ref_list_state: RefListState::new(),
+            refs,
+            ui_config,
+            color_theme,
+            tx,
+        }
+    }
+
+    pub fn with_state(
+        commit_list_state: CommitListState,
+        ref_list_state: RefListState,
+        refs: Vec<Rc<Ref>>,
+        ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
+        tx: Sender,
+    ) -> RefsView<'a> {
+        RefsView {
+            commit_list_state: Some(commit_list_state),
+            ref_list_state,
             refs,
             ui_config,
             color_theme,
@@ -92,7 +110,32 @@ impl<'a> RefsView<'a> {
             UserEvent::HelpToggle => {
                 self.tx.send(AppEvent::OpenHelp);
             }
+            UserEvent::UserCommandViewToggle(_) | UserEvent::DeleteTag => {
+                self.open_delete_ref();
+            }
             _ => {}
+        }
+    }
+
+    fn open_delete_ref(&self) {
+        if let Some(name) = self.ref_list_state.selected_local_branch() {
+            self.tx.send(AppEvent::OpenDeleteRef {
+                ref_name: name,
+                ref_type: RefType::Branch,
+            });
+        } else if let Some(name) = self.ref_list_state.selected_remote_branch() {
+            self.tx.send(AppEvent::OpenDeleteRef {
+                ref_name: name,
+                ref_type: RefType::RemoteBranch,
+            });
+        } else if let Some(name) = self.ref_list_state.selected_tag() {
+            self.tx.send(AppEvent::OpenDeleteRef {
+                ref_name: name,
+                ref_type: RefType::Tag,
+            });
+        } else {
+            self.tx
+                .send(AppEvent::NotifyWarn("Select a branch or tag to delete".into()));
         }
     }
 
@@ -114,6 +157,19 @@ impl<'a> RefsView<'a> {
 impl<'a> RefsView<'a> {
     pub fn take_list_state(&mut self) -> CommitListState {
         self.commit_list_state.take().unwrap()
+    }
+
+    pub fn take_ref_list_state(&mut self) -> RefListState {
+        std::mem::take(&mut self.ref_list_state)
+    }
+
+    pub fn take_refs(&mut self) -> Vec<Rc<Ref>> {
+        std::mem::take(&mut self.refs)
+    }
+
+    pub fn remove_ref(&mut self, ref_name: &str) {
+        self.refs.retain(|r| r.name() != ref_name);
+        self.ref_list_state.adjust_selection_after_delete();
     }
 
     fn as_mut_list_state(&mut self) -> &mut CommitListState {

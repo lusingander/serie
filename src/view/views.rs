@@ -6,11 +6,12 @@ use crate::{
     color::ColorTheme,
     config::{CoreConfig, UiConfig},
     event::{Sender, UserEventWithCount},
-    git::{Commit, CommitHash, FileChange, Ref},
+    git::{Commit, CommitHash, FileChange, Ref, RefType},
     keybind::KeyBind,
     protocol::ImageProtocol,
     view::{
         create_tag::CreateTagView,
+        delete_ref::DeleteRefView,
         delete_tag::DeleteTagView,
         detail::DetailView,
         help::HelpView,
@@ -18,7 +19,7 @@ use crate::{
         refs::RefsView,
         user_command::{UserCommandView, UserCommandViewBeforeView},
     },
-    widget::commit_list::CommitListState,
+    widget::{commit_list::CommitListState, ref_list::RefListState},
 };
 
 #[derive(Debug, Default)]
@@ -31,6 +32,7 @@ pub enum View<'a> {
     Refs(Box<RefsView<'a>>),
     CreateTag(Box<CreateTagView<'a>>),
     DeleteTag(Box<DeleteTagView<'a>>),
+    DeleteRef(Box<DeleteRefView<'a>>),
     Help(Box<HelpView<'a>>),
 }
 
@@ -44,6 +46,7 @@ impl<'a> View<'a> {
             View::Refs(view) => view.handle_event(event_with_count, key_event),
             View::CreateTag(view) => view.handle_event(event_with_count, key_event),
             View::DeleteTag(view) => view.handle_event(event_with_count, key_event),
+            View::DeleteRef(view) => view.handle_event(event_with_count, key_event),
             View::Help(view) => view.handle_event(event_with_count, key_event),
         }
     }
@@ -57,6 +60,7 @@ impl<'a> View<'a> {
             View::Refs(view) => view.render(f, area),
             View::CreateTag(view) => view.render(f, area),
             View::DeleteTag(view) => view.render(f, area),
+            View::DeleteRef(view) => view.render(f, area),
             View::Help(view) => view.render(f, area),
         }
     }
@@ -163,6 +167,24 @@ impl<'a> View<'a> {
         )))
     }
 
+    pub fn of_refs_with_state(
+        commit_list_state: CommitListState,
+        ref_list_state: RefListState,
+        refs: Vec<Rc<Ref>>,
+        ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
+        tx: Sender,
+    ) -> Self {
+        View::Refs(Box::new(RefsView::with_state(
+            commit_list_state,
+            ref_list_state,
+            refs,
+            ui_config,
+            color_theme,
+            tx,
+        )))
+    }
+
     pub fn of_create_tag(
         commit_list_state: CommitListState,
         commit_hash: CommitHash,
@@ -195,6 +217,30 @@ impl<'a> View<'a> {
             commit_hash,
             tags,
             repo_path,
+            ui_config,
+            color_theme,
+            tx,
+        )))
+    }
+
+    pub fn of_delete_ref(
+        commit_list_state: CommitListState,
+        ref_list_state: RefListState,
+        refs: Vec<Rc<Ref>>,
+        repo_path: PathBuf,
+        ref_name: String,
+        ref_type: RefType,
+        ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
+        tx: Sender,
+    ) -> Self {
+        View::DeleteRef(Box::new(DeleteRefView::new(
+            commit_list_state,
+            ref_list_state,
+            refs,
+            repo_path,
+            ref_name,
+            ref_type,
             ui_config,
             color_theme,
             tx,

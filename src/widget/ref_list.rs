@@ -83,6 +83,36 @@ impl RefListState {
             None
         }
     }
+
+    pub fn selected_local_branch(&self) -> Option<String> {
+        let selected = self.tree_state.selected();
+        if selected.len() > 1 && selected[0] == TREE_BRANCH_ROOT_IDENT {
+            selected.last().cloned()
+        } else {
+            None
+        }
+    }
+
+    pub fn selected_remote_branch(&self) -> Option<String> {
+        let selected = self.tree_state.selected();
+        if selected.len() > 1 && selected[0] == TREE_REMOTE_ROOT_IDENT {
+            selected.last().cloned()
+        } else {
+            None
+        }
+    }
+
+    pub fn adjust_selection_after_delete(&mut self) {
+        // After item deletion, tree_state may point to non-existent item
+        // The safest approach: just move selection, the tree widget will adjust
+        // Try down first (next item takes deleted item's place), then up as fallback
+        let before: Vec<String> = self.tree_state.selected().to_vec();
+        self.tree_state.key_down();
+        if self.tree_state.selected() == before {
+            // key_down didn't move (we were at the end), try key_up
+            self.tree_state.key_up();
+        }
+    }
 }
 
 pub struct RefList<'a> {
