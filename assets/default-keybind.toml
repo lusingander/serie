@@ -30,7 +30,7 @@ confirm = ["enter"]
 ref_list_toggle = ["tab"]
 search = ["/"]
 filter = ["f"]
-ignore_case_toggle = ["ctrl-g"]
+ignore_case_toggle = ["alt-c"]
 fuzzy_toggle = ["ctrl-x"]
 
 user_command_view_toggle_1 = ["d"]

@@ -5,7 +5,7 @@ use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, Borders, Padding, Paragraph},
     Frame, Terminal,
 };
@@ -342,7 +342,7 @@ impl App<'_> {
         let text: Line = match &self.status_line {
             StatusLine::None => {
                 if self.numeric_prefix.is_empty() {
-                    Line::raw("")
+                    self.build_hotkey_hints()
                 } else {
                     Line::raw(self.numeric_prefix.as_str())
                         .fg(self.color_theme.status_input_transient_fg)
@@ -395,6 +395,54 @@ impl App<'_> {
                 }
             }
         }
+    }
+
+    fn build_hotkey_hints(&self) -> Line<'static> {
+        let hints: Vec<(UserEvent, &str)> = match &self.view {
+            View::List(_) => vec![
+                (UserEvent::Search, "search"),
+                (UserEvent::Filter, "filter"),
+                (UserEvent::IgnoreCaseToggle, "case"),
+                (UserEvent::CreateTag, "tag"),
+                (UserEvent::RefListToggle, "refs"),
+                (UserEvent::Refresh, "refresh"),
+                (UserEvent::HelpToggle, "help"),
+            ],
+            View::Detail(_) => vec![
+                (UserEvent::ShortCopy, "copy"),
+                (UserEvent::Close, "close"),
+                (UserEvent::HelpToggle, "help"),
+            ],
+            View::Refs(_) => vec![
+                (UserEvent::ShortCopy, "copy"),
+                (UserEvent::Close, "close"),
+                (UserEvent::HelpToggle, "help"),
+            ],
+            View::CreateTag(_) | View::DeleteTag(_) => vec![
+                (UserEvent::Confirm, "confirm"),
+                (UserEvent::Cancel, "cancel"),
+            ],
+            View::Help(_) => vec![
+                (UserEvent::Close, "close"),
+            ],
+            _ => vec![],
+        };
+
+        let key_fg = self.color_theme.help_key_fg;
+        let desc_fg = self.color_theme.status_input_transient_fg;
+
+        let mut spans: Vec<Span<'static>> = Vec::new();
+        for (i, (event, desc)) in hints.iter().enumerate() {
+            if let Some(key) = self.keybind.keys_for_event(*event).first() {
+                if i > 0 {
+                    spans.push(Span::raw("  "));
+                }
+                spans.push(Span::styled(key.clone(), Style::default().fg(key_fg)));
+                spans.push(Span::raw(" "));
+                spans.push(Span::styled((*desc).to_string(), Style::default().fg(desc_fg)));
+            }
+        }
+        Line::from(spans)
     }
 }
 
