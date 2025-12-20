@@ -351,10 +351,30 @@
           "description": "Background color for a search match in the commit list.",
           "default": "yellow"
         },
+        "detail_label_fg": {
+          "type": "string",
+          "description": "Color for labels in the commit detail view.",
+          "default": "reset"
+        },
+        "detail_name_fg": {
+          "type": "string",
+          "description": "Color for author/committer names in the commit detail view.",
+          "default": "reset"
+        },
+        "detail_date_fg": {
+          "type": "string",
+          "description": "Color for author/committer dates in the commit detail view.",
+          "default": "reset"
+        },
         "detail_email_fg": {
           "type": "string",
-          "description": "Color for email addresses in the commit detail view.",
+          "description": "Color for author/committer email addresses in the commit detail view.",
           "default": "blue"
+        },
+        "detail_hash_fg": {
+          "type": "string",
+          "description": "Color for the commit hash in the commit detail view.",
+          "default": "reset"
         },
         "detail_ref_branch_fg": {
           "type": "string",

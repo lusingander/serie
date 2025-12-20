@@ -128,26 +128,26 @@ impl CommitDetail<'_> {
         let mut label_lines: Vec<Line> = Vec::new();
         let mut value_lines: Vec<Line> = Vec::new();
 
-        label_lines.push(Line::raw("   Author: "));
+        label_lines.push(Line::from("   Author: ").fg(self.color_theme.detail_label_fg));
         label_lines.push(self.empty_line());
         value_lines.extend(self.author_lines());
 
         if is_author_committer_different(self.commit) {
-            label_lines.push(Line::raw("Committer: "));
+            label_lines.push(Line::from("Committer: ").fg(self.color_theme.detail_label_fg));
             label_lines.push(self.empty_line());
             value_lines.extend(self.committer_lines());
         }
 
-        label_lines.push(Line::raw("      SHA: "));
+        label_lines.push(Line::from("      SHA: ").fg(self.color_theme.detail_label_fg));
         value_lines.push(self.sha_line());
 
         if has_parent(self.commit) {
-            label_lines.push(Line::raw("  Parents: "));
+            label_lines.push(Line::from("  Parents: ").fg(self.color_theme.detail_label_fg));
             value_lines.push(self.parents_line());
         }
 
         if has_refs(self.refs) {
-            label_lines.push(Line::raw("     Refs: "));
+            label_lines.push(Line::from("     Refs: ").fg(self.color_theme.detail_label_fg));
             value_lines.push(self.refs_line());
         }
 
@@ -190,17 +190,22 @@ impl CommitDetail<'_> {
         };
         vec![
             Line::from(vec![
-                name.into(),
+                name.fg(self.color_theme.detail_name_fg),
                 " <".into(),
                 email.fg(self.color_theme.detail_email_fg),
                 "> ".into(),
             ]),
-            Line::raw(date_str),
+            Line::from(date_str.fg(self.color_theme.detail_date_fg)),
         ]
     }
 
     fn sha_line(&self) -> Line<'_> {
-        Line::raw(self.commit.commit_hash.as_str())
+        Line::from(
+            self.commit
+                .commit_hash
+                .as_str()
+                .fg(self.color_theme.detail_hash_fg),
+        )
     }
 
     fn parents_line(&self) -> Line<'_> {
@@ -208,7 +213,7 @@ impl CommitDetail<'_> {
         let parents = &self.commit.parent_commit_hashes;
         for (i, hash) in parents
             .iter()
-            .map(|hash| Span::raw(hash.as_short_hash()))
+            .map(|hash| hash.as_short_hash().fg(self.color_theme.detail_hash_fg))
             .enumerate()
         {
             spans.push(hash);
