@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use chrono::{DateTime, FixedOffset};
 use ratatui::{
     buffer::Buffer,
@@ -56,7 +58,7 @@ impl CommitDetailState {
 pub struct CommitDetail<'a> {
     commit: &'a Commit,
     changes: &'a Vec<FileChange>,
-    refs: &'a Vec<Ref>,
+    refs: &'a Vec<Rc<Ref>>,
     config: &'a UiDetailConfig,
     color_theme: &'a ColorTheme,
 }
@@ -65,7 +67,7 @@ impl<'a> CommitDetail<'a> {
     pub fn new(
         commit: &'a Commit,
         changes: &'a Vec<FileChange>,
-        refs: &'a Vec<Ref>,
+        refs: &'a Vec<Rc<Ref>>,
         config: &'a UiDetailConfig,
         color_theme: &'a ColorTheme,
     ) -> Self {
@@ -225,19 +227,19 @@ impl CommitDetail<'_> {
     }
 
     fn refs_line(&self) -> Line<'_> {
-        let ref_spans = self.refs.iter().filter_map(|r| match r {
+        let ref_spans = self.refs.iter().filter_map(|r| match r.as_ref() {
             Ref::Branch { name, .. } => Some(
-                Span::raw(name)
+                Span::raw(name.as_str())
                     .fg(self.color_theme.detail_ref_branch_fg)
                     .add_modifier(Modifier::BOLD),
             ),
             Ref::RemoteBranch { name, .. } => Some(
-                Span::raw(name)
+                Span::raw(name.as_str())
                     .fg(self.color_theme.detail_ref_remote_branch_fg)
                     .add_modifier(Modifier::BOLD),
             ),
             Ref::Tag { name, .. } => Some(
-                Span::raw(name)
+                Span::raw(name.as_str())
                     .fg(self.color_theme.detail_ref_tag_fg)
                     .add_modifier(Modifier::BOLD),
             ),
@@ -325,10 +327,10 @@ fn has_parent(commit: &Commit) -> bool {
     !commit.parent_commit_hashes.is_empty()
 }
 
-fn has_refs(refs: &[Ref]) -> bool {
+fn has_refs(refs: &[Rc<Ref>]) -> bool {
     refs.iter().any(|r| {
         matches!(
-            r,
+            r.as_ref(),
             Ref::Branch { .. } | Ref::RemoteBranch { .. } | Ref::Tag { .. }
         )
     })

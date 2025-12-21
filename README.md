@@ -184,6 +184,7 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 | ------------------------------ | ----------- | --------------------- |
 | <kbd>Ctrl-c</kbd> <kbd>q</kbd> | Quit app    | `force_quit` `quit`   |
 | <kbd>?</kbd>                   | Open help   | `help_toggle`         |
+| <kbd>r</kbd>                   | Refresh     | `refresh`             |
 
 #### Commit List
 
@@ -200,11 +201,14 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 | <kbd>Enter</kbd>                     | Show commit details<br>Apply search (if searching) | `confirm`                                    |
 | <kbd>Tab</kbd>                       | Open refs list                                     | `ref_list_toggle`                            |
 | <kbd>/</kbd>                         | Start search                                       | `search`                                     |
-| <kbd>Esc</kbd>                       | Cancel search                                      | `cancel`                                     |
+| <kbd>f</kbd>                         | Start filter                                       | `filter`                                     |
+| <kbd>Esc</kbd>                       | Cancel search/filter                               | `cancel`                                     |
 | <kbd>n/N</kbd>                       | Go to next/previous search match                   | `go_to_next` `go_to_previous`                |
-| <kbd>Ctrl-g</kbd>                    | Toggle ignore case (if searching)                  | `ignore_case_toggle`                         |
-| <kbd>Ctrl-x</kbd>                    | Toggle fuzzy match (if searching)                  | `fuzzy_toggle`                               |
+| <kbd>Alt-c</kbd>                     | Toggle ignore case (if searching/filtering)        | `ignore_case_toggle`                         |
+| <kbd>Ctrl-x</kbd>                    | Toggle fuzzy match (if searching/filtering)        | `fuzzy_toggle`                               |
 | <kbd>c/C</kbd>                       | Copy commit short/full hash                        | `short_copy` `full_copy`                     |
+| <kbd>t</kbd>                         | Create tag on commit                               | `create_tag`                                 |
+| <kbd>Ctrl-t</kbd>                    | Delete tag from commit                             | `delete_tag`                                 |
 | <kbd>d</kbd>                         | Toggle custom user command view                    | `user_command_view_toggle_1`                 |
 
 #### Commit Detail
@@ -223,14 +227,15 @@ The default key bindings can be overridden. Please refer to [default-keybind.tom
 
 #### Refs List
 
-| Key                                                | Description      | Corresponding keybind              |
-| -------------------------------------------------- | ---------------- | ---------------------------------- |
-| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>Tab</kbd> | Close refs list  | `close` `cancel` `ref_list_toggle` |
-| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                  | Move down/up     | `navigate_down` `navigate_up`      |
-| <kbd>J/K</kbd>                                     | Move down/up     | `select_down` `select_up`          |
-| <kbd>g/G</kbd>                                     | Go to top/bottom | `go_to_top` `go_to_bottom`         |
-| <kbd>Right/Left</kbd> <kbd>l/h</kbd>               | Open/Close node  | `navigate_right` `navigate_left`   |
-| <kbd>c</kbd>                                       | Copy ref name    | `short_copy`                       |
+| Key                                                | Description               | Corresponding keybind              |
+| -------------------------------------------------- | ------------------------- | ---------------------------------- |
+| <kbd>Esc</kbd> <kbd>Backspace</kbd> <kbd>Tab</kbd> | Close refs list           | `close` `cancel` `ref_list_toggle` |
+| <kbd>Down/Up</kbd> <kbd>j/k</kbd>                  | Move down/up              | `navigate_down` `navigate_up`      |
+| <kbd>J/K</kbd>                                     | Move down/up              | `select_down` `select_up`          |
+| <kbd>g/G</kbd>                                     | Go to top/bottom          | `go_to_top` `go_to_bottom`         |
+| <kbd>Right/Left</kbd> <kbd>l/h</kbd>               | Open/Close node           | `navigate_right` `navigate_left`   |
+| <kbd>c</kbd>                                       | Copy ref name             | `short_copy`                       |
+| <kbd>d</kbd>                                       | Delete branch/tag         | `user_command_view_toggle_1`       |
 
 #### User Command
 

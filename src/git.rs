@@ -4,14 +4,17 @@ use std::{
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    rc::Rc,
+    sync::Arc,
 };
 
 use chrono::{DateTime, FixedOffset};
 
 use crate::Result;
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CommitHash(String);
+/// Arc<str> for cheap cloning and Send trait (required by mpsc::Sender<AppEvent>)
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CommitHash(Arc<str>);
 
 impl CommitHash {
     pub fn as_short_hash(&self) -> String {
@@ -23,9 +26,15 @@ impl CommitHash {
     }
 }
 
+impl Default for CommitHash {
+    fn default() -> Self {
+        Self(Arc::from(""))
+    }
+}
+
 impl From<&str> for CommitHash {
     fn from(s: &str) -> Self {
-        Self(s.to_string())
+        Self(Arc::from(s))
     }
 }
 
@@ -49,6 +58,13 @@ pub struct Commit {
     pub body: String,
     pub parent_commit_hashes: Vec<CommitHash>,
     pub commit_type: CommitType,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RefType {
+    Tag,
+    Branch,
+    RemoteBranch,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -104,14 +120,15 @@ pub enum SortCommit {
     Topological,
 }
 
-type CommitMap = HashMap<CommitHash, Commit>;
+type CommitMap = HashMap<CommitHash, Rc<Commit>>;
 type CommitsMap = HashMap<CommitHash, Vec<CommitHash>>;
 
-type RefMap = HashMap<CommitHash, Vec<Ref>>;
+type RefMap = HashMap<CommitHash, Vec<Rc<Ref>>>;
 
 #[derive(Debug)]
 pub struct Repository {
     path: PathBuf,
+    sort: SortCommit,
     commit_map: CommitMap,
 
     parents_map: CommitsMap,
@@ -140,42 +157,23 @@ impl Repository {
         let stash_ref_map = load_stashes_as_refs(path);
         merge_ref_maps(&mut ref_map, stash_ref_map);
 
-        Ok(Self::new(
-            path.to_path_buf(),
+        Ok(Self {
+            path: path.to_path_buf(),
+            sort,
             commit_map,
             parents_map,
             children_map,
             ref_map,
             head,
             commit_hashes,
-        ))
+        })
     }
 
-    pub fn new(
-        path: PathBuf,
-        commit_map: CommitMap,
-        parents_map: CommitsMap,
-        children_map: CommitsMap,
-        ref_map: RefMap,
-        head: Head,
-        commit_hashes: Vec<CommitHash>,
-    ) -> Self {
-        Self {
-            path,
-            commit_map,
-            parents_map,
-            children_map,
-            ref_map,
-            head,
-            commit_hashes,
-        }
+    pub fn commit(&self, commit_hash: &CommitHash) -> Option<Rc<Commit>> {
+        self.commit_map.get(commit_hash).cloned()
     }
 
-    pub fn commit(&self, commit_hash: &CommitHash) -> Option<&Commit> {
-        self.commit_map.get(commit_hash)
-    }
-
-    pub fn all_commits(&self) -> Vec<&Commit> {
+    pub fn all_commits(&self) -> Vec<Rc<Commit>> {
         self.commit_hashes
             .iter()
             .filter_map(|hash| self.commit(hash))
@@ -196,29 +194,46 @@ impl Repository {
             .unwrap_or_default()
     }
 
-    pub fn refs(&self, commit_hash: &CommitHash) -> Vec<&Ref> {
-        self.ref_map
-            .get(commit_hash)
-            .map(|refs| refs.iter().collect::<Vec<&Ref>>())
-            .unwrap_or_default()
+    pub fn refs(&self, commit_hash: &CommitHash) -> Vec<Rc<Ref>> {
+        self.ref_map.get(commit_hash).cloned().unwrap_or_default()
     }
 
-    pub fn all_refs(&self) -> Vec<&Ref> {
-        self.ref_map.values().flatten().collect()
+    pub fn all_refs(&self) -> Vec<Rc<Ref>> {
+        self.ref_map.values().flatten().cloned().collect()
     }
 
-    pub fn head(&self) -> &Head {
-        &self.head
+    pub fn head(&self) -> Head {
+        self.head.clone()
     }
 
-    pub fn commit_detail(&self, commit_hash: &CommitHash) -> (Commit, Vec<FileChange>) {
-        let commit = self.commit(commit_hash).unwrap().clone();
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn commit_detail(&self, commit_hash: &CommitHash) -> (Rc<Commit>, Vec<FileChange>) {
+        let commit = self.commit(commit_hash).unwrap();
         let changes = if commit.parent_commit_hashes.is_empty() {
             get_initial_commit_additions(&self.path, commit_hash)
         } else {
             get_diff_summary(&self.path, commit_hash)
         };
         (commit, changes)
+    }
+
+    pub fn sort_order(&self) -> SortCommit {
+        self.sort
+    }
+
+    pub fn add_ref(&mut self, new_ref: Ref) {
+        let target = new_ref.target().clone();
+        let rc_ref = Rc::new(new_ref);
+        self.ref_map.entry(target).or_default().push(rc_ref);
+    }
+
+    pub fn remove_ref(&mut self, ref_name: &str) {
+        for refs in self.ref_map.values_mut() {
+            refs.retain(|r| r.name() != ref_name);
+        }
     }
 }
 
@@ -231,23 +246,23 @@ fn check_git_repository(path: &Path) -> Result<()> {
 }
 
 fn is_inside_work_tree(path: &Path) -> bool {
-    let output = Command::new("git")
+    Command::new("git")
         .arg("rev-parse")
         .arg("--is-inside-work-tree")
         .current_dir(path)
         .output()
-        .unwrap();
-    output.status.success() && output.stdout == b"true\n"
+        .map(|o| o.status.success() && o.stdout == b"true\n")
+        .unwrap_or(false)
 }
 
 fn is_bare_repository(path: &Path) -> bool {
-    let output = Command::new("git")
+    Command::new("git")
         .arg("rev-parse")
         .arg("--is-bare-repository")
         .current_dir(path)
         .output()
-        .unwrap();
-    output.status.success() && output.stdout == b"true\n"
+        .map(|o| o.status.success() && o.stdout == b"true\n")
+        .unwrap_or(false)
 }
 
 fn load_all_commits(path: &Path, sort: SortCommit, stashes: &[Commit]) -> Vec<Commit> {
@@ -403,7 +418,7 @@ fn build_commits_maps(commits: &Vec<Commit>) -> (CommitsMap, CommitsMap) {
 fn to_commit_map(commits: Vec<Commit>) -> CommitMap {
     commits
         .into_iter()
-        .map(|commit| (commit.commit_hash.clone(), commit))
+        .map(|commit| (commit.commit_hash.clone(), Rc::new(commit)))
         .collect()
 }
 
@@ -467,7 +482,7 @@ fn load_refs(path: &Path) -> (RefMap, Head) {
                 })
             };
         } else if let Some(r) = parse_branch_refs(hash, refs) {
-            ref_map.entry(hash.into()).or_default().push(r);
+            ref_map.entry(hash.into()).or_default().push(Rc::new(r));
         } else if let Some(r) = parse_tag_refs(hash, refs) {
             // if annotated tag exists, it will be overwritten by the following line of the same tag
             // this will make the tag point to the commit that the annotated tag points to
@@ -478,7 +493,10 @@ fn load_refs(path: &Path) -> (RefMap, Head) {
     let head = head.expect("HEAD not found in `git show-ref --head` output");
 
     for tag in tag_map.into_values() {
-        ref_map.entry(tag.target().clone()).or_default().push(tag);
+        ref_map
+            .entry(tag.target().clone())
+            .or_default()
+            .push(Rc::new(tag));
     }
 
     ref_map.values_mut().for_each(|refs| refs.sort());
@@ -524,7 +542,7 @@ fn load_stashes_as_refs(path: &Path) -> RefMap {
             target: hash.into(),
         };
 
-        ref_map.entry(hash.into()).or_default().push(r);
+        ref_map.entry(hash.into()).or_default().push(Rc::new(r));
     }
 
     cmd.wait().unwrap();
@@ -606,8 +624,8 @@ pub fn get_diff_summary(path: &Path, commit_hash: &CommitHash) -> Vec<FileChange
     let mut cmd = Command::new("git")
         .arg("diff")
         .arg("--name-status")
-        .arg(format!("{}^", commit_hash.0))
-        .arg(&commit_hash.0)
+        .arg(format!("{}^", commit_hash.as_str()))
+        .arg(commit_hash.as_str())
         .current_dir(path)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -652,7 +670,7 @@ pub fn get_initial_commit_additions(path: &Path, commit_hash: &CommitHash) -> Ve
         .arg("ls-tree")
         .arg("--name-status")
         .arg("-r") // the empty tree hash
-        .arg(&commit_hash.0)
+        .arg(commit_hash.as_str())
         .current_dir(path)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -673,4 +691,177 @@ pub fn get_initial_commit_additions(path: &Path, commit_hash: &CommitHash) -> Ve
     cmd.wait().unwrap();
 
     changes
+}
+
+/// Validates a git ref name according to git-check-ref-format rules.
+/// Returns Ok(()) if valid, Err with message if invalid.
+fn validate_ref_name(name: &str) -> std::result::Result<(), String> {
+    if name.is_empty() {
+        return Err("Ref name cannot be empty".into());
+    }
+    if name.starts_with('-') {
+        return Err("Ref name cannot start with '-'".into());
+    }
+    if name.starts_with('.') || name.ends_with('.') {
+        return Err("Ref name cannot start or end with '.'".into());
+    }
+    if name.contains("..") {
+        return Err("Ref name cannot contain '..'".into());
+    }
+    if name.contains("//") {
+        return Err("Ref name cannot contain '//'".into());
+    }
+    if name.ends_with('/') {
+        return Err("Ref name cannot end with '/'".into());
+    }
+    if name.contains(|c: char| c.is_ascii_control() || c == ' ' || c == '~' || c == '^' || c == ':')
+    {
+        return Err("Ref name contains invalid characters".into());
+    }
+    if name.ends_with(".lock") {
+        return Err("Ref name cannot end with '.lock'".into());
+    }
+    if name.contains("@{") {
+        return Err("Ref name cannot contain '@{'".into());
+    }
+    if name == "@" {
+        return Err("Ref name cannot be '@'".into());
+    }
+    if name.contains('\\') {
+        return Err("Ref name cannot contain '\\'".into());
+    }
+    Ok(())
+}
+
+pub fn create_tag(
+    path: &Path,
+    name: &str,
+    commit_hash: &CommitHash,
+    message: Option<&str>,
+) -> std::result::Result<(), String> {
+    validate_ref_name(name)?;
+    let mut cmd = Command::new("git");
+    cmd.arg("tag");
+    if let Some(msg) = message {
+        if !msg.is_empty() {
+            cmd.arg("-a").arg("-m").arg(msg);
+        }
+    }
+    cmd.arg(name).arg(commit_hash.as_str()).current_dir(path);
+
+    let output = cmd
+        .output()
+        .map_err(|e| format!("Failed to execute git tag: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to create tag: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn push_tag(path: &Path, tag_name: &str) -> std::result::Result<(), String> {
+    let output = Command::new("git")
+        .arg("push")
+        .arg("origin")
+        .arg(tag_name)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git push: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to push tag: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn delete_tag(path: &Path, tag_name: &str) -> std::result::Result<(), String> {
+    let output = Command::new("git")
+        .arg("tag")
+        .arg("-d")
+        .arg(tag_name)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git tag -d: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to delete tag: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn delete_remote_tag(path: &Path, tag_name: &str) -> std::result::Result<(), String> {
+    let output = Command::new("git")
+        .arg("push")
+        .arg("origin")
+        .arg("--delete")
+        .arg(tag_name)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git push --delete: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to delete remote tag: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn delete_branch(path: &Path, branch_name: &str) -> std::result::Result<(), String> {
+    let output = Command::new("git")
+        .arg("branch")
+        .arg("-d")
+        .arg(branch_name)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git branch -d: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to delete branch: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn delete_branch_force(path: &Path, branch_name: &str) -> std::result::Result<(), String> {
+    let output = Command::new("git")
+        .arg("branch")
+        .arg("-D")
+        .arg(branch_name)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git branch -D: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to force delete branch: {stderr}"));
+    }
+    Ok(())
+}
+
+pub fn delete_remote_branch(path: &Path, branch_name: &str) -> std::result::Result<(), String> {
+    // branch_name for remote branches is like "origin/feature" - we need to split
+    let parts: Vec<&str> = branch_name.splitn(2, '/').collect();
+    if parts.len() != 2 {
+        return Err(format!("Invalid remote branch name format: {branch_name}"));
+    }
+    let remote = parts[0];
+    let branch = parts[1];
+
+    let output = Command::new("git")
+        .arg("push")
+        .arg(remote)
+        .arg("--delete")
+        .arg(branch)
+        .current_dir(path)
+        .output()
+        .map_err(|e| format!("Failed to execute git push --delete: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to delete remote branch: {stderr}"));
+    }
+    Ok(())
 }
