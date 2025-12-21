@@ -42,8 +42,16 @@ pub struct ColorTheme {
     #[default(RatatuiColor::Yellow)]
     pub list_match_bg: RatatuiColor,
 
+    #[default(RatatuiColor::Reset)]
+    pub detail_label_fg: RatatuiColor,
+    #[default(RatatuiColor::Reset)]
+    pub detail_name_fg: RatatuiColor,
+    #[default(RatatuiColor::Reset)]
+    pub detail_date_fg: RatatuiColor,
     #[default(RatatuiColor::Blue)]
     pub detail_email_fg: RatatuiColor,
+    #[default(RatatuiColor::Reset)]
+    pub detail_hash_fg: RatatuiColor,
     #[default(RatatuiColor::Green)]
     pub detail_ref_branch_fg: RatatuiColor,
     #[default(RatatuiColor::Red)]
