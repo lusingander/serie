@@ -310,13 +310,14 @@ fn sort_tag_tree_nodes(nodes: &mut [RefTreeNode]) {
     nodes.sort_by(|a, b| {
         let a_version = parse_semantic_version_tag(&a.name);
         let b_version = parse_semantic_version_tag(&b.name);
-        if a_version.is_none() && b_version.is_none() {
-            // if both are not semantic versions, sort by name asc
-            a.name.cmp(&b.name)
-        } else {
-            // if both are semantic versions, sort by version desc
-            // if only one is a semantic version, it will be sorted first
-            b_version.cmp(&a_version)
+        match (a_version, b_version) {
+            // Both semver: sort by version descending (newest first)
+            (Some(av), Some(bv)) => bv.cmp(&av),
+            // Semver tags come before non-semver tags
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            // Both non-semver: sort by name descending (Z-A, consistent with semver)
+            (None, None) => b.name.cmp(&a.name),
         }
     });
 }
