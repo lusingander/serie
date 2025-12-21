@@ -693,12 +693,53 @@ pub fn get_initial_commit_additions(path: &Path, commit_hash: &CommitHash) -> Ve
     changes
 }
 
+/// Validates a git ref name according to git-check-ref-format rules.
+/// Returns Ok(()) if valid, Err with message if invalid.
+fn validate_ref_name(name: &str) -> std::result::Result<(), String> {
+    if name.is_empty() {
+        return Err("Ref name cannot be empty".into());
+    }
+    if name.starts_with('-') {
+        return Err("Ref name cannot start with '-'".into());
+    }
+    if name.starts_with('.') || name.ends_with('.') {
+        return Err("Ref name cannot start or end with '.'".into());
+    }
+    if name.contains("..") {
+        return Err("Ref name cannot contain '..'".into());
+    }
+    if name.contains("//") {
+        return Err("Ref name cannot contain '//'".into());
+    }
+    if name.ends_with('/') {
+        return Err("Ref name cannot end with '/'".into());
+    }
+    if name.contains(|c: char| c.is_ascii_control() || c == ' ' || c == '~' || c == '^' || c == ':')
+    {
+        return Err("Ref name contains invalid characters".into());
+    }
+    if name.ends_with(".lock") {
+        return Err("Ref name cannot end with '.lock'".into());
+    }
+    if name.contains("@{") {
+        return Err("Ref name cannot contain '@{'".into());
+    }
+    if name == "@" {
+        return Err("Ref name cannot be '@'".into());
+    }
+    if name.contains('\\') {
+        return Err("Ref name cannot contain '\\'".into());
+    }
+    Ok(())
+}
+
 pub fn create_tag(
     path: &Path,
     name: &str,
     commit_hash: &CommitHash,
     message: Option<&str>,
 ) -> std::result::Result<(), String> {
+    validate_ref_name(name)?;
     let mut cmd = Command::new("git");
     cmd.arg("tag");
     if let Some(msg) = message {
