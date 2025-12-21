@@ -16,7 +16,7 @@ use crate::{
     event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
     external::copy_to_clipboard,
     git::{CommitHash, Head, Ref, RefType, Repository},
-    graph::{CellWidthType, Graph, GraphImageManager},
+    graph::{calc_graph, CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
     view::View,
@@ -52,6 +52,8 @@ pub struct App<'a> {
     core_config: &'a CoreConfig,
     ui_config: &'a UiConfig,
     color_theme: &'a ColorTheme,
+    graph_color_set: &'a GraphColorSet,
+    cell_width_type: CellWidthType,
     image_protocol: ImageProtocol,
     tx: Sender,
 
@@ -120,6 +122,8 @@ impl<'a> App<'a> {
             core_config,
             ui_config,
             color_theme,
+            graph_color_set,
+            cell_width_type,
             image_protocol,
             tx,
             numeric_prefix: String::new(),
@@ -896,10 +900,74 @@ impl App<'_> {
     }
 
     fn refresh(&mut self) {
-        // TODO: Implement full refresh - requires App to own Repository and Graph
-        self.tx.send(AppEvent::NotifyInfo(
-            "Refresh: relaunch serie to reload repository".into(),
-        ));
+        // Reload repository from disk
+        let sort = self.repository.sort_order();
+        let path = self.repository.path().to_path_buf();
+
+        let repository = match Repository::load(&path, sort) {
+            Ok(repo) => repo,
+            Err(e) => {
+                self.tx
+                    .send(AppEvent::NotifyError(format!("Refresh failed: {}", e)));
+                return;
+            }
+        };
+
+        // Recalculate graph
+        let graph = Rc::new(calc_graph(&repository));
+
+        // Create new graph image manager
+        let graph_image_manager = GraphImageManager::new(
+            Rc::clone(&graph),
+            self.graph_color_set,
+            self.cell_width_type,
+            self.image_protocol,
+            false, // don't preload
+        );
+
+        // Build new commit list state
+        let mut ref_name_to_commit_index_map = HashMap::new();
+        let commits = graph
+            .commits
+            .iter()
+            .enumerate()
+            .map(|(i, commit)| {
+                let refs = repository.refs(&commit.commit_hash);
+                for r in &refs {
+                    ref_name_to_commit_index_map.insert(r.name().to_string(), i);
+                }
+                let (pos_x, _) = graph.commit_pos_map[&commit.commit_hash];
+                let graph_color = self.graph_color_set.get(pos_x).to_ratatui_color();
+                CommitInfo::new(commit.clone(), refs, graph_color)
+            })
+            .collect();
+
+        let graph_cell_width = match self.cell_width_type {
+            CellWidthType::Double => (graph.max_pos_x + 1) as u16 * 2,
+            CellWidthType::Single => (graph.max_pos_x + 1) as u16,
+        };
+
+        let head = repository.head();
+        let commit_list_state = CommitListState::new(
+            commits,
+            graph_image_manager,
+            graph_cell_width,
+            head,
+            ref_name_to_commit_index_map,
+            self.core_config.search.ignore_case,
+            self.core_config.search.fuzzy,
+        );
+
+        // Update app state
+        self.repository = repository;
+        self.view = View::of_list(
+            commit_list_state,
+            self.ui_config,
+            self.color_theme,
+            self.tx.clone(),
+        );
+
+        self.tx.send(AppEvent::NotifySuccess("Repository refreshed".into()));
     }
 }
 
