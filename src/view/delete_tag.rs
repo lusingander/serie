@@ -93,11 +93,9 @@ impl<'a> DeleteTagView<'a> {
     }
 
     fn delete_selected(&mut self) {
-        if self.tags.is_empty() {
+        let Some(tag_name) = self.tags.get(self.selected_index).cloned() else {
             return;
-        }
-
-        let tag_name = self.tags[self.selected_index].clone();
+        };
 
         // Prepare data for background thread
         let repo_path = self.repo_path.clone();

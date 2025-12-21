@@ -126,24 +126,37 @@ impl<'a> DeleteRefView<'a> {
         self.tx.send(AppEvent::CloseDeleteRef);
 
         thread::spawn(move || {
+            // Track if local deletion succeeded (for UI update even if remote fails)
+            let mut local_deleted = false;
+
             let result = match ref_type {
                 RefType::Tag => {
                     if let Err(e) = delete_tag(&repo_path, &ref_name) {
                         Err(e)
-                    } else if delete_from_remote {
-                        delete_remote_tag(&repo_path, &ref_name).map_err(|e| {
-                            format!("Local tag deleted, but failed to delete from remote: {}", e)
-                        })
                     } else {
-                        Ok(())
+                        local_deleted = true;
+                        if delete_from_remote {
+                            delete_remote_tag(&repo_path, &ref_name).map_err(|e| {
+                                format!(
+                                    "Local tag deleted, but failed to delete from remote: {}",
+                                    e
+                                )
+                            })
+                        } else {
+                            Ok(())
+                        }
                     }
                 }
                 RefType::Branch => {
-                    if force_delete {
+                    let res = if force_delete {
                         delete_branch_force(&repo_path, &ref_name)
                     } else {
                         delete_branch(&repo_path, &ref_name)
+                    };
+                    if res.is_ok() {
+                        local_deleted = true;
                     }
+                    res
                 }
                 RefType::RemoteBranch => delete_remote_branch(&repo_path, &ref_name),
             };
@@ -172,6 +185,12 @@ impl<'a> DeleteRefView<'a> {
                     tx.send(AppEvent::HidePendingOverlay);
                 }
                 Err(e) => {
+                    // If local deletion succeeded, still update UI
+                    if local_deleted {
+                        tx.send(AppEvent::RemoveRefFromList {
+                            ref_name: ref_name.clone(),
+                        });
+                    }
                     tx.send(AppEvent::HidePendingOverlay);
                     tx.send(AppEvent::NotifyError(e));
                 }
