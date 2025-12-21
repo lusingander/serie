@@ -363,10 +363,11 @@ impl<'a> CreateTagView<'a> {
         };
 
         let max_width = input_area.width.saturating_sub(2) as usize;
-        let display_value = if value.len() > max_width {
-            &value[value.len() - max_width..]
+        let char_count = value.chars().count();
+        let display_value: String = if char_count > max_width {
+            value.chars().skip(char_count - max_width).collect()
         } else {
-            value
+            value.to_string()
         };
 
         f.render_widget(
