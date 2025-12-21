@@ -74,13 +74,30 @@ impl Widget for PendingOverlay<'_> {
 }
 
 fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
+    if max_width == 0 {
+        return vec![String::new()];
+    }
+
     let mut lines = Vec::new();
     let mut current_line = String::new();
 
     for word in text.split_whitespace() {
-        if current_line.is_empty() {
+        // Handle words longer than max_width by splitting them
+        if word.chars().count() > max_width {
+            // Flush current line first
+            if !current_line.is_empty() {
+                lines.push(current_line);
+                current_line = String::new();
+            }
+            // Split long word into chunks
+            let mut chars = word.chars().peekable();
+            while chars.peek().is_some() {
+                let chunk: String = chars.by_ref().take(max_width).collect();
+                lines.push(chunk);
+            }
+        } else if current_line.is_empty() {
             current_line = word.to_string();
-        } else if current_line.len() + 1 + word.len() <= max_width {
+        } else if current_line.chars().count() + 1 + word.chars().count() <= max_width {
             current_line.push(' ');
             current_line.push_str(word);
         } else {
