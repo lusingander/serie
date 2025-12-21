@@ -967,7 +967,8 @@ impl App<'_> {
             self.tx.clone(),
         );
 
-        self.tx.send(AppEvent::NotifySuccess("Repository refreshed".into()));
+        self.tx
+            .send(AppEvent::NotifySuccess("Repository refreshed".into()));
     }
 }
 
