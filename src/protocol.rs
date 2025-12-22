@@ -24,10 +24,11 @@ pub enum ImageProtocol {
 
 impl ImageProtocol {
     pub fn encode(&self, bytes: &[u8], cell_width: usize) -> String {
-        match self {
+        let raw = match self {
             ImageProtocol::Iterm2 => iterm2_encode(bytes, cell_width, 1),
             ImageProtocol::Kitty => kitty_encode(bytes, cell_width, 1),
-        }
+        };
+        wrap_for_tmux_if_needed(raw)
     }
 
     pub fn clear_line(&self, y: u16) {
@@ -63,16 +64,16 @@ fn kitty_encode(bytes: &[u8], cell_width: usize, cell_height: usize) -> String {
     let chunks = base64_str.as_bytes().chunks(chunk_size);
     let total_chunks = chunks.len();
 
-    s.push_str("\x1b_Ga=d,d=C;\x1b\\");
+    s.push_str("\x1b_Ga=d,d=C,q=2;\x1b\\");
     for (i, chunk) in chunks.enumerate() {
         s.push_str("\x1b_G");
         if i == 0 {
-            s.push_str(&format!("a=T,f=100,c={cell_width},r={cell_height},"));
+            s.push_str(&format!("a=T,q=2,f=100,c={cell_width},r={cell_height},"));
         }
         if i < total_chunks - 1 {
-            s.push_str("m=1;");
+            s.push_str("q=2,m=1;");
         } else {
-            s.push_str("m=0;");
+            s.push_str("q=2,m=0;");
         }
         s.push_str(std::str::from_utf8(chunk).unwrap());
         s.push_str("\x1b\\");
@@ -83,5 +84,16 @@ fn kitty_encode(bytes: &[u8], cell_width: usize, cell_height: usize) -> String {
 
 fn kitty_clear_line(y: u16) {
     let y = y + 1; // 1-based
-    print!("\x1b_Ga=d,d=P,x=1,y={y};\x1b\\");
+    let raw = format!("\x1b_Ga=d,d=P,q=2,x=1,y={y};\x1b\\");
+    let wrapped = wrap_for_tmux_if_needed(raw);
+    print!("{}", wrapped);
+}
+
+fn wrap_for_tmux_if_needed(s: String) -> String {
+    if env::var("TMUX").is_ok() {
+        let escaped = s.replace("\x1b", "\x1b\x1b");
+        return format!("\x1bPtmux;\x1b{}\x1b\\", escaped)
+    }
+
+    s
 }
