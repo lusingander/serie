@@ -35,6 +35,7 @@ Personally, I found the output from `git log --graph` difficult to read, even wi
 - Git
 - Supported terminal emulator
   - Refer to [Compatibility](#compatibility) for details.
+- `wl-clipboard` on Wayland
 
 ## Installation
 
