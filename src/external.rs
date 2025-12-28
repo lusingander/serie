@@ -11,7 +11,37 @@ thread_local! {
     static CLIPBOARD: RefCell<Option<Clipboard>> = const { RefCell::new(None) };
 }
 
+// arboard may use X11 via XWayland on Wayland sessions, causing silent clipboard failures
 pub fn copy_to_clipboard(value: String) -> Result<(), String> {
+    if std::env::var("WAYLAND_DISPLAY").is_ok() {
+        copy_to_clipboard_wayland(value)
+    } else {
+        copy_to_clipboard_arboard(value)
+    }
+}
+
+fn copy_to_clipboard_wayland(value: String) -> Result<(), String> {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    let mut child = Command::new("wl-copy")
+        .stdin(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to run wl-copy: {e}"))?;
+
+    child
+        .stdin
+        .take()
+        .expect("stdin should be available")
+        .write_all(value.as_bytes())
+        .map_err(|e| format!("Failed to write to wl-copy: {e}"))?;
+
+    child.wait().map_err(|e| format!("wl-copy failed: {e}"))?;
+
+    Ok(())
+}
+
+fn copy_to_clipboard_arboard(value: String) -> Result<(), String> {
     CLIPBOARD.with_borrow_mut(|clipboard| {
         if clipboard.is_none() {
             *clipboard = Clipboard::new()
