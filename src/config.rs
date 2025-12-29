@@ -101,6 +101,8 @@ pub struct CoreConfig {
     pub search: CoreSearchConfig,
     #[nested]
     pub user_command: CoreUserCommandConfig,
+    #[nested]
+    pub external: CoreExternalConfig,
 }
 
 #[optional(derives = [Deserialize])]
@@ -236,6 +238,22 @@ pub enum CursorType {
     Virtual(String),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+pub enum ClipboardConfig {
+    #[default]
+    Auto,
+    Custom {
+        commands: Vec<String>,
+    },
+}
+
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+pub struct CoreExternalConfig {
+    #[default(ClipboardConfig::Auto)]
+    pub clipboard: ClipboardConfig,
+}
+
 #[optional(derives = [Deserialize])]
 #[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
 pub struct UiListConfig {
@@ -336,6 +354,9 @@ mod tests {
                         },
                     )]),
                     tab_width: 4,
+                },
+                external: CoreExternalConfig {
+                    clipboard: ClipboardConfig::Auto,
                 },
             },
             ui: UiConfig {
@@ -458,6 +479,9 @@ mod tests {
                     ]),
                     tab_width: 2,
                 },
+                external: CoreExternalConfig {
+                    clipboard: ClipboardConfig::Auto,
+                },
             },
             ui: UiConfig {
                 common: UiCommonConfig {
@@ -527,6 +551,9 @@ mod tests {
                     )]),
                     tab_width: 4,
                 },
+                external: CoreExternalConfig {
+                    clipboard: ClipboardConfig::Auto,
+                },
             },
             ui: UiConfig {
                 common: UiCommonConfig {
@@ -565,5 +592,45 @@ mod tests {
             keybind: None,
         };
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_config_clipboard_auto() {
+        let toml = r#"
+            [core.external]
+            clipboard = "Auto"
+        "#;
+        let config: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
+        assert_eq!(config.core.external.clipboard, ClipboardConfig::Auto);
+    }
+
+    #[test]
+    fn test_config_clipboard_custom_single_command() {
+        let toml = r#"
+            [core.external]
+            clipboard = { Custom = { commands = ["wl-copy"] } }
+        "#;
+        let config: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
+        assert_eq!(
+            config.core.external.clipboard,
+            ClipboardConfig::Custom {
+                commands: vec!["wl-copy".into()]
+            }
+        );
+    }
+
+    #[test]
+    fn test_config_clipboard_custom_command_with_args() {
+        let toml = r#"
+            [core.external]
+            clipboard = { Custom = { commands = ["xclip", "-selection", "clipboard"] } }
+        "#;
+        let config: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
+        assert_eq!(
+            config.core.external.clipboard,
+            ClipboardConfig::Custom {
+                commands: vec!["xclip".into(), "-selection".into(), "clipboard".into()]
+            }
+        );
     }
 }

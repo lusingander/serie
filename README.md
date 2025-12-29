@@ -314,6 +314,18 @@ commands_1 = { name = "git diff", commands = ["git", "--no-pager", "diff", "--co
 # type: u16
 tab_width = 4
 
+[core.external]
+# Configuration for external commands used by the application.
+# The clipboard command to use for copy operations.
+# - "Auto": Use the default clipboard library
+# - { Custom = { commands = ["..."] } }: Use a custom command that receives text via stdin
+# type: enum
+# Examples:
+#   clipboard = "Auto"
+#   clipboard = { Custom = { commands = ["wl-copy"] } }
+#   clipboard = { Custom = { commands = ["xclip", "-selection", "clipboard"] } }
+clipboard = "Auto"
+
 [ui.common]
 # The type of a cursor to display in the input.
 # If `cursor_type = "Native"` is set, the terminal native cursor is used.

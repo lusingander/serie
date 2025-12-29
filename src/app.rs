@@ -594,7 +594,7 @@ impl App<'_> {
     }
 
     fn copy_to_clipboard(&self, name: String, value: String) {
-        match copy_to_clipboard(value) {
+        match copy_to_clipboard(value, &self.core_config.external.clipboard) {
             Ok(_) => {
                 let msg = format!("Copied {name} to clipboard successfully");
                 self.tx.send(AppEvent::NotifySuccess(msg));
