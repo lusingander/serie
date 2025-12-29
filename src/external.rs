@@ -2,6 +2,8 @@ use std::{cell::RefCell, process::Command};
 
 use arboard::Clipboard;
 
+use crate::config::ClipboardConfig;
+
 const USER_COMMAND_TARGET_HASH_MARKER: &str = "{{target_hash}}";
 const USER_COMMAND_FIRST_PARENT_HASH_MARKER: &str = "{{first_parent_hash}}";
 const USER_COMMAND_AREA_WIDTH_MARKER: &str = "{{area_width}}";
@@ -11,37 +13,42 @@ thread_local! {
     static CLIPBOARD: RefCell<Option<Clipboard>> = const { RefCell::new(None) };
 }
 
-// arboard may use X11 via XWayland on Wayland sessions, causing silent clipboard failures
-pub fn copy_to_clipboard(value: String) -> Result<(), String> {
-    if std::env::var("WAYLAND_DISPLAY").is_ok() {
-        copy_to_clipboard_wayland(value)
-    } else {
-        copy_to_clipboard_arboard(value)
+pub fn copy_to_clipboard(value: String, config: &ClipboardConfig) -> Result<(), String> {
+    match config {
+        ClipboardConfig::Auto => copy_to_clipboard_auto(value),
+        ClipboardConfig::Custom { commands } => copy_to_clipboard_custom(value, commands),
     }
 }
 
-fn copy_to_clipboard_wayland(value: String) -> Result<(), String> {
+fn copy_to_clipboard_custom(value: String, commands: &[String]) -> Result<(), String> {
     use std::io::Write;
     use std::process::Stdio;
 
-    let mut child = Command::new("wl-copy")
+    if commands.is_empty() {
+        return Err("No clipboard command specified".to_string());
+    }
+
+    let mut child = Command::new(&commands[0])
+        .args(&commands[1..])
         .stdin(Stdio::piped())
         .spawn()
-        .map_err(|e| format!("Failed to run wl-copy: {e}"))?;
+        .map_err(|e| format!("Failed to run {}: {e}", commands[0]))?;
 
     child
         .stdin
         .take()
         .expect("stdin should be available")
         .write_all(value.as_bytes())
-        .map_err(|e| format!("Failed to write to wl-copy: {e}"))?;
+        .map_err(|e| format!("Failed to write to {}: {e}", commands[0]))?;
 
-    child.wait().map_err(|e| format!("wl-copy failed: {e}"))?;
+    child
+        .wait()
+        .map_err(|e| format!("{} failed: {e}", commands[0]))?;
 
     Ok(())
 }
 
-fn copy_to_clipboard_arboard(value: String) -> Result<(), String> {
+fn copy_to_clipboard_auto(value: String) -> Result<(), String> {
     CLIPBOARD.with_borrow_mut(|clipboard| {
         if clipboard.is_none() {
             *clipboard = Clipboard::new()
