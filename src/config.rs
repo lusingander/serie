@@ -242,7 +242,9 @@ pub enum CursorType {
 pub enum ClipboardConfig {
     #[default]
     Auto,
-    Custom { commands: Vec<String> },
+    Custom {
+        commands: Vec<String>,
+    },
 }
 
 #[optional(derives = [Deserialize])]
