@@ -105,6 +105,50 @@
             }
           },
           "additionalProperties": false
+        },
+        "external": {
+          "type": "object",
+          "description": "Configuration for external commands used by the application.",
+          "properties": {
+            "clipboard": {
+              "description": "The clipboard command to use for copy operations.\n- \"Auto\": Use the default clipboard library\n- { Custom = { commands = [\"...\"] } }: Use a custom command that receives text via stdin",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "Auto"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "Custom": {
+                      "type": "object",
+                      "properties": {
+                        "commands": {
+                          "type": "array",
+                          "description": "A custom command that receives text via stdin.",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "commands"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "Custom"
+                  ],
+                  "additionalProperties": false
+                }
+              ],
+              "default": "Auto"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
