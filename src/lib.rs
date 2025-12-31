@@ -12,7 +12,7 @@ mod keybind;
 mod view;
 mod widget;
 
-use std::path::Path;
+use std::{path::Path, rc::Rc};
 
 use app::App;
 use clap::{Parser, ValueEnum};
@@ -23,6 +23,10 @@ use serde::Deserialize;
 #[derive(Parser)]
 #[command(version)]
 struct Args {
+    /// Path to git repository [default: current directory]
+    #[arg(default_value = ".")]
+    path: String,
+
     /// Image protocol to render graph [default: auto]
     #[arg(short, long, value_name = "TYPE")]
     protocol: Option<ImageProtocolType>,
@@ -122,14 +126,14 @@ pub fn run() -> Result<()> {
 
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 
-    let repository = git::Repository::load(Path::new("."), order)?;
+    let repository = git::Repository::load(Path::new(&args.path), order)?;
 
-    let graph = graph::calc_graph(&repository);
+    let graph = Rc::new(graph::calc_graph(&repository));
 
     let cell_width_type = check::decide_cell_width_type(&graph, graph_width)?;
 
     let graph_image_manager = GraphImageManager::new(
-        &graph,
+        Rc::clone(&graph),
         &graph_color_set,
         cell_width_type,
         image_protocol,
@@ -141,7 +145,7 @@ pub fn run() -> Result<()> {
     let (tx, rx) = event::init();
 
     let mut app = App::new(
-        &repository,
+        repository,
         graph_image_manager,
         &graph,
         &key_bind,

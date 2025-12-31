@@ -22,19 +22,47 @@ pub enum AppEvent {
     ClearUserCommand,
     OpenRefs,
     CloseRefs,
+    OpenCreateTag,
+    CloseCreateTag,
+    AddTagToCommit {
+        commit_hash: crate::git::CommitHash,
+        tag_name: String,
+    },
+    OpenDeleteTag,
+    CloseDeleteTag,
+    RemoveTagFromCommit {
+        commit_hash: crate::git::CommitHash,
+        tag_name: String,
+    },
+    OpenDeleteRef {
+        ref_name: String,
+        ref_type: crate::git::RefType,
+    },
+    CloseDeleteRef,
+    RemoveRefFromList {
+        ref_name: String,
+    },
     OpenHelp,
     CloseHelp,
     ClearHelp,
     SelectNewerCommit,
     SelectOlderCommit,
     SelectParentCommit,
-    CopyToClipboard { name: String, value: String },
+    CopyToClipboard {
+        name: String,
+        value: String,
+    },
     ClearStatusLine,
     UpdateStatusInput(String, Option<u16>, Option<String>),
     NotifyInfo(String),
     NotifySuccess(String),
     NotifyWarn(String),
     NotifyError(String),
+    ShowPendingOverlay {
+        message: String,
+    },
+    HidePendingOverlay,
+    Refresh,
 }
 
 #[derive(Clone)]
@@ -44,7 +72,7 @@ pub struct Sender {
 
 impl Sender {
     pub fn send(&self, event: AppEvent) {
-        self.tx.send(event).unwrap();
+        let _ = self.tx.send(event);
     }
 }
 
@@ -60,7 +88,7 @@ pub struct Receiver {
 
 impl Receiver {
     pub fn recv(&self) -> AppEvent {
-        self.rx.recv().unwrap()
+        self.rx.recv().unwrap_or(AppEvent::Quit)
     }
 }
 
@@ -121,11 +149,15 @@ pub enum UserEvent {
     Confirm,
     RefListToggle,
     Search,
+    Filter,
     UserCommandViewToggle(usize),
     IgnoreCaseToggle,
     FuzzyToggle,
     ShortCopy,
     FullCopy,
+    CreateTag,
+    DeleteTag,
+    Refresh,
     Unknown,
 }
 
@@ -184,10 +216,14 @@ impl<'de> Deserialize<'de> for UserEvent {
                         "confirm" => Ok(UserEvent::Confirm),
                         "ref_list_toggle" => Ok(UserEvent::RefListToggle),
                         "search" => Ok(UserEvent::Search),
+                        "filter" => Ok(UserEvent::Filter),
                         "ignore_case_toggle" => Ok(UserEvent::IgnoreCaseToggle),
                         "fuzzy_toggle" => Ok(UserEvent::FuzzyToggle),
                         "short_copy" => Ok(UserEvent::ShortCopy),
                         "full_copy" => Ok(UserEvent::FullCopy),
+                        "create_tag" => Ok(UserEvent::CreateTag),
+                        "delete_tag" => Ok(UserEvent::DeleteTag),
+                        "refresh" => Ok(UserEvent::Refresh),
                         _ => {
                             let msg = format!("Unknown user event: {}", value);
                             Err(de::Error::custom(msg))

@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ratatui::{
     crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
@@ -8,7 +10,7 @@ use crate::{
     color::ColorTheme,
     config::UiConfig,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
-    git::Ref,
+    git::{Ref, RefType},
     widget::{
         commit_list::{CommitList, CommitListState},
         ref_list::{RefList, RefListState},
@@ -17,10 +19,10 @@ use crate::{
 
 #[derive(Debug)]
 pub struct RefsView<'a> {
-    commit_list_state: Option<CommitListState<'a>>,
+    commit_list_state: Option<CommitListState>,
     ref_list_state: RefListState,
 
-    refs: Vec<Ref>,
+    refs: Vec<Rc<Ref>>,
 
     ui_config: &'a UiConfig,
     color_theme: &'a ColorTheme,
@@ -29,8 +31,8 @@ pub struct RefsView<'a> {
 
 impl<'a> RefsView<'a> {
     pub fn new(
-        commit_list_state: CommitListState<'a>,
-        refs: Vec<Ref>,
+        commit_list_state: CommitListState,
+        refs: Vec<Rc<Ref>>,
         ui_config: &'a UiConfig,
         color_theme: &'a ColorTheme,
         tx: Sender,
@@ -38,6 +40,24 @@ impl<'a> RefsView<'a> {
         RefsView {
             commit_list_state: Some(commit_list_state),
             ref_list_state: RefListState::new(),
+            refs,
+            ui_config,
+            color_theme,
+            tx,
+        }
+    }
+
+    pub fn with_state(
+        commit_list_state: CommitListState,
+        ref_list_state: RefListState,
+        refs: Vec<Rc<Ref>>,
+        ui_config: &'a UiConfig,
+        color_theme: &'a ColorTheme,
+        tx: Sender,
+    ) -> RefsView<'a> {
+        RefsView {
+            commit_list_state: Some(commit_list_state),
+            ref_list_state,
             refs,
             ui_config,
             color_theme,
@@ -90,19 +110,49 @@ impl<'a> RefsView<'a> {
             UserEvent::HelpToggle => {
                 self.tx.send(AppEvent::OpenHelp);
             }
+            UserEvent::UserCommandViewToggle(_) | UserEvent::DeleteTag => {
+                self.open_delete_ref();
+            }
             _ => {}
         }
     }
 
+    fn open_delete_ref(&self) {
+        if let Some(name) = self.ref_list_state.selected_local_branch() {
+            self.tx.send(AppEvent::OpenDeleteRef {
+                ref_name: name,
+                ref_type: RefType::Branch,
+            });
+        } else if let Some(name) = self.ref_list_state.selected_remote_branch() {
+            self.tx.send(AppEvent::OpenDeleteRef {
+                ref_name: name,
+                ref_type: RefType::RemoteBranch,
+            });
+        } else if let Some(name) = self.ref_list_state.selected_tag() {
+            self.tx.send(AppEvent::OpenDeleteRef {
+                ref_name: name,
+                ref_type: RefType::Tag,
+            });
+        } else {
+            self.tx.send(AppEvent::NotifyWarn(
+                "Select a branch or tag to delete".into(),
+            ));
+        }
+    }
+
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        let graph_width = self.as_list_state().graph_area_cell_width() + 1; // graph area + marker
+        let Some(list_state) = self.commit_list_state.as_mut() else {
+            return;
+        };
+
+        let graph_width = list_state.graph_area_cell_width() + 1; // graph area + marker
         let refs_width = (area.width.saturating_sub(graph_width)).min(self.ui_config.refs.width);
 
         let [list_area, refs_area] =
             Layout::horizontal([Constraint::Min(0), Constraint::Length(refs_width)]).areas(area);
 
         let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
-        f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
+        f.render_stateful_widget(commit_list, list_area, list_state);
 
         let ref_list = RefList::new(&self.refs, self.color_theme);
         f.render_stateful_widget(ref_list, refs_area, &mut self.ref_list_state);
@@ -110,21 +160,38 @@ impl<'a> RefsView<'a> {
 }
 
 impl<'a> RefsView<'a> {
-    pub fn take_list_state(&mut self) -> CommitListState<'a> {
-        self.commit_list_state.take().unwrap()
+    pub fn take_list_state(&mut self) -> Option<CommitListState> {
+        self.commit_list_state.take()
     }
 
-    fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {
-        self.commit_list_state.as_mut().unwrap()
+    pub fn take_ref_list_state(&mut self) -> RefListState {
+        std::mem::take(&mut self.ref_list_state)
     }
 
-    fn as_list_state(&self) -> &CommitListState<'a> {
-        self.commit_list_state.as_ref().unwrap()
+    pub fn take_refs(&mut self) -> Vec<Rc<Ref>> {
+        std::mem::take(&mut self.refs)
+    }
+
+    pub fn remove_ref(&mut self, ref_name: &str) {
+        if let Some(target) = self
+            .refs
+            .iter()
+            .find(|r| r.name() == ref_name)
+            .map(|r| r.target().clone())
+        {
+            if let Some(list_state) = self.commit_list_state.as_mut() {
+                list_state.remove_ref_from_commit(&target, ref_name);
+            }
+        }
+        self.refs.retain(|r| r.name() != ref_name);
+        self.ref_list_state.adjust_selection_after_delete();
     }
 
     fn update_commit_list_selected(&mut self) {
         if let Some(selected) = self.ref_list_state.selected_ref_name() {
-            self.as_mut_list_state().select_ref(&selected)
+            if let Some(list_state) = self.commit_list_state.as_mut() {
+                list_state.select_ref(&selected);
+            }
         }
     }
 

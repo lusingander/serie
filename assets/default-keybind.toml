@@ -29,7 +29,8 @@ go_to_previous = ["shift-n"]
 confirm = ["enter"]
 ref_list_toggle = ["tab"]
 search = ["/"]
-ignore_case_toggle = ["ctrl-g"]
+filter = ["f"]
+ignore_case_toggle = ["alt-c"]
 fuzzy_toggle = ["ctrl-x"]
 
 user_command_view_toggle_1 = ["d"]
@@ -37,3 +38,8 @@ user_command_view_toggle_1 = ["d"]
 # copy part of information, ex: copy the short commit hash not all
 short_copy = ["c"]
 full_copy = ["shift-c"]
+
+create_tag = ["t"]
+delete_tag = ["ctrl-t"]
+
+refresh = ["r"]

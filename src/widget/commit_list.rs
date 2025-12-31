@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use laurier::highlight::highlight_matched_text;
@@ -25,19 +25,36 @@ static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(|| SkimMatcherV2::default(
 const ELLIPSIS: &str = "...";
 
 #[derive(Debug)]
-pub struct CommitInfo<'a> {
-    commit: &'a Commit,
-    refs: Vec<&'a Ref>,
+pub struct CommitInfo {
+    commit: Rc<Commit>,
+    refs: Vec<Rc<Ref>>,
     graph_color: Color,
 }
 
-impl<'a> CommitInfo<'a> {
-    pub fn new(commit: &'a Commit, refs: Vec<&'a Ref>, graph_color: Color) -> Self {
+impl CommitInfo {
+    pub fn new(commit: Rc<Commit>, refs: Vec<Rc<Ref>>, graph_color: Color) -> Self {
         Self {
             commit,
             refs,
             graph_color,
         }
+    }
+
+    pub fn commit_hash(&self) -> &CommitHash {
+        &self.commit.commit_hash
+    }
+
+    fn add_ref(&mut self, r: Rc<Ref>) {
+        self.refs.push(r);
+        self.refs.sort();
+    }
+
+    fn remove_ref(&mut self, name: &str) {
+        self.refs.retain(|r| r.name() != name);
+    }
+
+    fn refs_to_vec(&self) -> Vec<Rc<Ref>> {
+        self.refs.clone()
     }
 }
 
@@ -76,6 +93,16 @@ pub enum TransientMessage {
     FuzzyOn,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FilterState {
+    Inactive,
+    Filtering {
+        ignore_case: bool,
+        fuzzy: bool,
+        transient_message: TransientMessage,
+    },
+}
+
 #[derive(Debug, Default, Clone)]
 struct SearchMatch {
     refs: HashMap<String, SearchMatchPosition>,
@@ -86,11 +113,16 @@ struct SearchMatch {
 }
 
 impl SearchMatch {
-    fn new(c: &Commit, refs: &[&Ref], q: &str, ignore_case: bool, fuzzy: bool) -> Self {
+    fn new<'a>(
+        c: &Commit,
+        refs: impl Iterator<Item = &'a Ref>,
+        q: &str,
+        ignore_case: bool,
+        fuzzy: bool,
+    ) -> Self {
         let matcher = SearchMatcher::new(q, ignore_case, fuzzy);
         let refs = refs
-            .iter()
-            .filter(|r| !matches!(*r, Ref::Stash { .. }))
+            .filter(|r| !matches!(r, Ref::Stash { .. }))
             .filter_map(|r| {
                 matcher
                     .matched_position(r.name())
@@ -155,7 +187,29 @@ impl SearchMatcher {
         }
     }
 
+    /// Quick check if string matches without computing match positions
+    fn matches(&self, s: &str) -> bool {
+        if self.query.is_empty() {
+            return false;
+        }
+        if self.fuzzy {
+            let result = if self.ignore_case {
+                FUZZY_MATCHER.fuzzy_match(&s.to_lowercase(), &self.query)
+            } else {
+                FUZZY_MATCHER.fuzzy_match(s, &self.query)
+            };
+            result.is_some()
+        } else if self.ignore_case {
+            s.to_lowercase().contains(&self.query)
+        } else {
+            s.contains(&self.query)
+        }
+    }
+
     fn matched_position(&self, s: &str) -> Option<SearchMatchPosition> {
+        if self.query.is_empty() {
+            return None;
+        }
         if self.fuzzy {
             let result = if self.ignore_case {
                 FUZZY_MATCHER.fuzzy_indices(&s.to_lowercase(), &self.query)
@@ -179,17 +233,28 @@ impl SearchMatcher {
 }
 
 #[derive(Debug)]
-pub struct CommitListState<'a> {
-    commits: Vec<CommitInfo<'a>>,
-    graph_image_manager: GraphImageManager<'a>,
+pub struct CommitListState {
+    commits: Vec<CommitInfo>,
+    graph_image_manager: GraphImageManager,
     graph_cell_width: u16,
-    head: &'a Head,
+    head: Head,
 
-    ref_name_to_commit_index_map: HashMap<&'a str, usize>,
+    ref_name_to_commit_index_map: HashMap<String, usize>,
 
     search_state: SearchState,
     search_input: Input,
     search_matches: Vec<SearchMatch>,
+
+    // Optimization: track previous search for incremental search
+    last_search_query: String,
+    last_matched_indices: Vec<usize>,
+    last_search_ignore_case: bool,
+    last_search_fuzzy: bool,
+
+    // Filter mode
+    filter_state: FilterState,
+    filter_input: Input,
+    filtered_indices: Vec<usize>,
 
     selected: usize,
     offset: usize,
@@ -200,16 +265,16 @@ pub struct CommitListState<'a> {
     default_fuzzy: bool,
 }
 
-impl<'a> CommitListState<'a> {
+impl CommitListState {
     pub fn new(
-        commits: Vec<CommitInfo<'a>>,
-        graph_image_manager: GraphImageManager<'a>,
+        commits: Vec<CommitInfo>,
+        graph_image_manager: GraphImageManager,
         graph_cell_width: u16,
-        head: &'a Head,
-        ref_name_to_commit_index_map: HashMap<&'a str, usize>,
+        head: Head,
+        ref_name_to_commit_index_map: HashMap<String, usize>,
         default_ignore_case: bool,
         default_fuzzy: bool,
-    ) -> CommitListState<'a> {
+    ) -> CommitListState {
         let total = commits.len();
         CommitListState {
             commits,
@@ -220,6 +285,13 @@ impl<'a> CommitListState<'a> {
             search_state: SearchState::Inactive,
             search_input: Input::default(),
             search_matches: vec![SearchMatch::default(); total],
+            last_search_query: String::new(),
+            last_matched_indices: Vec::new(),
+            last_search_ignore_case: false,
+            last_search_fuzzy: false,
+            filter_state: FilterState::Inactive,
+            filter_input: Input::default(),
+            filtered_indices: Vec::new(),
             selected: 0,
             offset: 0,
             total,
@@ -233,7 +305,31 @@ impl<'a> CommitListState<'a> {
         self.graph_cell_width + 1 // right pad
     }
 
+    pub fn add_ref_to_commit(&mut self, commit_hash: &CommitHash, new_ref: Ref) {
+        for (index, commit_info) in self.commits.iter_mut().enumerate() {
+            if commit_info.commit_hash() == commit_hash {
+                self.ref_name_to_commit_index_map
+                    .insert(new_ref.name().to_string(), index);
+                commit_info.add_ref(Rc::new(new_ref));
+                break;
+            }
+        }
+    }
+
+    pub fn remove_ref_from_commit(&mut self, commit_hash: &CommitHash, tag_name: &str) {
+        for commit_info in self.commits.iter_mut() {
+            if commit_info.commit_hash() == commit_hash {
+                self.ref_name_to_commit_index_map.remove(tag_name);
+                commit_info.remove_ref(tag_name);
+                break;
+            }
+        }
+    }
+
     pub fn select_next(&mut self) {
+        if self.total == 0 || self.height == 0 {
+            return;
+        }
         if self.selected < (self.total - 1).min(self.height - 1) {
             self.selected += 1;
         } else if self.selected + self.offset < self.total - 1 {
@@ -242,6 +338,9 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn select_parent(&mut self) {
+        if self.total == 0 {
+            return;
+        }
         if let Some(target_commit) = self.selected_commit_parent_hash().cloned() {
             while target_commit.as_str() != self.selected_commit_hash().as_str() {
                 self.select_next();
@@ -250,6 +349,9 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn selected_commit_parent_hash(&self) -> Option<&CommitHash> {
+        if self.total == 0 {
+            return None;
+        }
         self.commits[self.current_selected_index()]
             .commit
             .parent_commit_hashes
@@ -270,6 +372,9 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn select_last(&mut self) {
+        if self.total == 0 || self.height == 0 {
+            return;
+        }
         self.selected = (self.height - 1).min(self.total - 1);
         if self.height < self.total {
             self.offset = self.total - self.height;
@@ -286,6 +391,9 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn scroll_up(&mut self) {
+        if self.height == 0 {
+            return;
+        }
         if self.offset > 0 {
             self.offset -= 1;
             if self.selected < self.height - 1 {
@@ -311,6 +419,9 @@ impl<'a> CommitListState<'a> {
     }
 
     fn scroll_down_height(&mut self, scroll_height: usize) {
+        if self.total == 0 || self.height == 0 {
+            return;
+        }
         if self.offset + self.height + scroll_height < self.total {
             self.offset += scroll_height;
         } else {
@@ -341,7 +452,10 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn select_middle(&mut self) {
-        if self.total > self.height {
+        if self.total == 0 {
+            return;
+        }
+        if self.total > self.height && self.height > 0 {
             self.selected = self.height / 2;
         } else {
             self.selected = self.total / 2;
@@ -349,6 +463,9 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn select_low(&mut self) {
+        if self.total == 0 || self.height == 0 {
+            return;
+        }
         if self.total > self.height {
             self.selected = self.height - 1;
         } else {
@@ -368,10 +485,16 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn select_next_match(&mut self) {
+        if self.commits.is_empty() {
+            return;
+        }
         self.select_next_match_index(self.current_selected_index());
     }
 
     pub fn select_prev_match(&mut self) {
+        if self.commits.is_empty() {
+            return;
+        }
         self.select_prev_match_index(self.current_selected_index());
     }
 
@@ -381,8 +504,14 @@ impl<'a> CommitListState<'a> {
             .commit_hash
     }
 
+    pub fn selected_commit_refs(&self) -> Vec<Rc<Ref>> {
+        self.commits[self.current_selected_index()].refs_to_vec()
+    }
+
+    /// Returns the real commit index (in commits Vec) for the currently selected item
     fn current_selected_index(&self) -> usize {
-        self.offset + self.selected
+        let visible_idx = self.offset + self.selected;
+        self.real_commit_index(visible_idx)
     }
 
     pub fn select_ref(&mut self, ref_name: &str) {
@@ -576,22 +705,110 @@ impl<'a> CommitListState<'a> {
     }
 
     fn update_search_matches(&mut self, ignore_case: bool, fuzzy: bool) {
-        let q = self.search_input.value();
-        let mut match_index = 1;
-        for (i, commit_info) in self.commits.iter().enumerate() {
-            let mut m = SearchMatch::new(
-                commit_info.commit,
-                commit_info.refs.as_slice(),
-                q,
-                ignore_case,
-                fuzzy,
-            );
-            if m.matched() {
-                m.match_index = match_index;
-                match_index += 1;
-            }
-            self.search_matches[i] = m;
+        let query = self.search_input.value().to_string();
+
+        // Early return for empty query
+        if query.is_empty() {
+            self.clear_search_matches();
+            self.last_search_query.clear();
+            self.last_matched_indices.clear();
+            return;
         }
+
+        let matcher = SearchMatcher::new(&query, ignore_case, fuzzy);
+
+        // Determine if we can use incremental search:
+        // - New query extends the previous query (user typing more chars)
+        // - Same search settings (ignore_case, fuzzy)
+        let settings_unchanged =
+            ignore_case == self.last_search_ignore_case && fuzzy == self.last_search_fuzzy;
+        let can_use_incremental = settings_unchanged
+            && !self.last_search_query.is_empty()
+            && query.starts_with(&self.last_search_query)
+            && !self.last_matched_indices.is_empty();
+
+        let mut new_matched_indices = Vec::new();
+        let mut match_index = 1;
+
+        if can_use_incremental {
+            // Incremental search: only check previously matched commits
+            // First, clear all previous matches
+            for &i in &self.last_matched_indices {
+                self.search_matches[i].clear();
+            }
+
+            // Then search only among previously matched
+            for &i in &self.last_matched_indices {
+                let commit_info = &self.commits[i];
+                if Self::commit_quick_matches(&matcher, commit_info) {
+                    let mut m = SearchMatch::new(
+                        &commit_info.commit,
+                        commit_info.refs.iter().map(|r| r.as_ref()),
+                        &query,
+                        ignore_case,
+                        fuzzy,
+                    );
+                    m.match_index = match_index;
+                    match_index += 1;
+                    self.search_matches[i] = m;
+                    new_matched_indices.push(i);
+                }
+            }
+        } else {
+            // Full search: check all commits
+            self.clear_search_matches();
+
+            for (i, commit_info) in self.commits.iter().enumerate() {
+                // Quick check first to avoid creating SearchMatch for non-matching commits
+                if Self::commit_quick_matches(&matcher, commit_info) {
+                    let mut m = SearchMatch::new(
+                        &commit_info.commit,
+                        commit_info.refs.iter().map(|r| r.as_ref()),
+                        &query,
+                        ignore_case,
+                        fuzzy,
+                    );
+                    m.match_index = match_index;
+                    match_index += 1;
+                    self.search_matches[i] = m;
+                    new_matched_indices.push(i);
+                }
+            }
+        }
+
+        self.last_search_query = query;
+        self.last_matched_indices = new_matched_indices;
+        self.last_search_ignore_case = ignore_case;
+        self.last_search_fuzzy = fuzzy;
+    }
+
+    /// Quick check if commit matches any searchable field
+    fn commit_quick_matches(matcher: &SearchMatcher, commit_info: &CommitInfo) -> bool {
+        let commit = &commit_info.commit;
+
+        // Check subject first (most likely match)
+        if matcher.matches(&commit.subject) {
+            return true;
+        }
+
+        // Check author name
+        if matcher.matches(&commit.author_name) {
+            return true;
+        }
+
+        // Check commit hash
+        if matcher.matches(&commit.commit_hash.as_short_hash()) {
+            return true;
+        }
+
+        // Check refs
+        for r in &commit_info.refs {
+            if !matches!(r.as_ref(), Ref::Stash { .. }) && matcher.matches(r.name()) {
+                return true;
+            }
+        }
+
+        false
     }
 
     fn clear_search_matches(&mut self) {
@@ -599,8 +816,8 @@ impl<'a> CommitListState<'a> {
     }
 
     fn select_current_or_next_match_index(&mut self, current_index: usize) {
-        if self.search_matches[current_index].matched() {
-            self.select_index(current_index);
+        if self.search_matches[current_index].matched() && self.is_index_visible(current_index) {
+            self.select_real_index(current_index);
             self.search_state
                 .update_match_index(self.search_matches[current_index].match_index);
         } else {
@@ -609,42 +826,234 @@ impl<'a> CommitListState<'a> {
     }
 
     fn select_next_match_index(&mut self, current_index: usize) {
-        let mut i = (current_index + 1) % self.total;
+        // Always iterate over full commits list since search_matches uses real indices
+        let len = self.commits.len();
+        if len == 0 {
+            return;
+        }
+        let mut i = (current_index + 1) % len;
         while i != current_index {
-            if self.search_matches[i].matched() {
-                self.select_index(i);
+            if self.search_matches[i].matched() && self.is_index_visible(i) {
+                self.select_real_index(i);
                 self.search_state
                     .update_match_index(self.search_matches[i].match_index);
                 return;
             }
-            if i == self.total - 1 {
-                i = 0;
-            } else {
-                i += 1;
-            }
+            i = (i + 1) % len;
         }
     }
 
     fn select_prev_match_index(&mut self, current_index: usize) {
-        let mut i = (current_index + self.total - 1) % self.total;
+        // Always iterate over full commits list since search_matches uses real indices
+        let len = self.commits.len();
+        if len == 0 {
+            return;
+        }
+        let mut i = (current_index + len - 1) % len;
         while i != current_index {
-            if self.search_matches[i].matched() {
-                self.select_index(i);
+            if self.search_matches[i].matched() && self.is_index_visible(i) {
+                self.select_real_index(i);
                 self.search_state
                     .update_match_index(self.search_matches[i].match_index);
                 return;
             }
-            if i == 0 {
-                i = self.total - 1;
-            } else {
-                i -= 1;
-            }
+            i = (i + len - 1) % len;
         }
     }
 
-    fn encoded_image(&self, commit_info: &'a CommitInfo) -> &str {
+    /// Check if a real commit index is visible (considering filter)
+    fn is_index_visible(&self, real_index: usize) -> bool {
+        if self.filtered_indices.is_empty() {
+            true // No filter, all indices visible
+        } else {
+            self.filtered_indices.contains(&real_index)
+        }
+    }
+
+    /// Select a commit by its real index (in commits Vec), converting to visible index
+    fn select_real_index(&mut self, real_index: usize) {
+        if self.filtered_indices.is_empty() {
+            self.select_index(real_index);
+        } else if let Some(visible_idx) =
+            self.filtered_indices.iter().position(|&i| i == real_index)
+        {
+            self.select_index(visible_idx);
+        }
+    }
+
+    fn encoded_image(&self, commit_info: &CommitInfo) -> &str {
         self.graph_image_manager
             .encoded_image(&commit_info.commit.commit_hash)
+    }
+
+    // Filter mode methods
+
+    pub fn filter_state(&self) -> FilterState {
+        self.filter_state
+    }
+
+    pub fn start_filter(&mut self) {
+        if let FilterState::Inactive = self.filter_state {
+            // Filter mode uses fuzzy by default for better UX
+            self.filter_state = FilterState::Filtering {
+                ignore_case: true,
+                fuzzy: true,
+                transient_message: TransientMessage::None,
+            };
+            self.filter_input.reset();
+            self.filtered_indices.clear();
+            self.update_filter();
+        }
+    }
+
+    pub fn handle_filter_input(&mut self, key: KeyEvent) {
+        if let FilterState::Filtering {
+            transient_message, ..
+        } = &mut self.filter_state
+        {
+            *transient_message = TransientMessage::None;
+        }
+
+        if let FilterState::Filtering {
+            ignore_case, fuzzy, ..
+        } = self.filter_state
+        {
+            self.filter_input.handle_event(&Event::Key(key));
+            self.update_filter_matches(ignore_case, fuzzy);
+        }
+    }
+
+    pub fn cancel_filter(&mut self) {
+        self.filter_state = FilterState::Inactive;
+        self.filter_input.reset();
+        self.filtered_indices.clear();
+        // Reset to show all commits
+        self.total = self.commits.len();
+        self.selected = 0;
+        self.offset = 0;
+    }
+
+    pub fn apply_filter(&mut self) {
+        if let FilterState::Filtering { .. } = self.filter_state {
+            self.filter_state = FilterState::Inactive;
+            // Keep filtered_indices active
+        }
+    }
+
+    pub fn toggle_filter_ignore_case(&mut self) {
+        if let FilterState::Filtering {
+            ignore_case,
+            fuzzy,
+            transient_message,
+        } = &mut self.filter_state
+        {
+            *ignore_case = !*ignore_case;
+            *transient_message = if *ignore_case {
+                TransientMessage::IgnoreCaseOn
+            } else {
+                TransientMessage::IgnoreCaseOff
+            };
+            let ic = *ignore_case;
+            let fz = *fuzzy;
+            self.update_filter_matches(ic, fz);
+        }
+    }
+
+    pub fn toggle_filter_fuzzy(&mut self) {
+        if let FilterState::Filtering {
+            ignore_case,
+            fuzzy,
+            transient_message,
+        } = &mut self.filter_state
+        {
+            *fuzzy = !*fuzzy;
+            *transient_message = if *fuzzy {
+                TransientMessage::FuzzyOn
+            } else {
+                TransientMessage::FuzzyOff
+            };
+            let ic = *ignore_case;
+            let fz = *fuzzy;
+            self.update_filter_matches(ic, fz);
+        }
+    }
+
+    pub fn filter_query_string(&self) -> Option<String> {
+        if let FilterState::Filtering { .. } = self.filter_state {
+            Some(format!("filter: {}", self.filter_input.value()))
+        } else {
+            None
+        }
+    }
+
+    pub fn filter_query_cursor_position(&self) -> u16 {
+        // "filter: " prefix is 8 chars
+        8 + self.filter_input.visual_cursor() as u16
+    }
+
+    pub fn filter_transient_message_string(&self) -> Option<String> {
+        if let FilterState::Filtering {
+            transient_message, ..
+        } = self.filter_state
+        {
+            match transient_message {
+                TransientMessage::None => None,
+                TransientMessage::IgnoreCaseOn => Some("Ignore case: ON ".to_string()),
+                TransientMessage::IgnoreCaseOff => Some("Ignore case: OFF".to_string()),
+                TransientMessage::FuzzyOn => Some("Fuzzy match: ON ".to_string()),
+                TransientMessage::FuzzyOff => Some("Fuzzy match: OFF".to_string()),
+            }
+        } else {
+            None
+        }
+    }
+
+    fn update_filter(&mut self) {
+        if let FilterState::Filtering {
+            ignore_case, fuzzy, ..
+        } = self.filter_state
+        {
+            self.update_filter_matches(ignore_case, fuzzy);
+        }
+    }
+
+    fn update_filter_matches(&mut self, ignore_case: bool, fuzzy: bool) {
+        let query = self.filter_input.value().to_string();
+
+        if query.is_empty() {
+            // Show all commits when filter is empty
+            self.filtered_indices.clear();
+            self.total = self.commits.len();
+            self.selected = 0;
+            self.offset = 0;
+            return;
+        }
+
+        let matcher = SearchMatcher::new(&query, ignore_case, fuzzy);
+        self.filtered_indices.clear();
+
+        for (i, commit_info) in self.commits.iter().enumerate() {
+            if Self::commit_quick_matches(&matcher, commit_info) {
+                self.filtered_indices.push(i);
+            }
+        }
+
+        self.total = if self.filtered_indices.is_empty() {
+            0
+        } else {
+            self.filtered_indices.len()
+        };
+        self.selected = 0;
+        self.offset = 0;
+    }
+
+    /// Map visible index to real commit index
+    fn real_commit_index(&self, visible_idx: usize) -> usize {
+        if self.filtered_indices.is_empty() {
+            visible_idx
+        } else {
+            self.filtered_indices[visible_idx]
+        }
     }
 }
 
@@ -663,7 +1072,7 @@ impl<'a> CommitList<'a> {
 }
 
 impl<'a> StatefulWidget for CommitList<'a> {
-    type State = CommitListState<'a>;
+    type State = CommitListState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         self.update_state(area, state);
@@ -716,16 +1125,19 @@ impl CommitList<'_> {
             state.offset += diff;
         }
 
-        state
-            .commits
-            .iter()
-            .skip(state.offset)
-            .take(state.height)
-            .for_each(|commit_info| {
-                state
-                    .graph_image_manager
-                    .load_encoded_image(&commit_info.commit.commit_hash);
-            });
+        // Load graph images for visible commits
+        let has_filter = !state.filtered_indices.is_empty();
+        for display_idx in 0..state.height.min(state.total.saturating_sub(state.offset)) {
+            let visible_idx = state.offset + display_idx;
+            let real_idx = if has_filter {
+                state.filtered_indices[visible_idx]
+            } else {
+                visible_idx
+            };
+            state
+                .graph_image_manager
+                .load_encoded_image(&state.commits[real_idx].commit.commit_hash);
+        }
     }
 
     fn calc_cell_widths(
@@ -773,13 +1185,13 @@ impl CommitList<'_> {
 
     fn render_graph(&self, buf: &mut Buffer, area: Rect, state: &CommitListState) {
         self.rendering_commit_info_iter(state)
-            .for_each(|(i, commit_info)| {
-                buf[(area.left(), area.top() + i as u16)]
+            .for_each(|(display_i, _real_i, commit_info)| {
+                buf[(area.left(), area.top() + display_i as u16)]
                     .set_symbol(state.encoded_image(commit_info));
 
                 // width - 1 for right pad
                 for w in 1..area.width - 1 {
-                    buf[(area.left() + w, area.top() + i as u16)].set_skip(true);
+                    buf[(area.left() + w, area.top() + display_i as u16)].set_skip(true);
                 }
             });
     }
@@ -787,7 +1199,7 @@ impl CommitList<'_> {
     fn render_marker(&self, buf: &mut Buffer, area: Rect, state: &CommitListState) {
         let items: Vec<ListItem> = self
             .rendering_commit_info_iter(state)
-            .map(|(_, commit_info)| ListItem::new("│".fg(commit_info.graph_color)))
+            .map(|(_, _, commit_info)| ListItem::new("│".fg(commit_info.graph_color)))
             .collect();
         Widget::render(List::new(items), area, buf)
     }
@@ -799,16 +1211,16 @@ impl CommitList<'_> {
         }
         let items: Vec<ListItem> = self
             .rendering_commit_info_iter(state)
-            .map(|(i, commit_info)| {
+            .map(|(display_i, real_i, commit_info)| {
                 let mut spans = refs_spans(
                     commit_info,
-                    state.head,
-                    &state.search_matches[state.offset + i].refs,
+                    &state.head,
+                    &state.search_matches[real_i].refs,
                     self.color_theme,
                 );
                 let ref_spans_width: usize = spans.iter().map(|s| s.width()).sum();
                 let max_width = max_width.saturating_sub(ref_spans_width);
-                let commit = commit_info.commit;
+                let commit = &commit_info.commit;
                 if max_width > ELLIPSIS.len() {
                     let truncate = console::measure_text_width(&commit.subject) > max_width;
                     let subject = if truncate {
@@ -817,23 +1229,23 @@ impl CommitList<'_> {
                         commit.subject.to_string()
                     };
 
-                    let sub_spans =
-                        if let Some(pos) = state.search_matches[state.offset + i].subject.clone() {
-                            highlighted_spans(
-                                subject.into(),
-                                pos,
-                                self.color_theme.list_subject_fg,
-                                Modifier::empty(),
-                                self.color_theme,
-                                truncate,
-                            )
-                        } else {
-                            vec![subject.fg(self.color_theme.list_subject_fg)]
-                        };
+                    let sub_spans = if let Some(pos) = state.search_matches[real_i].subject.clone()
+                    {
+                        highlighted_spans(
+                            subject.into(),
+                            pos,
+                            self.color_theme.list_subject_fg,
+                            Modifier::empty(),
+                            self.color_theme,
+                            truncate,
+                        )
+                    } else {
+                        vec![subject.fg(self.color_theme.list_subject_fg)]
+                    };
 
                     spans.extend(sub_spans)
                 }
-                self.to_commit_list_item(i, spans, state)
+                self.to_commit_list_item(display_i, spans, state)
             })
             .collect();
         Widget::render(List::new(items), area, buf);
@@ -846,27 +1258,26 @@ impl CommitList<'_> {
         }
         let items: Vec<ListItem> = self
             .rendering_commit_iter(state)
-            .map(|(i, commit)| {
+            .map(|(display_i, real_i, commit)| {
                 let truncate = console::measure_text_width(&commit.author_name) > max_width;
                 let name = if truncate {
                     console::truncate_str(&commit.author_name, max_width, ELLIPSIS).to_string()
                 } else {
                     commit.author_name.to_string()
                 };
-                let spans =
-                    if let Some(pos) = state.search_matches[state.offset + i].author_name.clone() {
-                        highlighted_spans(
-                            name.into(),
-                            pos,
-                            self.color_theme.list_name_fg,
-                            Modifier::empty(),
-                            self.color_theme,
-                            truncate,
-                        )
-                    } else {
-                        vec![name.fg(self.color_theme.list_name_fg)]
-                    };
-                self.to_commit_list_item(i, spans, state)
+                let spans = if let Some(pos) = state.search_matches[real_i].author_name.clone() {
+                    highlighted_spans(
+                        name.into(),
+                        pos,
+                        self.color_theme.list_name_fg,
+                        Modifier::empty(),
+                        self.color_theme,
+                        truncate,
+                    )
+                } else {
+                    vec![name.fg(self.color_theme.list_name_fg)]
+                };
+                self.to_commit_list_item(display_i, spans, state)
             })
             .collect();
         Widget::render(List::new(items), area, buf);
@@ -878,22 +1289,21 @@ impl CommitList<'_> {
         }
         let items: Vec<ListItem> = self
             .rendering_commit_iter(state)
-            .map(|(i, commit)| {
+            .map(|(display_i, real_i, commit)| {
                 let hash = commit.commit_hash.as_short_hash();
-                let spans =
-                    if let Some(pos) = state.search_matches[state.offset + i].commit_hash.clone() {
-                        highlighted_spans(
-                            hash.into(),
-                            pos,
-                            self.color_theme.list_hash_fg,
-                            Modifier::empty(),
-                            self.color_theme,
-                            false,
-                        )
-                    } else {
-                        vec![hash.fg(self.color_theme.list_hash_fg)]
-                    };
-                self.to_commit_list_item(i, spans, state)
+                let spans = if let Some(pos) = state.search_matches[real_i].commit_hash.clone() {
+                    highlighted_spans(
+                        hash.into(),
+                        pos,
+                        self.color_theme.list_hash_fg,
+                        Modifier::empty(),
+                        self.color_theme,
+                        false,
+                    )
+                } else {
+                    vec![hash.fg(self.color_theme.list_hash_fg)]
+                };
+                self.to_commit_list_item(display_i, spans, state)
             })
             .collect();
         Widget::render(List::new(items), area, buf);
@@ -905,7 +1315,7 @@ impl CommitList<'_> {
         }
         let items: Vec<ListItem> = self
             .rendering_commit_iter(state)
-            .map(|(i, commit)| {
+            .map(|(display_i, _real_i, commit)| {
                 let date = &commit.author_date;
                 let date_str = if self.config.date_local {
                     let local = date.with_timezone(&chrono::Local);
@@ -913,30 +1323,43 @@ impl CommitList<'_> {
                 } else {
                     date.format(&self.config.date_format).to_string()
                 };
-                self.to_commit_list_item(i, vec![date_str.fg(self.color_theme.list_date_fg)], state)
+                self.to_commit_list_item(
+                    display_i,
+                    vec![date_str.fg(self.color_theme.list_date_fg)],
+                    state,
+                )
             })
             .collect();
         Widget::render(List::new(items), area, buf);
     }
 
-    fn rendering_commit_info_iter<'a>(
-        &'a self,
-        state: &'a CommitListState,
-    ) -> impl Iterator<Item = (usize, &'a CommitInfo<'a>)> {
-        state
-            .commits
-            .iter()
-            .skip(state.offset)
-            .take(state.height)
-            .enumerate()
+    /// Returns iterator of (display_idx, real_idx, &CommitInfo)
+    /// display_idx: position on screen (0, 1, 2, ...)
+    /// real_idx: actual index in commits Vec (for search_matches access)
+    fn rendering_commit_info_iter<'b>(
+        &'b self,
+        state: &'b CommitListState,
+    ) -> impl Iterator<Item = (usize, usize, &'b CommitInfo)> {
+        let has_filter = !state.filtered_indices.is_empty();
+        (0..state.height.min(state.total.saturating_sub(state.offset))).map(move |display_idx| {
+            let visible_idx = state.offset + display_idx;
+            let real_idx = if has_filter {
+                state.filtered_indices[visible_idx]
+            } else {
+                visible_idx
+            };
+            (display_idx, real_idx, &state.commits[real_idx])
+        })
     }
 
-    fn rendering_commit_iter<'a>(
-        &'a self,
-        state: &'a CommitListState,
-    ) -> impl Iterator<Item = (usize, &'a Commit)> {
+    fn rendering_commit_iter<'b>(
+        &'b self,
+        state: &'b CommitListState,
+    ) -> impl Iterator<Item = (usize, usize, &'b Commit)> {
         self.rendering_commit_info_iter(state)
-            .map(|(i, commit_info)| (i, commit_info.commit))
+            .map(|(display_i, real_i, commit_info)| {
+                (display_i, real_i, commit_info.commit.as_ref())
+            })
     }
 
     fn to_commit_list_item<'a, 'b>(
@@ -967,9 +1390,11 @@ fn refs_spans<'a>(
     let refs = &commit_info.refs;
 
     if refs.len() == 1 {
-        if let Ref::Stash { name, .. } = refs[0] {
+        if let Ref::Stash { name, .. } = refs[0].as_ref() {
             return vec![
-                Span::raw(name).fg(color_theme.list_ref_stash_fg).bold(),
+                Span::raw(name.clone())
+                    .fg(color_theme.list_ref_stash_fg)
+                    .bold(),
                 Span::raw(" "),
             ];
         }
@@ -977,7 +1402,7 @@ fn refs_spans<'a>(
 
     let ref_spans: Vec<(Vec<Span>, &String)> = refs
         .iter()
-        .filter_map(|r| match r {
+        .filter_map(|r| match r.as_ref() {
             Ref::Branch { name, .. } => {
                 let fg = color_theme.list_ref_branch_fg;
                 Some((name, fg))
@@ -1021,6 +1446,7 @@ fn refs_spans<'a>(
         }
     }
 
+    let refs_len = refs.len();
     for (i, ss) in ref_spans.into_iter().enumerate() {
         let (ref_spans, ref_name) = ss;
         if let Head::Branch { name } = head {
@@ -1029,7 +1455,7 @@ fn refs_spans<'a>(
             }
         }
         spans.extend(ref_spans);
-        if i < refs.len() - 1 {
+        if i < refs_len - 1 {
             spans.push(Span::raw(", ").fg(color_theme.list_ref_paren_fg).bold());
         }
     }
