@@ -43,6 +43,12 @@ pub enum EdgeType {
     LeftBottom,  // ╰
 }
 
+impl EdgeType {
+    pub fn is_vertically_related(&self) -> bool {
+        matches!(self, EdgeType::Vertical | EdgeType::Up | EdgeType::Down)
+    }
+}
+
 pub fn calc_graph(repository: &Repository) -> Graph<'_> {
     let commits = repository.all_commits();
 
