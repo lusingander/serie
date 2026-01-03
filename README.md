@@ -105,6 +105,7 @@ Options:
   -p, --protocol <TYPE>           Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty]
   -o, --order <TYPE>              Commit ordering algorithm [default: chrono] [possible values: chrono, topo]
   -g, --graph-width <TYPE>        Commit graph image cell width [default: auto] [possible values: auto, double, single]
+  -s, --graph-style <TYPE>        Commit graph image edge style [default: rounded] [possible values: rounded, angular]
   -i, --initial-selection <TYPE>  Initial selection of commit [default: latest] [possible values: latest, head]
       --preload                   Preload all graph images
   -h, --help                      Print help
@@ -152,6 +153,23 @@ If not specified or `auto` is specified, `double` will be used automatically if 
 <img src="./img/graph-width-single.png" width=300>
 
 `--graph-width single`
+
+</details>
+
+#### -s, --graph-style \<TYPE\>
+
+The commit graph image edge style.
+
+`--graph-style rounded` will use rounded edges for the graph lines.
+
+`--graph-style angular` will use angular edges for the graph lines.
+
+<details>
+<summary>Screenshots</summary>
+
+<img src="./img/style-angular.png" width=300>
+
+`--graph-style angular`
 
 </details>
 
