@@ -13,12 +13,19 @@ use crate::{
     protocol::ImageProtocol,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GraphStyle {
+    Rounded,
+    Angular,
+}
+
 #[derive(Debug)]
 pub struct GraphImageManager<'a> {
     encoded_image_map: FxHashMap<CommitHash, String>,
 
     graph: &'a Graph<'a>,
     cell_width_type: CellWidthType,
+    graph_style: GraphStyle,
     image_params: ImageParams,
     drawing_pixels: DrawingPixels,
     image_protocol: ImageProtocol,
@@ -29,6 +36,7 @@ impl<'a> GraphImageManager<'a> {
         graph: &'a Graph,
         graph_color_set: &GraphColorSet,
         cell_width_type: CellWidthType,
+        graph_style: GraphStyle,
         image_protocol: ImageProtocol,
         preload: bool,
     ) -> Self {
@@ -37,10 +45,11 @@ impl<'a> GraphImageManager<'a> {
 
         let mut m = GraphImageManager {
             encoded_image_map: FxHashMap::default(),
-            image_params,
-            drawing_pixels,
             graph,
             cell_width_type,
+            graph_style,
+            image_params,
+            drawing_pixels,
             image_protocol,
         };
         if preload {

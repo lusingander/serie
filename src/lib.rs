@@ -35,6 +35,10 @@ struct Args {
     #[arg(short, long, value_name = "TYPE")]
     graph_width: Option<GraphWidthType>,
 
+    /// Commit graph image edge style [default: rounded]
+    #[arg(short = 's', long, value_name = "TYPE")]
+    graph_style: Option<GraphStyle>,
+
     /// Initial selection of commit [default: latest]
     #[arg(short, long, value_name = "TYPE")]
     initial_selection: Option<InitialSelection>,
@@ -90,6 +94,23 @@ pub enum GraphWidthType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
 #[serde(rename_all = "lowercase")]
+pub enum GraphStyle {
+    Rounded,
+    Angular,
+}
+
+impl From<Option<GraphStyle>> for graph::GraphStyle {
+    fn from(style: Option<GraphStyle>) -> Self {
+        match style {
+            Some(GraphStyle::Rounded) => graph::GraphStyle::Rounded,
+            Some(GraphStyle::Angular) => graph::GraphStyle::Angular,
+            None => graph::GraphStyle::Rounded,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum InitialSelection {
     Latest,
     Head,
@@ -115,6 +136,7 @@ pub fn run() -> Result<()> {
     let image_protocol = args.protocol.or(core_config.option.protocol).into();
     let order = args.order.or(core_config.option.order).into();
     let graph_width = args.graph_width.or(core_config.option.graph_width);
+    let graph_style = args.graph_style.or(core_config.option.graph_style).into();
     let initial_selection = args
         .initial_selection
         .or(core_config.option.initial_selection)
@@ -132,6 +154,7 @@ pub fn run() -> Result<()> {
         &graph,
         &graph_color_set,
         cell_width_type,
+        graph_style,
         image_protocol,
         args.preload,
     );
