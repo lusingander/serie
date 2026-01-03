@@ -309,6 +309,10 @@ order = "chrono"
 # The value specified in the command line argument takes precedence.
 # type: enum (possible values: "auto", "double", "single")
 graph_width = "auto"
+# The commit graph image edge style.
+# The value specified in the command line argument takes precedence.
+# type: enum (possible values: "rounded", "angular")
+graph_style = "rounded"
 # The initial selection of commit when starting the application.
 # The value specified in the command line argument takes precedence.
 # type: enum (possible values: "latest", "head")
