@@ -968,6 +968,7 @@ mod tests {
     use std::path::Path;
 
     use image::GenericImage;
+    use rstest::rstest;
 
     use crate::config::GraphColorConfig;
 
@@ -980,8 +981,13 @@ mod tests {
 
     // Note: The output contents are not verified by the code.
 
-    #[test]
-    fn test_calc_graph_row_image_default_params() {
+    #[rstest]
+    #[case("default_params_rounded", GraphStyle::Rounded)]
+    #[case("default_params_angular", GraphStyle::Angular)]
+    fn test_calc_graph_row_image_default_params(
+        #[case] file_name: &str,
+        #[case] graph_style: GraphStyle,
+    ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
@@ -989,13 +995,24 @@ mod tests {
         let cell_width_type = CellWidthType::Double;
         let image_params = ImageParams::new(&graph_color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
-        let file_name = "default_params";
 
-        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+        test_calc_graph_row_image(
+            params,
+            cell_count,
+            image_params,
+            drawing_pixels,
+            graph_style,
+            file_name,
+        );
     }
 
-    #[test]
-    fn test_calc_graph_row_image_wide_image() {
+    #[rstest]
+    #[case("wide_image_rounded", GraphStyle::Rounded)]
+    #[case("wide_image_angular", GraphStyle::Angular)]
+    fn test_calc_graph_row_image_wide_image(
+        #[case] file_name: &str,
+        #[case] graph_style: GraphStyle,
+    ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
@@ -1004,13 +1021,24 @@ mod tests {
         let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
         image_params.width = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
-        let file_name = "wide_image";
 
-        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+        test_calc_graph_row_image(
+            params,
+            cell_count,
+            image_params,
+            drawing_pixels,
+            graph_style,
+            file_name,
+        );
     }
 
-    #[test]
-    fn test_calc_graph_row_image_tall_image() {
+    #[rstest]
+    #[case("tall_image_rounded", GraphStyle::Rounded)]
+    #[case("tall_image_angular", GraphStyle::Angular)]
+    fn test_calc_graph_row_image_tall_image(
+        #[case] file_name: &str,
+        #[case] graph_style: GraphStyle,
+    ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
@@ -1019,13 +1047,24 @@ mod tests {
         let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
         image_params.height = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
-        let file_name = "tall_image";
 
-        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+        test_calc_graph_row_image(
+            params,
+            cell_count,
+            image_params,
+            drawing_pixels,
+            graph_style,
+            file_name,
+        );
     }
 
-    #[test]
-    fn test_calc_graph_row_image_single_cell_width() {
+    #[rstest]
+    #[case("single_cell_width_rounded", GraphStyle::Rounded)]
+    #[case("single_cell_width_angular", GraphStyle::Angular)]
+    fn test_calc_graph_row_image_single_cell_width(
+        #[case] file_name: &str,
+        #[case] graph_style: GraphStyle,
+    ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
@@ -1033,13 +1072,24 @@ mod tests {
         let cell_width_type = CellWidthType::Single;
         let image_params = ImageParams::new(&graph_color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
-        let file_name = "single_cell_width";
 
-        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+        test_calc_graph_row_image(
+            params,
+            cell_count,
+            image_params,
+            drawing_pixels,
+            graph_style,
+            file_name,
+        );
     }
 
-    #[test]
-    fn test_calc_graph_row_image_circle_radius() {
+    #[rstest]
+    #[case("circle_radius_rounded", GraphStyle::Rounded)]
+    #[case("circle_radius_angular", GraphStyle::Angular)]
+    fn test_calc_graph_row_image_circle_radius(
+        #[case] file_name: &str,
+        #[case] graph_style: GraphStyle,
+    ) {
         let params = straight_test_params();
         let cell_count = 2;
         let graph_color_config = GraphColorConfig::default();
@@ -1049,13 +1099,24 @@ mod tests {
         image_params.circle_inner_radius = 5;
         image_params.circle_outer_radius = 12;
         let drawing_pixels = DrawingPixels::new(&image_params);
-        let file_name = "circle_radius";
 
-        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+        test_calc_graph_row_image(
+            params,
+            cell_count,
+            image_params,
+            drawing_pixels,
+            graph_style,
+            file_name,
+        );
     }
 
-    #[test]
-    fn test_calc_graph_row_image_line_width() {
+    #[rstest]
+    #[case("line_width_rounded", GraphStyle::Rounded)]
+    #[case("line_width_angular", GraphStyle::Angular)]
+    fn test_calc_graph_row_image_line_width(
+        #[case] file_name: &str,
+        #[case] graph_style: GraphStyle,
+    ) {
         let params = straight_test_params();
         let cell_count = 2;
         let graph_color_config = GraphColorConfig::default();
@@ -1064,13 +1125,21 @@ mod tests {
         let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
         image_params.line_width = 1;
         let drawing_pixels = DrawingPixels::new(&image_params);
-        let file_name = "line_width";
 
-        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+        test_calc_graph_row_image(
+            params,
+            cell_count,
+            image_params,
+            drawing_pixels,
+            graph_style,
+            file_name,
+        );
     }
 
-    #[test]
-    fn test_calc_graph_row_image_color() {
+    #[rstest]
+    #[case("color_rounded", GraphStyle::Rounded)]
+    #[case("color_angular", GraphStyle::Angular)]
+    fn test_calc_graph_row_image_color(#[case] file_name: &str, #[case] graph_style: GraphStyle) {
         let params = branches_test_params();
         let cell_count = 7;
         let graph_color_config = GraphColorConfig {
@@ -1087,9 +1156,15 @@ mod tests {
         let cell_width_type = CellWidthType::Double;
         let image_params = ImageParams::new(&graph_color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
-        let file_name = "color";
 
-        test_calc_graph_row_image(params, cell_count, image_params, drawing_pixels, file_name);
+        test_calc_graph_row_image(
+            params,
+            cell_count,
+            image_params,
+            drawing_pixels,
+            graph_style,
+            file_name,
+        );
     }
 
     #[rustfmt::skip]
@@ -1130,6 +1205,7 @@ mod tests {
         cell_count: usize,
         image_params: ImageParams,
         drawing_pixels: DrawingPixels,
+        graph_style: GraphStyle,
         file_name: &str,
     ) {
         let graph_row_images: Vec<GraphRowImage> = params
@@ -1145,7 +1221,7 @@ mod tests {
                     &edges,
                     &image_params,
                     &drawing_pixels,
-                    GraphStyle::Rounded, // fixme
+                    graph_style,
                 )
             })
             .collect();
