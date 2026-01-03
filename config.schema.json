@@ -41,6 +41,15 @@
               ],
               "default": "auto"
             },
+            "graph_style": {
+              "type": "string",
+              "description": "The commit graph image edge style. The value specified in the command line argument takes precedence.",
+              "enum": [
+                "rounded",
+                "angular"
+              ],
+              "default": "rounded"
+            },
             "initial_selection": {
               "type": "string",
               "description": "The initial selection of commit when starting the application. The value specified in the command line argument takes precedence.",
