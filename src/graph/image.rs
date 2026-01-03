@@ -9,7 +9,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     color::GraphColorSet,
     git::CommitHash,
-    graph::{Edge, EdgeType, Graph},
+    graph::{
+        geometry::{bounding_box_u32, Point},
+        Edge, EdgeType, Graph,
+    },
     protocol::ImageProtocol,
 };
 
@@ -739,90 +742,51 @@ fn draw_diagonal_connected_edge(
         if let Some(side_edge) = side_edge_opt {
             match corner_edge.edge_type {
                 EdgeType::RightBottom | EdgeType::LeftBottom => {
-                    let start_pos_center_x = (side_edge.pos_x * image_params.width as usize) as f64
-                        + (image_params.width as f64 / 2.0);
-                    let start_pos_center_y = image_params.height as f64 / 2.0;
-                    let end_pos_center_x = (corner_edge.pos_x * image_params.width as usize) as f64
-                        + (image_params.width as f64 / 2.0);
-                    let end_pos_center_y = image_params.height as f64 / 10.0;
+                    let start_pos_center = Point::new(
+                        (side_edge.pos_x * image_params.width as usize) as f64
+                            + (image_params.width as f64 / 2.0),
+                        image_params.height as f64 / 2.0,
+                    );
+                    let end_pos_center = Point::new(
+                        (corner_edge.pos_x * image_params.width as usize) as f64
+                            + (image_params.width as f64 / 2.0),
+                        image_params.height as f64 / 10.0,
+                    );
 
-                    let line_vec_x = end_pos_center_x - start_pos_center_x;
-                    let line_vec_y = end_pos_center_y - start_pos_center_y;
-                    let units = (line_vec_x.powf(2.0) + line_vec_y.powf(2.0)).sqrt();
-                    let unit_vec_x = line_vec_x / units;
-                    let unit_vec_y = line_vec_y / units;
-                    let normal_vec_x = -unit_vec_y;
-                    let normal_vec_y = unit_vec_x;
+                    let line_vec = end_pos_center - start_pos_center;
+                    let unit_vec = line_vec.normalize();
+                    let normal_vec = unit_vec.perpendicular();
 
-                    let line_start_x =
-                        start_pos_center_x + unit_vec_x * (image_params.circle_outer_radius as f64);
-                    let line_start_y =
-                        start_pos_center_y + unit_vec_y * (image_params.circle_outer_radius as f64);
-                    let line_start_1_x =
-                        line_start_x + normal_vec_x * (image_params.line_width as f64 / 2.0);
-                    let line_start_1_y =
-                        line_start_y + normal_vec_y * (image_params.line_width as f64 / 2.0);
-                    let line_start_2_x =
-                        line_start_x - normal_vec_x * (image_params.line_width as f64 / 2.0);
-                    let line_start_2_y =
-                        line_start_y - normal_vec_y * (image_params.line_width as f64 / 2.0);
+                    let line_start =
+                        start_pos_center + unit_vec * (image_params.circle_outer_radius as f64);
+                    let line_start_1 =
+                        line_start + normal_vec * (image_params.line_width as f64 / 2.0);
+                    let line_start_2 =
+                        line_start - normal_vec * (image_params.line_width as f64 / 2.0);
 
                     let half_width = image_params.line_width as f64 / 2.0;
-                    let slope = unit_vec_y / unit_vec_x;
+                    let slope = unit_vec.y / unit_vec.x;
 
-                    let vertical_left_x = end_pos_center_x - half_width;
-                    let vertical_right_x = end_pos_center_x + half_width;
+                    let vertical_left_x = end_pos_center.x - half_width;
+                    let vertical_right_x = end_pos_center.x + half_width;
 
-                    let corner_1_x = vertical_right_x;
-                    let corner_1_y = line_start_1_y + slope * (vertical_right_x - line_start_1_x);
-                    let corner_2_x = vertical_left_x;
-                    let corner_2_y = line_start_2_y + slope * (vertical_left_x - line_start_2_x);
+                    let corner_1 = Point::new(
+                        vertical_right_x,
+                        line_start_1.y + slope * (vertical_right_x - line_start_1.x),
+                    );
+                    let corner_2 = Point::new(
+                        vertical_left_x,
+                        line_start_2.y + slope * (vertical_left_x - line_start_2.x),
+                    );
 
-                    let vertices = [
-                        (line_start_1_x, line_start_1_y),
-                        (corner_1_x, corner_1_y),
-                        (corner_2_x, corner_2_y),
-                        (line_start_2_x, line_start_2_y),
-                    ];
+                    let vertices = [line_start_1, corner_1, corner_2, line_start_2];
 
-                    let min_x = vertices
-                        .iter()
-                        .map(|v| v.0)
-                        .fold(f64::INFINITY, f64::min)
-                        .max(0.0) as u32;
-                    let max_x = vertices
-                        .iter()
-                        .map(|v| v.0)
-                        .fold(f64::NEG_INFINITY, f64::max)
-                        .max(0.0) as u32;
-                    let min_y = vertices
-                        .iter()
-                        .map(|v| v.1)
-                        .fold(f64::INFINITY, f64::min)
-                        .max(0.0) as u32;
-                    let max_y = vertices
-                        .iter()
-                        .map(|v| v.1)
-                        .fold(f64::NEG_INFINITY, f64::max)
-                        .max(0.0) as u32;
-
-                    fn edge_function(a: (f64, f64), b: (f64, f64), p: (f64, f64)) -> f64 {
-                        (p.0 - a.0) * (b.1 - a.1) - (p.1 - a.1) * (b.0 - a.0)
-                    }
-
+                    let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
                     for y in min_y..max_y {
                         for x in min_x..max_x {
-                            let p = (x as f64 + 0.5, y as f64 + 0.5);
+                            let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
 
-                            let d1 = edge_function(vertices[0], vertices[1], p);
-                            let d2 = edge_function(vertices[1], vertices[2], p);
-                            let d3 = edge_function(vertices[2], vertices[3], p);
-                            let d4 = edge_function(vertices[3], vertices[0], p);
-
-                            let is_inside = (d1 >= 0.0 && d2 >= 0.0 && d3 >= 0.0 && d4 >= 0.0)
-                                || (d1 <= 0.0 && d2 <= 0.0 && d3 <= 0.0 && d4 <= 0.0);
-
-                            if is_inside {
+                            if p.is_inside_polygon(&vertices) {
                                 let pixel = img_buf.get_pixel_mut(x, y);
                                 let color =
                                     image_params.edge_color(side_edge.associated_line_pos_x);
@@ -831,7 +795,7 @@ fn draw_diagonal_connected_edge(
                         }
                     }
 
-                    let y_end = corner_1_y.max(corner_2_y) as u32;
+                    let y_end = corner_1.y.max(corner_2.y) as u32;
                     for y in 0..y_end {
                         for x in (vertical_left_x as u32 + 1)..=vertical_right_x as u32 {
                             let pixel = img_buf.get_pixel_mut(x, y);
@@ -841,91 +805,51 @@ fn draw_diagonal_connected_edge(
                     }
                 }
                 EdgeType::RightTop | EdgeType::LeftTop => {
-                    let start_pos_center_x = (side_edge.pos_x * image_params.width as usize) as f64
-                        + (image_params.width as f64 / 2.0);
-                    let start_pos_center_y = image_params.height as f64 / 2.0;
-                    let end_pos_center_x = (corner_edge.pos_x * image_params.width as usize) as f64
-                        + (image_params.width as f64 / 2.0);
-                    let end_pos_center_y =
-                        image_params.height as f64 - (image_params.height as f64 / 10.0);
+                    let start_pos_center = Point::new(
+                        (side_edge.pos_x * image_params.width as usize) as f64
+                            + (image_params.width as f64 / 2.0),
+                        image_params.height as f64 / 2.0,
+                    );
+                    let end_pos_center = Point::new(
+                        (corner_edge.pos_x * image_params.width as usize) as f64
+                            + (image_params.width as f64 / 2.0),
+                        image_params.height as f64 - (image_params.height as f64 / 10.0),
+                    );
 
-                    let line_vec_x = end_pos_center_x - start_pos_center_x;
-                    let line_vec_y = end_pos_center_y - start_pos_center_y;
-                    let units = (line_vec_x.powf(2.0) + line_vec_y.powf(2.0)).sqrt();
-                    let unit_vec_x = line_vec_x / units;
-                    let unit_vec_y = line_vec_y / units;
-                    let normal_vec_x = -unit_vec_y;
-                    let normal_vec_y = unit_vec_x;
+                    let line_vec = end_pos_center - start_pos_center;
+                    let unit_vec = line_vec.normalize();
+                    let normal_vec = unit_vec.perpendicular();
 
-                    let line_start_x =
-                        start_pos_center_x + unit_vec_x * (image_params.circle_outer_radius as f64);
-                    let line_start_y =
-                        start_pos_center_y + unit_vec_y * (image_params.circle_outer_radius as f64);
-                    let line_start_1_x =
-                        line_start_x + normal_vec_x * (image_params.line_width as f64 / 2.0);
-                    let line_start_1_y =
-                        line_start_y + normal_vec_y * (image_params.line_width as f64 / 2.0);
-                    let line_start_2_x =
-                        line_start_x - normal_vec_x * (image_params.line_width as f64 / 2.0);
-                    let line_start_2_y =
-                        line_start_y - normal_vec_y * (image_params.line_width as f64 / 2.0);
+                    let line_start =
+                        start_pos_center + unit_vec * (image_params.circle_outer_radius as f64);
+                    let line_start_1 =
+                        line_start + normal_vec * (image_params.line_width as f64 / 2.0);
+                    let line_start_2 =
+                        line_start - normal_vec * (image_params.line_width as f64 / 2.0);
 
                     let half_width = image_params.line_width as f64 / 2.0;
-                    let slope = unit_vec_y / unit_vec_x;
+                    let slope = unit_vec.y / unit_vec.x;
 
-                    let vertical_left_x = end_pos_center_x - half_width;
-                    let vertical_right_x = end_pos_center_x + half_width;
+                    let vertical_left_x = end_pos_center.x - half_width;
+                    let vertical_right_x = end_pos_center.x + half_width;
 
-                    let corner_1_x = vertical_left_x;
-                    let corner_1_y = line_start_1_y + slope * (vertical_left_x - line_start_1_x);
-                    let corner_2_x = vertical_right_x;
-                    let corner_2_y = line_start_2_y + slope * (vertical_right_x - line_start_2_x);
+                    let corner_1 = Point::new(
+                        vertical_left_x,
+                        line_start_1.y + slope * (vertical_left_x - line_start_1.x),
+                    );
+                    let corner_2 = Point::new(
+                        vertical_right_x,
+                        line_start_2.y + slope * (vertical_right_x - line_start_2.x),
+                    );
 
-                    let vertices = [
-                        (line_start_1_x, line_start_1_y),
-                        (corner_1_x, corner_1_y),
-                        (corner_2_x, corner_2_y),
-                        (line_start_2_x, line_start_2_y),
-                    ];
+                    let vertices = [line_start_1, corner_1, corner_2, line_start_2];
 
-                    let min_x = vertices
-                        .iter()
-                        .map(|v| v.0)
-                        .fold(f64::INFINITY, f64::min)
-                        .max(0.0) as u32;
-                    let max_x = vertices
-                        .iter()
-                        .map(|v| v.0)
-                        .fold(f64::NEG_INFINITY, f64::max)
-                        .max(0.0) as u32;
-                    let min_y = vertices
-                        .iter()
-                        .map(|v| v.1)
-                        .fold(f64::INFINITY, f64::min)
-                        .max(0.0) as u32;
-                    let max_y = vertices
-                        .iter()
-                        .map(|v| v.1)
-                        .fold(f64::NEG_INFINITY, f64::max)
-                        .max(0.0) as u32;
-
-                    fn edge_function(a: (f64, f64), b: (f64, f64), p: (f64, f64)) -> f64 {
-                        (p.0 - a.0) * (b.1 - a.1) - (p.1 - a.1) * (b.0 - a.0)
-                    }
-
+                    let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
                     for y in min_y..max_y {
                         for x in min_x..max_x {
-                            let p = (x as f64 + 0.5, y as f64 + 0.5);
+                            let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
 
-                            let d1 = edge_function(vertices[0], vertices[1], p);
-                            let d2 = edge_function(vertices[1], vertices[2], p);
-                            let d3 = edge_function(vertices[2], vertices[3], p);
-                            let d4 = edge_function(vertices[3], vertices[0], p);
-
-                            let is_inside = (d1 >= 0.0 && d2 >= 0.0 && d3 >= 0.0 && d4 >= 0.0)
-                                || (d1 <= 0.0 && d2 <= 0.0 && d3 <= 0.0 && d4 <= 0.0);
-
-                            if is_inside {
+                            if p.is_inside_polygon(&vertices) {
                                 let pixel = img_buf.get_pixel_mut(x, y);
                                 let color =
                                     image_params.edge_color(side_edge.associated_line_pos_x);
@@ -934,7 +858,7 @@ fn draw_diagonal_connected_edge(
                         }
                     }
 
-                    let y_start = corner_1_y.min(corner_2_y) as u32;
+                    let y_start = corner_1.y.min(corner_2.y) as u32;
                     for y in (y_start + 1)..image_params.height as u32 {
                         for x in (vertical_left_x as u32 + 1)..=vertical_right_x as u32 {
                             let pixel = img_buf.get_pixel_mut(x, y);
