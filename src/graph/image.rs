@@ -717,6 +717,8 @@ fn draw_edge(
     }
 }
 
+// fixme: cache edge drawing range calculations
+// fixme: fix drawing instability from ImageParams
 fn draw_diagonal_connected_edge(
     img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
     edges: &[&Edge],
