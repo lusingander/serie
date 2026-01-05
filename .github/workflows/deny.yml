@@ -1,0 +1,31 @@
+name: Deny
+
+on:
+  push:
+    branches:
+      - '*'
+    paths:
+      - '**/Cargo.lock'
+      - '**/Cargo.toml'
+      - '**/deny.toml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '**/Cargo.lock'
+      - '**/Cargo.toml'
+      - '**/deny.toml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+      # https://github.com/actions/checkout/releases/tag/v6.0.1
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      # https://github.com/EmbarkStudios/cargo-deny-action/releases/tag/v2.0.14
+      - uses: EmbarkStudios/cargo-deny-action@76cd80eb775d7bbbd2d80292136d74d39e1b4918
+        with:
+          command: check licenses
