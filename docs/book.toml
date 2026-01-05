@@ -1,0 +1,11 @@
+[book]
+authors = ["Kyosuke Fujimoto"]
+language = "en"
+src = "src"
+title = "Serie"
+description = "Serie Documentation"
+
+[output.html]
+git-repository-url = "https://github.com/lusingander/serie"
+site-url = "/serie/"
+default-theme = "rust"
