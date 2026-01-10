@@ -727,7 +727,6 @@ fn draw_edge(
 }
 
 // fixme: cache edge drawing range calculations
-// fixme: fix drawing instability from ImageParams
 fn draw_diagonal_connected_edge(
     img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
     edges: &[&Edge],
@@ -751,6 +750,18 @@ fn draw_diagonal_connected_edge(
             .find(|e| e.edge_type == expected_side_edge_type);
         // No side edge found, nothing to draw (should not happen)
         if let Some(side_edge) = side_edge_opt {
+            let line_width_f64 = image_params.line_width as f64;
+            let line_width_i32 = image_params.line_width as i32;
+
+            // NOTE: Select y_offset of the corner edge based on the cell width.
+            // The hard-coded value `height / 10.0` is based on the assumption that the cell
+            // has a 1:1 aspect ratio, and does not work well for non-1:1 ratios.
+            let y_offset = if image_params.width == image_params.height {
+                image_params.height as f64 / 10.0
+            } else {
+                image_params.height as f64 / 2.0 - image_params.corner_radius() as f64
+            };
+
             match corner_edge.edge_type {
                 EdgeType::RightBottom | EdgeType::LeftBottom => {
                     let start_pos_center = Point::new(
@@ -761,7 +772,7 @@ fn draw_diagonal_connected_edge(
                     let end_pos_center = Point::new(
                         (corner_edge.pos_x * image_params.width as usize) as f64
                             + (image_params.width as f64 / 2.0),
-                        image_params.height as f64 / 10.0,
+                        y_offset,
                     );
 
                     let line_vec = end_pos_center - start_pos_center;
@@ -770,12 +781,10 @@ fn draw_diagonal_connected_edge(
 
                     let line_start =
                         start_pos_center + unit_vec * (image_params.circle_outer_radius as f64);
-                    let line_start_1 =
-                        line_start + normal_vec * (image_params.line_width as f64 / 2.0);
-                    let line_start_2 =
-                        line_start - normal_vec * (image_params.line_width as f64 / 2.0);
+                    let line_start_1 = line_start + normal_vec * (line_width_f64 / 2.0);
+                    let line_start_2 = line_start - normal_vec * (line_width_f64 / 2.0);
 
-                    let half_width = image_params.line_width as f64 / 2.0;
+                    let half_width = line_width_f64 / 2.0;
                     let slope = unit_vec.y / unit_vec.x;
 
                     let vertical_left_x = end_pos_center.x - half_width;
@@ -795,23 +804,31 @@ fn draw_diagonal_connected_edge(
                     let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
                     for y in min_y..max_y {
                         for x in min_x..max_x {
-                            let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
+                            if x < img_buf.width() && y < img_buf.height() {
+                                let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
 
-                            if p.is_inside_polygon(&vertices) {
-                                let pixel = img_buf.get_pixel_mut(x, y);
-                                let color =
-                                    image_params.edge_color(side_edge.associated_line_pos_x);
-                                *pixel = color;
+                                if p.is_inside_polygon(&vertices) {
+                                    let pixel = img_buf.get_pixel_mut(x, y);
+                                    let color =
+                                        image_params.edge_color(side_edge.associated_line_pos_x);
+                                    *pixel = color;
+                                }
                             }
                         }
                     }
 
                     let y_end = corner_1.y.max(corner_2.y) as u32;
+                    let end_center_x_i32 = end_pos_center.x as i32;
+                    let x_start = end_center_x_i32 - line_width_i32 / 2;
                     for y in 0..y_end {
-                        for x in (vertical_left_x as u32 + 1)..=vertical_right_x as u32 {
-                            let pixel = img_buf.get_pixel_mut(x, y);
-                            let color = image_params.edge_color(side_edge.associated_line_pos_x);
-                            *pixel = color;
+                        for i in 0..line_width_i32 {
+                            let x = (x_start + i) as u32;
+                            if x < img_buf.width() && y < img_buf.height() {
+                                let pixel = img_buf.get_pixel_mut(x, y);
+                                let color =
+                                    image_params.edge_color(side_edge.associated_line_pos_x);
+                                *pixel = color;
+                            }
                         }
                     }
                 }
@@ -824,7 +841,7 @@ fn draw_diagonal_connected_edge(
                     let end_pos_center = Point::new(
                         (corner_edge.pos_x * image_params.width as usize) as f64
                             + (image_params.width as f64 / 2.0),
-                        image_params.height as f64 - (image_params.height as f64 / 10.0),
+                        image_params.height as f64 - y_offset,
                     );
 
                     let line_vec = end_pos_center - start_pos_center;
@@ -833,12 +850,10 @@ fn draw_diagonal_connected_edge(
 
                     let line_start =
                         start_pos_center + unit_vec * (image_params.circle_outer_radius as f64);
-                    let line_start_1 =
-                        line_start + normal_vec * (image_params.line_width as f64 / 2.0);
-                    let line_start_2 =
-                        line_start - normal_vec * (image_params.line_width as f64 / 2.0);
+                    let line_start_1 = line_start + normal_vec * (line_width_f64 / 2.0);
+                    let line_start_2 = line_start - normal_vec * (line_width_f64 / 2.0);
 
-                    let half_width = image_params.line_width as f64 / 2.0;
+                    let half_width = line_width_f64 / 2.0;
                     let slope = unit_vec.y / unit_vec.x;
 
                     let vertical_left_x = end_pos_center.x - half_width;
@@ -858,23 +873,31 @@ fn draw_diagonal_connected_edge(
                     let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
                     for y in min_y..max_y {
                         for x in min_x..max_x {
-                            let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
+                            if x < img_buf.width() && y < img_buf.height() {
+                                let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
 
-                            if p.is_inside_polygon(&vertices) {
-                                let pixel = img_buf.get_pixel_mut(x, y);
-                                let color =
-                                    image_params.edge_color(side_edge.associated_line_pos_x);
-                                *pixel = color;
+                                if p.is_inside_polygon(&vertices) {
+                                    let pixel = img_buf.get_pixel_mut(x, y);
+                                    let color =
+                                        image_params.edge_color(side_edge.associated_line_pos_x);
+                                    *pixel = color;
+                                }
                             }
                         }
                     }
 
                     let y_start = corner_1.y.min(corner_2.y) as u32;
+                    let end_center_x_i32 = end_pos_center.x as i32;
+                    let x_start = end_center_x_i32 - line_width_i32 / 2;
                     for y in (y_start + 1)..image_params.height as u32 {
-                        for x in (vertical_left_x as u32 + 1)..=vertical_right_x as u32 {
-                            let pixel = img_buf.get_pixel_mut(x, y);
-                            let color = image_params.edge_color(side_edge.associated_line_pos_x);
-                            *pixel = color;
+                        for i in 0..line_width_i32 {
+                            let x = (x_start + i) as u32;
+                            if x < img_buf.width() && y < img_buf.height() {
+                                let pixel = img_buf.get_pixel_mut(x, y);
+                                let color =
+                                    image_params.edge_color(side_edge.associated_line_pos_x);
+                                *pixel = color;
+                            }
                         }
                     }
                 }
