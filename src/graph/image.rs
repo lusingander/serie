@@ -344,12 +344,13 @@ fn calc_circle_drawing_pixels(image_params: &ImageParams, radius: i32) -> Pixels
 
 fn calc_vertical_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let center_x = (image_params.width / 2) as i32;
-    let half_line_width = (image_params.line_width as i32) / 2;
+    let line_width = image_params.line_width as i32;
+    let x_start = center_x - line_width / 2;
 
     let mut pixels = Pixels::default();
-    for y in 0..image_params.height {
-        for x in (center_x - half_line_width)..=(center_x + half_line_width) {
-            pixels.insert((x, y as i32));
+    for y in 0..image_params.height as i32 {
+        for x in x_start..(x_start + line_width) {
+            pixels.insert((x, y));
         }
     }
     pixels
@@ -357,12 +358,13 @@ fn calc_vertical_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
 
 fn calc_horizontal_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let center_y = (image_params.height / 2) as i32;
-    let half_line_width = (image_params.line_width as i32) / 2;
+    let line_width = image_params.line_width as i32;
+    let y_start = center_y - line_width / 2;
 
     let mut pixels = Pixels::default();
-    for y in (center_y - half_line_width)..=(center_y + half_line_width) {
-        for x in 0..image_params.width {
-            pixels.insert((x as i32, y));
+    for y in y_start..(y_start + line_width) {
+        for x in 0..image_params.width as i32 {
+            pixels.insert((x, y));
         }
     }
     pixels
@@ -370,13 +372,14 @@ fn calc_horizontal_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
 
 fn calc_up_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let center_x = (image_params.width / 2) as i32;
-    let half_line_width = (image_params.line_width as i32) / 2;
+    let line_width = image_params.line_width as i32;
+    let x_start = center_x - line_width / 2;
     let circle_center_y = (image_params.height / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
     let mut pixels = Pixels::default();
     for y in 0..(circle_center_y - circle_outer_radius) {
-        for x in (center_x - half_line_width)..=(center_x + half_line_width) {
+        for x in x_start..(x_start + line_width) {
             pixels.insert((x, y));
         }
     }
@@ -385,13 +388,14 @@ fn calc_up_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
 
 fn calc_down_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let center_x = (image_params.width / 2) as i32;
-    let half_line_width = (image_params.line_width as i32) / 2;
+    let line_width = image_params.line_width as i32;
+    let x_start = center_x - line_width / 2;
     let circle_center_y = (image_params.height / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
     let mut pixels = Pixels::default();
     for y in (circle_center_y + circle_outer_radius + 1)..(image_params.height as i32) {
-        for x in (center_x - half_line_width)..=(center_x + half_line_width) {
+        for x in x_start..(x_start + line_width) {
             pixels.insert((x, y));
         }
     }
@@ -400,12 +404,13 @@ fn calc_down_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
 
 fn calc_left_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let center_y = (image_params.height / 2) as i32;
-    let half_line_width = (image_params.line_width as i32) / 2;
+    let line_width = image_params.line_width as i32;
+    let y_start = center_y - line_width / 2;
     let circle_center_x = (image_params.width / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
     let mut pixels = Pixels::default();
-    for y in (center_y - half_line_width)..=(center_y + half_line_width) {
+    for y in y_start..(y_start + line_width) {
         for x in 0..(circle_center_x - circle_outer_radius) {
             pixels.insert((x, y));
         }
@@ -415,13 +420,14 @@ fn calc_left_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
 
 fn calc_right_edge_drawing_pixels(image_params: &ImageParams) -> Pixels {
     let center_y = (image_params.height / 2) as i32;
-    let half_line_width = (image_params.line_width as i32) / 2;
+    let line_width = image_params.line_width as i32;
+    let y_start = center_y - line_width / 2;
     let circle_center_x = (image_params.width / 2) as i32;
     let circle_outer_radius = image_params.circle_outer_radius as i32;
 
     let mut pixels = Pixels::default();
-    for y in (center_y - half_line_width)..=(center_y + half_line_width) {
-        for x in (circle_center_x + circle_outer_radius + 1)..=(image_params.width as i32) {
+    for y in y_start..(y_start + line_width) {
+        for x in (circle_center_x + circle_outer_radius + 1)..(image_params.width as i32) {
             pixels.insert((x, y));
         }
     }
@@ -494,7 +500,8 @@ fn calc_corner_edge_drawing_pixels(
     // Bresenham's circle algorithm
     let curve_center_x = base_center_x;
     let curve_center_y = base_center_y;
-    let half_line_width = (image_params.line_width as i32) / 2;
+    let line_width = image_params.line_width as i32;
+    let half_line_width = line_width / 2;
     let adjust = if image_params.line_width.is_multiple_of(2) {
         0
     } else {
@@ -572,7 +579,8 @@ fn calc_corner_edge_drawing_pixels(
             (base_center_y, base_center_y + y_offset)
         };
         let center_x = (image_params.width / 2) as i32;
-        for x in (center_x - half_line_width)..=(center_x + half_line_width) {
+        let x_start = center_x - line_width / 2;
+        for x in x_start..(x_start + line_width) {
             for y in ys..ye {
                 pixels.insert((x, y));
             }
@@ -585,7 +593,8 @@ fn calc_corner_edge_drawing_pixels(
             (base_center_x, base_center_x + x_offset)
         };
         let center_y = (image_params.height / 2) as i32;
-        for y in (center_y - half_line_width)..=(center_y + half_line_width) {
+        let y_start = center_y - line_width / 2;
+        for y in y_start..(y_start + line_width) {
             for x in xs..xe {
                 pixels.insert((x, y));
             }
