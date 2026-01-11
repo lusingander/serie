@@ -35,7 +35,8 @@ We welcome pull requests, but please note that they are not guaranteed to be acc
 ### Creating pull requests
 
 - When creating a pull request, please ensure you follow the same guidelines as [mentioned for issues](#reporting-issues).
-- Creating a pull request does not necessarily require an issue. But if the problem is complex, creating an issue beforehand might make the process smoother.
+- An issue is not required for every pull request. For small or straightforward changes (such as documentation fixes or obvious bug fixes), feel free to open a pull request directly.
+- For more complex changes or behavior-altering fixes, opening an issue first is strongly recommended to discuss the approach and avoid unnecessary rework.
 - Do not include fixes that are not directly related to the pull request topic.
 
 ### Continuous Integration
