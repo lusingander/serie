@@ -4,6 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use garde::Validate;
 use serde::Deserialize;
 use smart_default::SmartDefault;
 use umbra::optional;
@@ -50,6 +51,9 @@ pub fn load() -> Result<(
             }
         }
     }?;
+
+    config.validate()?;
+
     Ok((
         config.core,
         config.ui,
@@ -78,29 +82,38 @@ fn read_config_from_path(path: &Path) -> Result<Config> {
 }
 
 #[optional(derives = [Deserialize])]
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Validate)]
 struct Config {
+    #[garde(dive)]
     #[nested]
     core: CoreConfig,
+    #[garde(dive)]
     #[nested]
     ui: UiConfig,
+    #[garde(dive)]
     #[nested]
     graph: GraphConfig,
+    #[garde(skip)]
     #[nested]
     color: ColorTheme,
     // The user customed keybinds, please ref `assets/default-keybind.toml`
+    #[garde(skip)]
     keybind: Option<KeyBind>,
 }
 
 #[optional(derives = [Deserialize])]
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Validate)]
 pub struct CoreConfig {
+    #[garde(skip)]
     #[nested]
     pub option: CoreOptionConfig,
+    #[garde(skip)]
     #[nested]
     pub search: CoreSearchConfig,
+    #[garde(dive)]
     #[nested]
     pub user_command: CoreUserCommandConfig,
+    #[garde(dive)]
     #[nested]
     pub external: CoreExternalConfig,
 }
@@ -125,8 +138,9 @@ pub struct CoreSearchConfig {
 }
 
 #[optional]
-#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault, Validate)]
 pub struct CoreUserCommandConfig {
+    #[garde(dive)]
     #[default(HashMap::from([("1".into(), UserCommand {
         name: "git diff".into(),
         commands: vec![
@@ -139,6 +153,7 @@ pub struct CoreUserCommandConfig {
         ],
     })]))]
     pub commands: HashMap<String, UserCommand>,
+    #[garde(range(min = 0))]
     #[default = 4]
     pub tab_width: u16,
 }
@@ -205,23 +220,30 @@ impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Validate)]
 pub struct UserCommand {
+    #[garde(length(min = 1))]
     pub name: String,
+    #[garde(length(min = 1), inner(length(min = 1)))]
     pub commands: Vec<String>,
 }
 
 #[optional(derives = [Deserialize])]
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Validate)]
 pub struct UiConfig {
+    #[garde(skip)]
     #[nested]
     pub common: UiCommonConfig,
+    #[garde(dive)]
     #[nested]
     pub list: UiListConfig,
+    #[garde(dive)]
     #[nested]
     pub detail: UiDetailConfig,
+    #[garde(dive)]
     #[nested]
     pub user_command: UiUserCommandConfig,
+    #[garde(dive)]
     #[nested]
     pub refs: UiRefsConfig,
 }
@@ -239,72 +261,86 @@ pub enum CursorType {
     Virtual(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default, Validate)]
 pub enum ClipboardConfig {
     #[default]
     Auto,
     Custom {
+        #[garde(length(min = 1), inner(length(min = 1)))]
         commands: Vec<String>,
     },
 }
 
 #[optional(derives = [Deserialize])]
-#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault, Validate)]
 pub struct CoreExternalConfig {
+    #[garde(dive)]
     #[default(ClipboardConfig::Auto)]
     pub clipboard: ClipboardConfig,
 }
 
 #[optional(derives = [Deserialize])]
-#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault, Validate)]
 pub struct UiListConfig {
+    #[garde(range(min = 1))]
     #[default = 20]
     pub subject_min_width: u16,
+    #[garde(length(min = 1))]
     #[default = "%Y-%m-%d"]
     pub date_format: String,
+    #[garde(range(min = 0))]
     #[default = 10]
     pub date_width: u16,
+    #[garde(skip)]
     #[default = true]
     pub date_local: bool,
+    #[garde(range(min = 0))]
     #[default = 20]
     pub name_width: u16,
 }
 
 #[optional(derives = [Deserialize])]
-#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault, Validate)]
 pub struct UiDetailConfig {
+    #[garde(range(min = 1))]
     #[default = 20]
     pub height: u16,
+    #[garde(length(min = 1))]
     #[default = "%Y-%m-%d %H:%M:%S %z"]
     pub date_format: String,
+    #[garde(skip)]
     #[default = true]
     pub date_local: bool,
 }
 
 #[optional(derives = [Deserialize])]
-#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault, Validate)]
 pub struct UiUserCommandConfig {
+    #[garde(range(min = 1))]
     #[default = 20]
     pub height: u16,
 }
 
 #[optional(derives = [Deserialize])]
-#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault, Validate)]
 pub struct UiRefsConfig {
+    #[garde(range(min = 1))]
     #[default = 26]
     pub width: u16,
 }
 
 #[optional(derives = [Deserialize])]
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Validate)]
 pub struct GraphConfig {
+    #[garde(dive)]
     #[nested]
     pub color: GraphColorConfig,
 }
 
 #[optional(derives = [Deserialize])]
-#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault, Validate)]
 pub struct GraphColorConfig {
+    #[garde(length(min = 1), inner(pattern(r"^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")))]
     #[default(vec![
         "#E06C76".into(),
         "#98C379".into(),
@@ -314,8 +350,10 @@ pub struct GraphColorConfig {
         "#56B6C2".into(),
     ])]
     pub branches: Vec<String>,
+    #[garde(pattern(r"^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"))]
     #[default = "#00000000"]
     pub edge: String,
+    #[garde(pattern(r"^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"))]
     #[default = "#00000000"]
     pub background: String,
 }
