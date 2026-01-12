@@ -8,6 +8,8 @@ To ensure that your contributions are considered, please follow this guidelines.
 
 Before reporting, please check if an issue with the same content already exists.
 
+Also, please refer to [FAQ](https://lusingander.github.io/serie/faq/index.html).
+
 ### Reporting Bugs
 
 When reporting a bug, please include the following information:
@@ -20,13 +22,13 @@ When reporting a bug, please include the following information:
 
 ### Suggesting Features
 
-Before proposing a new feature, please review the [Goals](./README.md#goals) and [Non-Goals](./README.md#non-goals).
+Before proposing a new feature, please review the [Goals](https://lusingander.github.io/serie/introduction/index.html#goals) and [Non-Goals](https://lusingander.github.io/serie/introduction/index.html#non-goals).
 
 ### Terminal Emulator Compatibility
 
 If the application does not work with your terminal emulator, please first check whether the terminal emulator supports the target image display protocol.
 
-For information on tested terminal emulators, refer to [Compatibility](./README.md#compatibility).
+For information on tested terminal emulators, refer to [Compatibility](https://lusingander.github.io/serie/getting-started/compatibility.html).
 
 ## Pull Requests
 

@@ -20,3 +20,7 @@ On the other hand, Serie may not be for you if:
 
 - You're satisfied with `git log --graph` or the graph display in existing TUI clients
 - You need to perform complex git operations within a TUI client
+
+## How do I pronounce "Serie"?
+
+It is pronounced as the German word Serie (**/ˈzeːriə/**), roughly like **"ZAY-ree-eh"**, not like the English "series".

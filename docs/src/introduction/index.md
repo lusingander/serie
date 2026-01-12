@@ -1,7 +1,6 @@
 # Introduction
 
-**Serie** (`/zéːriə/`) is a TUI application that uses the terminal emulators' image display protocol to render commit graphs like `git log --graph --all`.
-
+**Serie** ([`/zéːriə/`](https://lusingander.github.io/serie/faq/index.html#how-do-i-pronounce-serie)) is a TUI application that uses the terminal emulators' image display protocol to render commit graphs like `git log --graph --all`.
 
 <img src="https://raw.githubusercontent.com/lusingander/serie/master/img/demo.gif">
 
@@ -23,3 +22,8 @@ Personally, I found the output from `git log --graph` difficult to read, even wi
 - Implement a fully-featured Git client.
 - Create a TUI application with a complex UI.
 - Works in any terminal environment.
+
+---
+
+_Built with Rust and [ratatui](https://github.com/ratatui/ratatui)._  
+_Serie is available on [GitHub](https://github.com/lusingander/serie) under the MIT license._
