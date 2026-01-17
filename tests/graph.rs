@@ -1368,10 +1368,11 @@ fn generate_and_output_graph_images(repo_path: &Path, options: &[GenerateGraphOp
 
 fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGraphOption) {
     // Build graphs in the same way as application
+    let max_count = None;
     let graph_color_config = config::GraphColorConfig::default();
     let graph_color_set = color::GraphColorSet::new(&graph_color_config);
     let cell_width_type = graph::CellWidthType::Double;
-    let repository = git::Repository::load(path.as_ref(), option.sort).unwrap();
+    let repository = git::Repository::load(path.as_ref(), option.sort, max_count).unwrap();
     let graph = graph::calc_graph(&repository);
     let image_params = graph::ImageParams::new(&graph_color_set, cell_width_type);
     let drawing_pixels = graph::DrawingPixels::new(&image_params);
