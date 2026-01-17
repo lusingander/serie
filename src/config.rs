@@ -1,10 +1,10 @@
 use std::{
-    collections::HashMap,
     env,
     path::{Path, PathBuf},
 };
 
 use garde::Validate;
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use smart_default::SmartDefault;
 use umbra::optional;
@@ -141,7 +141,7 @@ pub struct CoreSearchConfig {
 #[derive(Debug, Clone, PartialEq, Eq, SmartDefault, Validate)]
 pub struct CoreUserCommandConfig {
     #[garde(dive)]
-    #[default(HashMap::from([("1".into(), UserCommand {
+    #[default(FxHashMap::from_iter([("1".into(), UserCommand {
         name: "git diff".into(),
         commands: vec![
             "git".into(),
@@ -152,7 +152,7 @@ pub struct CoreUserCommandConfig {
             "{{target_hash}}".into(),
         ],
     })]))]
-    pub commands: HashMap<String, UserCommand>,
+    pub commands: FxHashMap<String, UserCommand>,
     #[garde(range(min = 0))]
     #[default = 4]
     pub tab_width: u16,
@@ -179,7 +179,7 @@ impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
             where
                 V: MapAccess<'de>,
             {
-                let mut commands = HashMap::new();
+                let mut commands = FxHashMap::default();
                 let mut tab_width = None;
 
                 while let Some(key) = map.next_key::<String>()? {
@@ -379,7 +379,7 @@ mod tests {
                     fuzzy: false,
                 },
                 user_command: CoreUserCommandConfig {
-                    commands: HashMap::from([(
+                    commands: FxHashMap::from_iter([(
                         "1".into(),
                         UserCommand {
                             name: "git diff".into(),
@@ -491,7 +491,7 @@ mod tests {
                     fuzzy: true,
                 },
                 user_command: CoreUserCommandConfig {
-                    commands: HashMap::from([
+                    commands: FxHashMap::from_iter([
                         (
                             "1".into(),
                             UserCommand {
@@ -578,7 +578,7 @@ mod tests {
                     fuzzy: false,
                 },
                 user_command: CoreUserCommandConfig {
-                    commands: HashMap::from([(
+                    commands: FxHashMap::from_iter([(
                         "1".into(),
                         UserCommand {
                             name: "git diff".into(),

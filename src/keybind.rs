@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use rustc_hash::FxHashMap;
 use serde::{de::Deserializer, Deserialize};
 
 use crate::event::UserEvent;
@@ -9,10 +9,10 @@ use crate::event::UserEvent;
 const DEFAULT_KEY_BIND: &str = include_str!("../assets/default-keybind.toml");
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct KeyBind(HashMap<KeyEvent, UserEvent>);
+pub struct KeyBind(FxHashMap<KeyEvent, UserEvent>);
 
 impl Deref for KeyBind {
-    type Target = HashMap<KeyEvent, UserEvent>;
+    type Target = FxHashMap<KeyEvent, UserEvent>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -70,8 +70,8 @@ impl<'de> Deserialize<'de> for KeyBind {
     where
         D: Deserializer<'de>,
     {
-        let parsed_map = HashMap::<UserEvent, Vec<String>>::deserialize(deserializer)?;
-        let mut key_map = HashMap::<KeyEvent, UserEvent>::new();
+        let parsed_map = FxHashMap::<UserEvent, Vec<String>>::deserialize(deserializer)?;
+        let mut key_map = FxHashMap::<KeyEvent, UserEvent>::default();
         for (user_event, key_events) in parsed_map {
             for key_event_str in key_events {
                 let key_event = match parse_key_event(&key_event_str) {

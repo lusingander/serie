@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use ratatui::{
     backend::Backend,
     crossterm::event::{KeyCode, KeyEvent},
@@ -9,6 +7,7 @@ use ratatui::{
     widgets::{Block, Borders, Padding, Paragraph},
     Frame, Terminal,
 };
+use rustc_hash::FxHashMap;
 
 use crate::{
     color::{ColorTheme, GraphColorSet},
@@ -70,7 +69,7 @@ impl<'a> App<'a> {
         initial_selection: InitialSelection,
         tx: Sender,
     ) -> Self {
-        let mut ref_name_to_commit_index_map = HashMap::new();
+        let mut ref_name_to_commit_index_map = FxHashMap::default();
         let commits = graph
             .commits
             .iter()
