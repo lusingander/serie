@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     hash::Hash,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
@@ -7,6 +6,7 @@ use std::{
 };
 
 use chrono::{DateTime, FixedOffset};
+use rustc_hash::FxHashMap;
 
 use crate::Result;
 
@@ -104,10 +104,10 @@ pub enum SortCommit {
     Topological,
 }
 
-type CommitMap = HashMap<CommitHash, Commit>;
-type CommitsMap = HashMap<CommitHash, Vec<CommitHash>>;
+type CommitMap = FxHashMap<CommitHash, Commit>;
+type CommitsMap = FxHashMap<CommitHash, Vec<CommitHash>>;
 
-type RefMap = HashMap<CommitHash, Vec<Ref>>;
+type RefMap = FxHashMap<CommitHash, Vec<Ref>>;
 
 #[derive(Debug)]
 pub struct Repository {
@@ -381,8 +381,8 @@ fn parse_parent_commit_hashes(s: &str) -> Vec<CommitHash> {
 }
 
 fn build_commits_maps(commits: &Vec<Commit>) -> (CommitsMap, CommitsMap) {
-    let mut parents_map: CommitsMap = HashMap::new();
-    let mut children_map: CommitsMap = HashMap::new();
+    let mut parents_map: CommitsMap = FxHashMap::default();
+    let mut children_map: CommitsMap = FxHashMap::default();
     for commit in commits {
         let hash = &commit.commit_hash;
         for parent_hash in &commit.parent_commit_hashes {
@@ -411,12 +411,14 @@ fn merge_stashes_to_commits(commits: Vec<Commit>, stashes: Vec<Commit>) -> Vec<C
     // Stash commit has multiple parent commits, but the first parent commit is the commit that the stash was created from.
     // If the first parent commit is not found, the stash commit is ignored.
     let mut ret = Vec::new();
-    let mut statsh_map: HashMap<CommitHash, Vec<Commit>> =
-        stashes.into_iter().fold(HashMap::new(), |mut acc, commit| {
-            let parent = commit.parent_commit_hashes[0].clone();
-            acc.entry(parent).or_default().push(commit);
-            acc
-        });
+    let mut statsh_map: FxHashMap<CommitHash, Vec<Commit>> =
+        stashes
+            .into_iter()
+            .fold(FxHashMap::default(), |mut acc, commit| {
+                let parent = commit.parent_commit_hashes[0].clone();
+                acc.entry(parent).or_default().push(commit);
+                acc
+            });
     for commit in commits {
         if let Some(stashes) = statsh_map.remove(&commit.commit_hash) {
             for stash in stashes {
@@ -443,8 +445,8 @@ fn load_refs(path: &Path) -> (RefMap, Head) {
 
     let reader = BufReader::new(stdout);
 
-    let mut ref_map = RefMap::new();
-    let mut tag_map: HashMap<String, Ref> = HashMap::new();
+    let mut ref_map = RefMap::default();
+    let mut tag_map: FxHashMap<String, Ref> = FxHashMap::default();
     let mut head: Option<Head> = None;
 
     for line in reader.lines() {
@@ -504,7 +506,7 @@ fn load_stashes_as_refs(path: &Path) -> RefMap {
 
     let reader = BufReader::new(stdout);
 
-    let mut ref_map = RefMap::new();
+    let mut ref_map = RefMap::default();
 
     for line in reader.lines() {
         let line = line.unwrap();

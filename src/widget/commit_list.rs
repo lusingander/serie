@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use laurier::highlight::highlight_matched_text;
 use once_cell::sync::Lazy;
@@ -11,6 +9,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{List, ListItem, StatefulWidget, Widget},
 };
+use rustc_hash::FxHashMap;
 use tui_input::{backend::crossterm::EventHandler, Input};
 
 use crate::{
@@ -78,7 +77,7 @@ pub enum TransientMessage {
 
 #[derive(Debug, Default, Clone)]
 struct SearchMatch {
-    refs: HashMap<String, SearchMatchPosition>,
+    refs: FxHashMap<String, SearchMatchPosition>,
     subject: Option<SearchMatchPosition>,
     author_name: Option<SearchMatchPosition>,
     commit_hash: Option<SearchMatchPosition>,
@@ -185,7 +184,7 @@ pub struct CommitListState<'a> {
     graph_cell_width: u16,
     head: &'a Head,
 
-    ref_name_to_commit_index_map: HashMap<&'a str, usize>,
+    ref_name_to_commit_index_map: FxHashMap<&'a str, usize>,
 
     search_state: SearchState,
     search_input: Input,
@@ -206,7 +205,7 @@ impl<'a> CommitListState<'a> {
         graph_image_manager: GraphImageManager<'a>,
         graph_cell_width: u16,
         head: &'a Head,
-        ref_name_to_commit_index_map: HashMap<&'a str, usize>,
+        ref_name_to_commit_index_map: FxHashMap<&'a str, usize>,
         default_ignore_case: bool,
         default_fuzzy: bool,
     ) -> CommitListState<'a> {
@@ -961,7 +960,7 @@ impl CommitList<'_> {
 fn refs_spans<'a>(
     commit_info: &'a CommitInfo,
     head: &'a Head,
-    refs_matches: &'a HashMap<String, SearchMatchPosition>,
+    refs_matches: &'a FxHashMap<String, SearchMatchPosition>,
     color_theme: &'a ColorTheme,
 ) -> Vec<Span<'a>> {
     let refs = &commit_info.refs;
