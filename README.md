@@ -69,6 +69,7 @@ Serie - A rich git commit graph in your terminal, like magic 📚
 Usage: serie [OPTIONS]
 
 Options:
+  -n, --max-count <NUMBER>        Maximum number of commits to render
   -p, --protocol <TYPE>           Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty]
   -o, --order <TYPE>              Commit ordering algorithm [default: chrono] [possible values: chrono, topo]
   -g, --graph-width <TYPE>        Commit graph image cell width [default: auto] [possible values: auto, double, single]
