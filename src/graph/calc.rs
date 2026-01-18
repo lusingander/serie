@@ -257,6 +257,16 @@ fn calc_edges(
         if max_pos_x < pos_x {
             max_pos_x = pos_x;
         }
+
+        // draw down edge if has parent but parent not in the graph (when max_count is set)
+        if !commit.parent_commit_hashes.is_empty()
+            && repository.commit(&commit.parent_commit_hashes[0]).is_none()
+        {
+            edges[pos_y].push(WrappedEdge::new(EdgeType::Down, pos_x, pos_x, hash));
+            ((pos_y + 1)..commits.len()).for_each(|y| {
+                edges[y].push(WrappedEdge::new(EdgeType::Vertical, pos_x, pos_x, hash));
+            });
+        }
     }
 
     for commit in commits {
