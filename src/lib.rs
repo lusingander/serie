@@ -23,6 +23,10 @@ use serde::Deserialize;
 #[derive(Parser)]
 #[command(version)]
 struct Args {
+    /// Maximum number of commits to render
+    #[arg(short = 'n', long, value_name = "NUMBER")]
+    max_count: Option<usize>,
+
     /// Image protocol to render graph [default: auto]
     #[arg(short, long, value_name = "TYPE")]
     protocol: Option<ImageProtocolType>,
@@ -133,6 +137,7 @@ pub fn run() -> Result<()> {
     let (core_config, ui_config, graph_config, color_theme, key_bind_patch) = config::load()?;
     let key_bind = keybind::KeyBind::new(key_bind_patch);
 
+    let max_count = args.max_count;
     let image_protocol = args.protocol.or(core_config.option.protocol).into();
     let order = args.order.or(core_config.option.order).into();
     let graph_width = args.graph_width.or(core_config.option.graph_width);
@@ -144,7 +149,7 @@ pub fn run() -> Result<()> {
 
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 
-    let repository = git::Repository::load(Path::new("."), order)?;
+    let repository = git::Repository::load(Path::new("."), order, max_count)?;
 
     let graph = graph::calc_graph(&repository);
 

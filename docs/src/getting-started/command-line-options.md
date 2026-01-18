@@ -1,5 +1,12 @@
 # Command Line Options
 
+## -n, --max-count \<NUMBER\>
+
+Maximum number of commits to render.
+
+If not specified, all commits will be rendered.
+It behaves similarly to the `--max-count` option of `git log`.
+
 ## -p, --protocol \<TYPE\>
 
 A protocol type for rendering images of commit graphs.

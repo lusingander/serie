@@ -9,7 +9,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{List, ListItem, StatefulWidget, Widget},
 };
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use tui_input::{backend::crossterm::EventHandler, Input};
 
 use crate::{
@@ -180,6 +180,7 @@ impl SearchMatcher {
 #[derive(Debug)]
 pub struct CommitListState<'a> {
     commits: Vec<CommitInfo<'a>>,
+    commit_hash_set: FxHashSet<&'a CommitHash>,
     graph_image_manager: GraphImageManager<'a>,
     graph_cell_width: u16,
     head: &'a Head,
@@ -210,8 +211,10 @@ impl<'a> CommitListState<'a> {
         default_fuzzy: bool,
     ) -> CommitListState<'a> {
         let total = commits.len();
+        let commit_hash_set = commits.iter().map(|c| &c.commit.commit_hash).collect();
         CommitListState {
             commits,
+            commit_hash_set,
             graph_image_manager,
             graph_cell_width,
             head,
@@ -242,8 +245,10 @@ impl<'a> CommitListState<'a> {
 
     pub fn select_parent(&mut self) {
         if let Some(target_commit) = self.selected_commit_parent_hash().cloned() {
-            while target_commit.as_str() != self.selected_commit_hash().as_str() {
-                self.select_next();
+            if self.commit_hash_set.contains(&target_commit) {
+                while target_commit.as_str() != self.selected_commit_hash().as_str() {
+                    self.select_next();
+                }
             }
         }
     }

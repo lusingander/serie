@@ -124,11 +124,11 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn load(path: &Path, sort: SortCommit) -> Result<Self> {
+    pub fn load(path: &Path, sort: SortCommit, max_count: Option<usize>) -> Result<Self> {
         check_git_repository(path)?;
 
         let stashes = load_all_stashes(path);
-        let commits = load_all_commits(path, sort, &stashes);
+        let commits = load_all_commits(path, sort, &stashes, max_count);
 
         let commits = merge_stashes_to_commits(commits, stashes);
         let commit_hashes = commits.iter().map(|c| c.commit_hash.clone()).collect();
@@ -250,7 +250,12 @@ fn is_bare_repository(path: &Path) -> bool {
     output.status.success() && output.stdout == b"true\n"
 }
 
-fn load_all_commits(path: &Path, sort: SortCommit, stashes: &[Commit]) -> Vec<Commit> {
+fn load_all_commits(
+    path: &Path,
+    sort: SortCommit,
+    stashes: &[Commit],
+    max_count: Option<usize>,
+) -> Vec<Commit> {
     let mut cmd = Command::new("git");
     cmd.arg("log");
 
@@ -270,6 +275,10 @@ fn load_all_commits(path: &Path, sort: SortCommit, stashes: &[Commit]) -> Vec<Co
         cmd.arg(stash.parent_commit_hashes[0].as_str());
     });
     cmd.arg("HEAD");
+
+    if let Some(n) = max_count {
+        cmd.arg("--max-count").arg(n.to_string());
+    }
 
     cmd.current_dir(path).stdout(Stdio::piped());
 

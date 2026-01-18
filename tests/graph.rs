@@ -114,6 +114,12 @@ fn branch_001() -> TestResult {
             git::SortCommit::Chronological,
             graph::GraphStyle::Angular,
         ),
+        GenerateGraphOption::new(
+            "branch_001_max_count",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        )
+        .with_max_count(10),
     ];
 
     copy_git_dir(repo_path, "branch_001");
@@ -195,6 +201,12 @@ fn branch_002() -> TestResult {
             git::SortCommit::Chronological,
             graph::GraphStyle::Angular,
         ),
+        GenerateGraphOption::new(
+            "branch_002_max_count",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        )
+        .with_max_count(5),
     ];
 
     copy_git_dir(repo_path, "branch_002");
@@ -1340,23 +1352,30 @@ fn parse_date(date: &str) -> DateTime<Utc> {
     Utc.from_utc_datetime(&dt)
 }
 
-struct GenerateGraphOption<'a> {
-    output_name: &'a str,
+struct GenerateGraphOption {
+    output_name: &'static str,
     sort: git::SortCommit,
     style: graph::GraphStyle,
+    max_count: Option<usize>,
 }
 
-impl GenerateGraphOption<'_> {
+impl GenerateGraphOption {
     fn new(
-        output_name: &str,
+        output_name: &'static str,
         sort: git::SortCommit,
         style: graph::GraphStyle,
-    ) -> GenerateGraphOption<'_> {
+    ) -> GenerateGraphOption {
         GenerateGraphOption {
             output_name,
             sort,
             style,
+            max_count: None,
         }
+    }
+
+    fn with_max_count(mut self, max_count: usize) -> GenerateGraphOption {
+        self.max_count = Some(max_count);
+        self
     }
 }
 
@@ -1368,10 +1387,11 @@ fn generate_and_output_graph_images(repo_path: &Path, options: &[GenerateGraphOp
 
 fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGraphOption) {
     // Build graphs in the same way as application
+    let max_count = option.max_count;
     let graph_color_config = config::GraphColorConfig::default();
     let graph_color_set = color::GraphColorSet::new(&graph_color_config);
     let cell_width_type = graph::CellWidthType::Double;
-    let repository = git::Repository::load(path.as_ref(), option.sort).unwrap();
+    let repository = git::Repository::load(path.as_ref(), option.sort, max_count).unwrap();
     let graph = graph::calc_graph(&repository);
     let image_params = graph::ImageParams::new(&graph_color_set, cell_width_type);
     let drawing_pixels = graph::DrawingPixels::new(&image_params);
