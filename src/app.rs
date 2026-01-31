@@ -24,8 +24,9 @@ use crate::{
     widget::commit_list::{CommitInfo, CommitListState},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 enum StatusLine {
+    #[default]
     None,
     Input(String, Option<u16>, Option<String>),
     NotificationInfo(String),
@@ -48,17 +49,20 @@ pub struct AppContext {
     pub image_protocol: ImageProtocol,
 }
 
+#[derive(Debug, Default)]
+struct AppStatus {
+    status_line: StatusLine,
+    numeric_prefix: String,
+    view_area: Rect,
+}
+
 #[derive(Debug)]
 pub struct App<'a> {
     repository: &'a Repository,
     view: View<'a>,
-    status_line: StatusLine,
-
+    app_status: AppStatus,
     ctx: Rc<AppContext>,
     tx: Sender,
-
-    numeric_prefix: String,
-    view_area: Rect,
 }
 
 impl<'a> App<'a> {
@@ -111,12 +115,10 @@ impl<'a> App<'a> {
 
         Self {
             repository,
-            status_line: StatusLine::None,
             view,
+            app_status: AppStatus::default(),
             ctx,
             tx,
-            numeric_prefix: String::new(),
-            view_area: Rect::default(),
         }
     }
 }
@@ -131,7 +133,7 @@ impl App<'_> {
             terminal.draw(|f| self.render(f))?;
             match rx.recv() {
                 AppEvent::Key(key) => {
-                    match self.status_line {
+                    match self.app_status.status_line {
                         StatusLine::None | StatusLine::Input(_, _, _) => {
                             // do nothing
                         }
@@ -151,9 +153,9 @@ impl App<'_> {
                     let user_event = self.ctx.keybind.get(&key);
 
                     if let Some(UserEvent::Cancel) = user_event {
-                        if !self.numeric_prefix.is_empty() {
+                        if !self.app_status.numeric_prefix.is_empty() {
                             // Clear numeric prefix and cancel the event
-                            self.numeric_prefix.clear();
+                            self.app_status.numeric_prefix.clear();
                             continue;
                         }
                     }
@@ -164,16 +166,16 @@ impl App<'_> {
                         }
                         Some(ue) => {
                             let event_with_count =
-                                process_numeric_prefix(&self.numeric_prefix, *ue, key);
+                                process_numeric_prefix(&self.app_status.numeric_prefix, *ue, key);
                             self.view.handle_event(event_with_count, key);
-                            self.numeric_prefix.clear();
+                            self.app_status.numeric_prefix.clear();
                         }
                         None => {
-                            if let StatusLine::Input(_, _, _) = self.status_line {
+                            if let StatusLine::Input(_, _, _) = self.app_status.status_line {
                                 // In input mode, pass all key events to the view
                                 // fixme: currently, the only thing that processes key_event is searching the list,
                                 //        so this probably works, but it's not the right process...
-                                self.numeric_prefix.clear();
+                                self.app_status.numeric_prefix.clear();
                                 self.view.handle_event(
                                     UserEventWithCount::from_event(UserEvent::Unknown),
                                     key,
@@ -181,9 +183,9 @@ impl App<'_> {
                             } else if let KeyCode::Char(c) = key.code {
                                 // Accumulate numeric prefix
                                 if c.is_ascii_digit()
-                                    && (c != '0' || !self.numeric_prefix.is_empty())
+                                    && (c != '0' || !self.app_status.numeric_prefix.is_empty())
                                 {
-                                    self.numeric_prefix.push(c);
+                                    self.app_status.numeric_prefix.push(c);
                                 }
                             }
                         }
@@ -280,12 +282,12 @@ impl App<'_> {
 
 impl App<'_> {
     fn render_status_line(&self, f: &mut Frame, area: Rect) {
-        let text: Line = match &self.status_line {
+        let text: Line = match &self.app_status.status_line {
             StatusLine::None => {
-                if self.numeric_prefix.is_empty() {
+                if self.app_status.numeric_prefix.is_empty() {
                     Line::raw("")
                 } else {
-                    Line::raw(self.numeric_prefix.as_str())
+                    Line::raw(self.app_status.numeric_prefix.as_str())
                         .fg(self.ctx.color_theme.status_input_transient_fg)
                 }
             }
@@ -326,7 +328,7 @@ impl App<'_> {
         );
         f.render_widget(paragraph, area);
 
-        if let StatusLine::Input(_, Some(cursor_pos), _) = &self.status_line {
+        if let StatusLine::Input(_, Some(cursor_pos), _) = &self.app_status.status_line {
             let (x, y) = (area.x + cursor_pos + 1, area.y + 1);
             match &self.ctx.ui_config.common.cursor_type {
                 CursorType::Native => {
@@ -343,7 +345,7 @@ impl App<'_> {
 
 impl App<'_> {
     fn update_state(&mut self, view_area: Rect) {
-        self.view_area = view_area;
+        self.app_status.view_area = view_area;
     }
 
     fn open_detail(&mut self) {
@@ -390,7 +392,7 @@ impl App<'_> {
                 commit_list_state,
                 commit,
                 user_command_number,
-                self.view_area,
+                self.app_status.view_area,
                 self.ctx.clone(),
                 self.tx.clone(),
             );
@@ -402,7 +404,7 @@ impl App<'_> {
                 commit_list_state,
                 commit,
                 user_command_number,
-                self.view_area,
+                self.app_status.view_area,
                 self.ctx.clone(),
                 self.tx.clone(),
             );
@@ -415,7 +417,7 @@ impl App<'_> {
                     commit_list_state,
                     commit,
                     user_command_number,
-                    self.view_area,
+                    self.app_status.view_area,
                     self.ctx.clone(),
                     self.tx.clone(),
                 );
@@ -424,7 +426,7 @@ impl App<'_> {
                     commit_list_state,
                     commit,
                     user_command_number,
-                    self.view_area,
+                    self.app_status.view_area,
                     self.ctx.clone(),
                     self.tx.clone(),
                 );
@@ -500,7 +502,7 @@ impl App<'_> {
         if let View::Detail(ref mut view) = self.view {
             view.select_older_commit(self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
-            view.select_older_commit(self.repository, self.view_area);
+            view.select_older_commit(self.repository, self.app_status.view_area);
         }
     }
 
@@ -508,7 +510,7 @@ impl App<'_> {
         if let View::Detail(ref mut view) = self.view {
             view.select_newer_commit(self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
-            view.select_newer_commit(self.repository, self.view_area);
+            view.select_newer_commit(self.repository, self.app_status.view_area);
         }
     }
 
@@ -516,12 +518,12 @@ impl App<'_> {
         if let View::Detail(ref mut view) = self.view {
             view.select_parent_commit(self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
-            view.select_parent_commit(self.repository, self.view_area);
+            view.select_parent_commit(self.repository, self.app_status.view_area);
         }
     }
 
     fn clear_status_line(&mut self) {
-        self.status_line = StatusLine::None;
+        self.app_status.status_line = StatusLine::None;
     }
 
     fn update_status_input(
@@ -530,23 +532,23 @@ impl App<'_> {
         cursor_pos: Option<u16>,
         transient_msg: Option<String>,
     ) {
-        self.status_line = StatusLine::Input(msg, cursor_pos, transient_msg);
+        self.app_status.status_line = StatusLine::Input(msg, cursor_pos, transient_msg);
     }
 
     fn info_notification(&mut self, msg: String) {
-        self.status_line = StatusLine::NotificationInfo(msg);
+        self.app_status.status_line = StatusLine::NotificationInfo(msg);
     }
 
     fn success_notification(&mut self, msg: String) {
-        self.status_line = StatusLine::NotificationSuccess(msg);
+        self.app_status.status_line = StatusLine::NotificationSuccess(msg);
     }
 
     fn warn_notification(&mut self, msg: String) {
-        self.status_line = StatusLine::NotificationWarn(msg);
+        self.app_status.status_line = StatusLine::NotificationWarn(msg);
     }
 
     fn error_notification(&mut self, msg: String) {
-        self.status_line = StatusLine::NotificationError(msg);
+        self.app_status.status_line = StatusLine::NotificationError(msg);
     }
 
     fn copy_to_clipboard(&self, name: String, value: String) {
