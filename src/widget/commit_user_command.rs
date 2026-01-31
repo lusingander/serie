@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -6,7 +8,7 @@ use ratatui::{
     widgets::{Block, Borders, Padding, Paragraph, StatefulWidget, Widget},
 };
 
-use crate::color::ColorTheme;
+use crate::app::AppContext;
 
 #[derive(Debug, Default)]
 pub struct CommitUserCommandState {
@@ -50,12 +52,12 @@ impl CommitUserCommandState {
 
 pub struct CommitUserCommand<'a> {
     lines: &'a Vec<Line<'a>>,
-    color_theme: &'a ColorTheme,
+    ctx: Rc<AppContext>,
 }
 
 impl<'a> CommitUserCommand<'a> {
-    pub fn new(lines: &'a Vec<Line<'a>>, color_theme: &'a ColorTheme) -> Self {
-        Self { lines, color_theme }
+    pub fn new(lines: &'a Vec<Line<'a>>, ctx: Rc<AppContext>) -> Self {
+        Self { lines, ctx }
     }
 }
 
@@ -85,11 +87,11 @@ impl CommitUserCommand<'_> {
             .cloned()
             .collect::<Vec<_>>();
         let paragraph = Paragraph::new(lines)
-            .style(Style::default().fg(self.color_theme.fg))
+            .style(Style::default().fg(self.ctx.color_theme.fg))
             .block(
                 Block::default()
                     .borders(Borders::TOP)
-                    .style(Style::default().fg(self.color_theme.divider_fg))
+                    .style(Style::default().fg(self.ctx.color_theme.divider_fg))
                     .padding(Padding::horizontal(2)),
             );
         paragraph.render(area, buf);

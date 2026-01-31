@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ansi_to_tui::IntoText as _;
 use ratatui::{
     crossterm::event::KeyEvent,
@@ -8,12 +10,10 @@ use ratatui::{
 };
 
 use crate::{
-    color::ColorTheme,
-    config::{CoreConfig, UiConfig},
+    app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     external::exec_user_command,
     git::{Commit, Repository},
-    protocol::ImageProtocol,
     widget::{
         commit_list::{CommitList, CommitListState},
         commit_user_command::{CommitUserCommand, CommitUserCommandState},
@@ -34,10 +34,7 @@ pub struct UserCommandView<'a> {
     user_command_number: usize,
     user_command_output_lines: Vec<Line<'a>>,
 
-    core_config: &'a CoreConfig,
-    ui_config: &'a UiConfig,
-    color_theme: &'a ColorTheme,
-    image_protocol: ImageProtocol,
+    ctx: Rc<AppContext>,
     tx: Sender,
     before_view: UserCommandViewBeforeView,
     clear: bool,
@@ -49,34 +46,23 @@ impl<'a> UserCommandView<'a> {
         commit: Commit,
         user_command_number: usize,
         view_area: Rect,
-        core_config: &'a CoreConfig,
-        ui_config: &'a UiConfig,
-        color_theme: &'a ColorTheme,
-        image_protocol: ImageProtocol,
+        ctx: Rc<AppContext>,
         tx: Sender,
         before_view: UserCommandViewBeforeView,
     ) -> UserCommandView<'a> {
-        let user_command_output_lines = build_user_command_output_lines(
-            &commit,
-            user_command_number,
-            view_area,
-            core_config,
-            ui_config,
-        )
-        .unwrap_or_else(|err| {
-            tx.send(AppEvent::NotifyError(err));
-            vec![]
-        });
+        let user_command_output_lines =
+            build_user_command_output_lines(&commit, user_command_number, view_area, ctx.clone())
+                .unwrap_or_else(|err| {
+                    tx.send(AppEvent::NotifyError(err));
+                    vec![]
+                });
 
         UserCommandView {
             commit_list_state: Some(commit_list_state),
             commit_user_command_state: CommitUserCommandState::default(),
             user_command_number,
             user_command_output_lines,
-            core_config,
-            ui_config,
-            color_theme,
-            image_protocol,
+            ctx,
             tx,
             before_view,
             clear: false,
@@ -152,16 +138,16 @@ impl<'a> UserCommandView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        let user_command_height = (area.height - 1).min(self.ui_config.user_command.height);
+        let user_command_height = (area.height - 1).min(self.ctx.ui_config.user_command.height);
         let [list_area, user_command_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(user_command_height)])
                 .areas(area);
 
-        let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
+        let commit_list = CommitList::new(self.ctx.clone());
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
 
         let commit_user_command =
-            CommitUserCommand::new(&self.user_command_output_lines, self.color_theme);
+            CommitUserCommand::new(&self.user_command_output_lines, self.ctx.clone());
         f.render_stateful_widget(
             commit_user_command,
             user_command_area,
@@ -175,7 +161,7 @@ impl<'a> UserCommandView<'a> {
 
         // clear the image area if needed
         for y in user_command_area.top()..user_command_area.bottom() {
-            self.image_protocol.clear_line(y);
+            self.ctx.image_protocol.clear_line(y);
         }
     }
 }
@@ -217,8 +203,7 @@ impl<'a> UserCommandView<'a> {
             &commit,
             self.user_command_number,
             view_area,
-            self.core_config,
-            self.ui_config,
+            self.ctx.clone(),
         )
         .unwrap_or_else(|err| {
             self.tx.send(AppEvent::NotifyError(err));
@@ -246,10 +231,10 @@ fn build_user_command_output_lines<'a>(
     commit: &Commit,
     user_command_number: usize,
     view_area: Rect,
-    core_config: &'a CoreConfig,
-    ui_config: &'a UiConfig,
+    ctx: Rc<AppContext>,
 ) -> Result<Vec<Line<'a>>, String> {
-    let command = core_config
+    let command = ctx
+        .core_config
         .user_command
         .commands
         .get(&user_command_number.to_string())
@@ -271,9 +256,9 @@ fn build_user_command_output_lines<'a>(
         .unwrap_or_default();
 
     let area_width = view_area.width - 4; // minus the left and right padding
-    let area_height = (view_area.height - 1).min(ui_config.user_command.height) - 1; // minus the top border
+    let area_height = (view_area.height - 1).min(ctx.ui_config.user_command.height) - 1; // minus the top border
 
-    let tab_spaces = " ".repeat(core_config.user_command.tab_width as usize);
+    let tab_spaces = " ".repeat(ctx.core_config.user_command.tab_width as usize);
     exec_user_command(&command, target_hash, parent_hash, area_width, area_height)
         .and_then(|output| {
             output

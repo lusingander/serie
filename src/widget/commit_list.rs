@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use laurier::highlight::highlight_matched_text;
 use once_cell::sync::Lazy;
@@ -13,8 +15,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use tui_input::{backend::crossterm::EventHandler, Input};
 
 use crate::{
+    app::AppContext,
     color::ColorTheme,
-    config::UiListConfig,
     git::{Commit, CommitHash, Head, Ref},
     graph::GraphImageManager,
 };
@@ -653,15 +655,15 @@ impl<'a> CommitListState<'a> {
 }
 
 pub struct CommitList<'a> {
-    config: &'a UiListConfig,
-    color_theme: &'a ColorTheme,
+    ctx: Rc<AppContext>,
+    _marker: std::marker::PhantomData<&'a ()>,
 }
 
 impl<'a> CommitList<'a> {
-    pub fn new(config: &'a UiListConfig, color_theme: &'a ColorTheme) -> Self {
+    pub fn new(ctx: Rc<AppContext>) -> Self {
         Self {
-            config,
-            color_theme,
+            ctx,
+            _marker: std::marker::PhantomData,
         }
     }
 }
@@ -681,9 +683,9 @@ impl<'a> StatefulWidget for CommitList<'a> {
         ) = self.calc_cell_widths(
             state,
             area.width,
-            self.config.subject_min_width,
-            self.config.name_width,
-            self.config.date_width,
+            self.ctx.ui_config.list.subject_min_width,
+            self.ctx.ui_config.list.name_width,
+            self.ctx.ui_config.list.date_width,
         );
 
         let chunks = Layout::horizontal([
@@ -808,7 +810,7 @@ impl CommitList<'_> {
                     commit_info,
                     state.head,
                     &state.search_matches[state.offset + i].refs,
-                    self.color_theme,
+                    &self.ctx.color_theme,
                 );
                 let ref_spans_width: usize = spans.iter().map(|s| s.width()).sum();
                 let max_width = max_width.saturating_sub(ref_spans_width);
@@ -826,13 +828,13 @@ impl CommitList<'_> {
                             highlighted_spans(
                                 subject.into(),
                                 pos,
-                                self.color_theme.list_subject_fg,
+                                self.ctx.color_theme.list_subject_fg,
                                 Modifier::empty(),
-                                self.color_theme,
+                                &self.ctx.color_theme,
                                 truncate,
                             )
                         } else {
-                            vec![subject.fg(self.color_theme.list_subject_fg)]
+                            vec![subject.fg(self.ctx.color_theme.list_subject_fg)]
                         };
 
                     spans.extend(sub_spans)
@@ -862,13 +864,13 @@ impl CommitList<'_> {
                         highlighted_spans(
                             name.into(),
                             pos,
-                            self.color_theme.list_name_fg,
+                            self.ctx.color_theme.list_name_fg,
                             Modifier::empty(),
-                            self.color_theme,
+                            &self.ctx.color_theme,
                             truncate,
                         )
                     } else {
-                        vec![name.fg(self.color_theme.list_name_fg)]
+                        vec![name.fg(self.ctx.color_theme.list_name_fg)]
                     };
                 self.to_commit_list_item(i, spans, state)
             })
@@ -889,13 +891,13 @@ impl CommitList<'_> {
                         highlighted_spans(
                             hash.into(),
                             pos,
-                            self.color_theme.list_hash_fg,
+                            self.ctx.color_theme.list_hash_fg,
                             Modifier::empty(),
-                            self.color_theme,
+                            &self.ctx.color_theme,
                             false,
                         )
                     } else {
-                        vec![hash.fg(self.color_theme.list_hash_fg)]
+                        vec![hash.fg(self.ctx.color_theme.list_hash_fg)]
                     };
                 self.to_commit_list_item(i, spans, state)
             })
@@ -911,13 +913,20 @@ impl CommitList<'_> {
             .rendering_commit_iter(state)
             .map(|(i, commit)| {
                 let date = &commit.author_date;
-                let date_str = if self.config.date_local {
+                let date_str = if self.ctx.ui_config.list.date_local {
                     let local = date.with_timezone(&chrono::Local);
-                    local.format(&self.config.date_format).to_string()
+                    local
+                        .format(&self.ctx.ui_config.list.date_format)
+                        .to_string()
                 } else {
-                    date.format(&self.config.date_format).to_string()
+                    date.format(&self.ctx.ui_config.list.date_format)
+                        .to_string()
                 };
-                self.to_commit_list_item(i, vec![date_str.fg(self.color_theme.list_date_fg)], state)
+                self.to_commit_list_item(
+                    i,
+                    vec![date_str.fg(self.ctx.color_theme.list_date_fg)],
+                    state,
+                )
             })
             .collect();
         Widget::render(List::new(items), area, buf);
@@ -955,8 +964,8 @@ impl CommitList<'_> {
         let mut line = Line::from(spans);
         if i == state.selected {
             line = line
-                .bg(self.color_theme.list_selected_bg)
-                .fg(self.color_theme.list_selected_fg);
+                .bg(self.ctx.color_theme.list_selected_bg)
+                .fg(self.ctx.color_theme.list_selected_fg);
         }
         ListItem::new(line)
     }

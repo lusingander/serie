@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ratatui::{
     crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
@@ -8,11 +10,11 @@ use ratatui::{
 };
 
 use crate::{
+    app::AppContext,
     color::ColorTheme,
     config::CoreConfig,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     keybind::KeyBind,
-    protocol::ImageProtocol,
     view::View,
 };
 
@@ -27,21 +29,15 @@ pub struct HelpView<'a> {
     offset: usize,
     height: usize,
 
-    image_protocol: ImageProtocol,
+    ctx: Rc<AppContext>,
     tx: Sender,
     clear: bool,
 }
 
 impl HelpView<'_> {
-    pub fn new<'a>(
-        before: View<'a>,
-        color_theme: &'a ColorTheme,
-        image_protocol: ImageProtocol,
-        tx: Sender,
-        keybind: &'a KeyBind,
-        core_config: &'a CoreConfig,
-    ) -> HelpView<'a> {
-        let (help_key_lines, help_value_lines) = build_lines(color_theme, keybind, core_config);
+    pub fn new<'a>(before: View<'a>, ctx: Rc<AppContext>, tx: Sender) -> HelpView<'a> {
+        let (help_key_lines, help_value_lines) =
+            build_lines(&ctx.color_theme, &ctx.keybind, &ctx.core_config);
         let help_key_line_max_width = help_key_lines
             .iter()
             .map(|line| line.width())
@@ -54,7 +50,7 @@ impl HelpView<'_> {
             help_key_line_max_width,
             offset: 0,
             height: 0,
-            image_protocol,
+            ctx,
             tx,
             clear: false,
         }
@@ -159,7 +155,7 @@ impl HelpView<'_> {
 
         // clear the image area if needed
         for y in area.top()..area.bottom() {
-            self.image_protocol.clear_line(y);
+            self.ctx.image_protocol.clear_line(y);
         }
     }
 }
