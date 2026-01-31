@@ -1,12 +1,11 @@
+use std::rc::Rc;
+
 use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
 use crate::{
-    color::ColorTheme,
-    config::{CoreConfig, UiConfig},
+    app::AppContext,
     event::{Sender, UserEventWithCount},
     git::{Commit, FileChange, Ref},
-    keybind::KeyBind,
-    protocol::ImageProtocol,
     view::{
         detail::DetailView,
         help::HelpView,
@@ -53,16 +52,10 @@ impl<'a> View<'a> {
 
     pub fn of_list(
         commit_list_state: CommitListState<'a>,
-        ui_config: &'a UiConfig,
-        color_theme: &'a ColorTheme,
+        ctx: Rc<AppContext>,
         tx: Sender,
     ) -> Self {
-        View::List(Box::new(ListView::new(
-            commit_list_state,
-            ui_config,
-            color_theme,
-            tx,
-        )))
+        View::List(Box::new(ListView::new(commit_list_state, ctx, tx)))
     }
 
     pub fn of_detail(
@@ -70,9 +63,7 @@ impl<'a> View<'a> {
         commit: Commit,
         changes: Vec<FileChange>,
         refs: Vec<Ref>,
-        ui_config: &'a UiConfig,
-        color_theme: &'a ColorTheme,
-        image_protocol: ImageProtocol,
+        ctx: Rc<AppContext>,
         tx: Sender,
     ) -> Self {
         View::Detail(Box::new(DetailView::new(
@@ -80,9 +71,7 @@ impl<'a> View<'a> {
             commit,
             changes,
             refs,
-            ui_config,
-            color_theme,
-            image_protocol,
+            ctx,
             tx,
         )))
     }
@@ -92,10 +81,7 @@ impl<'a> View<'a> {
         commit: Commit,
         user_command_number: usize,
         view_area: Rect,
-        core_config: &'a CoreConfig,
-        ui_config: &'a UiConfig,
-        color_theme: &'a ColorTheme,
-        image_protocol: ImageProtocol,
+        ctx: Rc<AppContext>,
         tx: Sender,
     ) -> Self {
         View::UserCommand(Box::new(UserCommandView::new(
@@ -103,10 +89,7 @@ impl<'a> View<'a> {
             commit,
             user_command_number,
             view_area,
-            core_config,
-            ui_config,
-            color_theme,
-            image_protocol,
+            ctx,
             tx,
             UserCommandViewBeforeView::List,
         )))
@@ -117,10 +100,7 @@ impl<'a> View<'a> {
         commit: Commit,
         user_command_number: usize,
         view_area: Rect,
-        core_config: &'a CoreConfig,
-        ui_config: &'a UiConfig,
-        color_theme: &'a ColorTheme,
-        image_protocol: ImageProtocol,
+        ctx: Rc<AppContext>,
         tx: Sender,
     ) -> Self {
         View::UserCommand(Box::new(UserCommandView::new(
@@ -128,10 +108,7 @@ impl<'a> View<'a> {
             commit,
             user_command_number,
             view_area,
-            core_config,
-            ui_config,
-            color_theme,
-            image_protocol,
+            ctx,
             tx,
             UserCommandViewBeforeView::Detail,
         )))
@@ -140,34 +117,13 @@ impl<'a> View<'a> {
     pub fn of_refs(
         commit_list_state: CommitListState<'a>,
         refs: Vec<Ref>,
-        ui_config: &'a UiConfig,
-        color_theme: &'a ColorTheme,
+        ctx: Rc<AppContext>,
         tx: Sender,
     ) -> Self {
-        View::Refs(Box::new(RefsView::new(
-            commit_list_state,
-            refs,
-            ui_config,
-            color_theme,
-            tx,
-        )))
+        View::Refs(Box::new(RefsView::new(commit_list_state, refs, ctx, tx)))
     }
 
-    pub fn of_help(
-        before: View<'a>,
-        color_theme: &'a ColorTheme,
-        image_protocol: ImageProtocol,
-        tx: Sender,
-        keybind: &'a KeyBind,
-        core_config: &'a CoreConfig,
-    ) -> Self {
-        View::Help(Box::new(HelpView::new(
-            before,
-            color_theme,
-            image_protocol,
-            tx,
-            keybind,
-            core_config,
-        )))
+    pub fn of_help(before: View<'a>, ctx: Rc<AppContext>, tx: Sender) -> Self {
+        View::Help(Box::new(HelpView::new(before, ctx, tx)))
     }
 }

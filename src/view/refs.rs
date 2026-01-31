@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ratatui::{
     crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
@@ -5,8 +7,7 @@ use ratatui::{
 };
 
 use crate::{
-    color::ColorTheme,
-    config::UiConfig,
+    app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     git::Ref,
     widget::{
@@ -22,8 +23,7 @@ pub struct RefsView<'a> {
 
     refs: Vec<Ref>,
 
-    ui_config: &'a UiConfig,
-    color_theme: &'a ColorTheme,
+    ctx: Rc<AppContext>,
     tx: Sender,
 }
 
@@ -31,16 +31,14 @@ impl<'a> RefsView<'a> {
     pub fn new(
         commit_list_state: CommitListState<'a>,
         refs: Vec<Ref>,
-        ui_config: &'a UiConfig,
-        color_theme: &'a ColorTheme,
+        ctx: Rc<AppContext>,
         tx: Sender,
     ) -> RefsView<'a> {
         RefsView {
             commit_list_state: Some(commit_list_state),
             ref_list_state: RefListState::new(),
             refs,
-            ui_config,
-            color_theme,
+            ctx,
             tx,
         }
     }
@@ -96,15 +94,16 @@ impl<'a> RefsView<'a> {
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
         let graph_width = self.as_list_state().graph_area_cell_width() + 1; // graph area + marker
-        let refs_width = (area.width.saturating_sub(graph_width)).min(self.ui_config.refs.width);
+        let refs_width =
+            (area.width.saturating_sub(graph_width)).min(self.ctx.ui_config.refs.width);
 
         let [list_area, refs_area] =
             Layout::horizontal([Constraint::Min(0), Constraint::Length(refs_width)]).areas(area);
 
-        let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
+        let commit_list = CommitList::new(self.ctx.clone());
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
 
-        let ref_list = RefList::new(&self.refs, self.color_theme);
+        let ref_list = RefList::new(&self.refs, self.ctx.clone());
         f.render_stateful_widget(ref_list, refs_area, &mut self.ref_list_state);
     }
 }

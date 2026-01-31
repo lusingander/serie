@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ratatui::{
     crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
@@ -6,11 +8,9 @@ use ratatui::{
 };
 
 use crate::{
-    color::ColorTheme,
-    config::UiConfig,
+    app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     git::{Commit, FileChange, Ref, Repository},
-    protocol::ImageProtocol,
     widget::{
         commit_detail::{CommitDetail, CommitDetailState},
         commit_list::{CommitList, CommitListState},
@@ -26,9 +26,7 @@ pub struct DetailView<'a> {
     changes: Vec<FileChange>,
     refs: Vec<Ref>,
 
-    ui_config: &'a UiConfig,
-    color_theme: &'a ColorTheme,
-    image_protocol: ImageProtocol,
+    ctx: Rc<AppContext>,
     tx: Sender,
     clear: bool,
 }
@@ -39,9 +37,7 @@ impl<'a> DetailView<'a> {
         commit: Commit,
         changes: Vec<FileChange>,
         refs: Vec<Ref>,
-        ui_config: &'a UiConfig,
-        color_theme: &'a ColorTheme,
-        image_protocol: ImageProtocol,
+        ctx: Rc<AppContext>,
         tx: Sender,
     ) -> DetailView<'a> {
         DetailView {
@@ -50,9 +46,7 @@ impl<'a> DetailView<'a> {
             commit,
             changes,
             refs,
-            ui_config,
-            color_theme,
-            image_protocol,
+            ctx,
             tx,
             clear: false,
         }
@@ -129,11 +123,11 @@ impl<'a> DetailView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        let detail_height = (area.height - 1).min(self.ui_config.detail.height);
+        let detail_height = (area.height - 1).min(self.ctx.ui_config.detail.height);
         let [list_area, detail_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(detail_height)]).areas(area);
 
-        let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
+        let commit_list = CommitList::new(self.ctx.clone());
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
 
         if self.clear {
@@ -141,18 +135,13 @@ impl<'a> DetailView<'a> {
             return;
         }
 
-        let commit_detail = CommitDetail::new(
-            &self.commit,
-            &self.changes,
-            &self.refs,
-            &self.ui_config.detail,
-            self.color_theme,
-        );
+        let commit_detail =
+            CommitDetail::new(&self.commit, &self.changes, &self.refs, self.ctx.clone());
         f.render_stateful_widget(commit_detail, detail_area, &mut self.commit_detail_state);
 
         // clear the image area if needed
         for y in detail_area.top()..detail_area.bottom() {
-            self.image_protocol.clear_line(y);
+            self.ctx.image_protocol.clear_line(y);
         }
     }
 }

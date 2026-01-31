@@ -1,8 +1,9 @@
+use std::rc::Rc;
+
 use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 
 use crate::{
-    color::ColorTheme,
-    config::UiConfig,
+    app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     widget::commit_list::{CommitList, CommitListState, SearchState},
 };
@@ -11,22 +12,19 @@ use crate::{
 pub struct ListView<'a> {
     commit_list_state: Option<CommitListState<'a>>,
 
-    ui_config: &'a UiConfig,
-    color_theme: &'a ColorTheme,
+    ctx: Rc<AppContext>,
     tx: Sender,
 }
 
 impl<'a> ListView<'a> {
     pub fn new(
         commit_list_state: CommitListState<'a>,
-        ui_config: &'a UiConfig,
-        color_theme: &'a ColorTheme,
+        ctx: Rc<AppContext>,
         tx: Sender,
     ) -> ListView<'a> {
         ListView {
             commit_list_state: Some(commit_list_state),
-            ui_config,
-            color_theme,
+            ctx,
             tx,
         }
     }
@@ -170,7 +168,7 @@ impl<'a> ListView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        let commit_list = CommitList::new(&self.ui_config.list, self.color_theme);
+        let commit_list = CommitList::new(self.ctx.clone());
         f.render_stateful_widget(commit_list, area, self.as_mut_list_state());
     }
 }

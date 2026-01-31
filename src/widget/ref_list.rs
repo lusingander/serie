@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -7,7 +9,7 @@ use ratatui::{
 use semver::Version;
 use tui_tree_widget::{Tree, TreeItem, TreeState};
 
-use crate::{color::ColorTheme, git::Ref};
+use crate::{app::AppContext, color::ColorTheme, git::Ref};
 
 const TREE_BRANCH_ROOT_IDENT: &str = "__branches__";
 const TREE_REMOTE_ROOT_IDENT: &str = "__remotes__";
@@ -83,19 +85,19 @@ impl RefListState {
     }
 }
 
-pub struct RefList<'a> {
-    items: Vec<TreeItem<'a, String>>,
-    color_theme: &'a ColorTheme,
+pub struct RefList {
+    items: Vec<TreeItem<'static, String>>,
+    ctx: Rc<AppContext>,
 }
 
-impl<'a> RefList<'a> {
-    pub fn new(refs: &'a [Ref], color_theme: &'a ColorTheme) -> RefList<'a> {
-        let items = build_ref_tree_items(refs, color_theme);
-        RefList { items, color_theme }
+impl RefList {
+    pub fn new(refs: &[Ref], ctx: Rc<AppContext>) -> RefList {
+        let items = build_ref_tree_items(refs, &ctx.color_theme);
+        RefList { items, ctx }
     }
 }
 
-impl StatefulWidget for RefList<'_> {
+impl StatefulWidget for RefList {
     type State = RefListState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
@@ -106,23 +108,20 @@ impl StatefulWidget for RefList<'_> {
             .node_no_children_symbol("  ")
             .highlight_style(
                 Style::default()
-                    .bg(self.color_theme.ref_selected_bg)
-                    .fg(self.color_theme.ref_selected_fg),
+                    .bg(self.ctx.color_theme.ref_selected_bg)
+                    .fg(self.ctx.color_theme.ref_selected_fg),
             )
             .block(
                 Block::default()
                     .borders(Borders::LEFT)
-                    .style(Style::default().fg(self.color_theme.divider_fg))
+                    .style(Style::default().fg(self.ctx.color_theme.divider_fg))
                     .padding(Padding::horizontal(1)),
             );
         tree.render(area, buf, &mut state.tree_state);
     }
 }
 
-fn build_ref_tree_items<'a>(
-    refs: &'a [Ref],
-    color_theme: &'a ColorTheme,
-) -> Vec<TreeItem<'a, String>> {
+fn build_ref_tree_items(refs: &[Ref], color_theme: &ColorTheme) -> Vec<TreeItem<'static, String>> {
     let mut branch_refs = Vec::new();
     let mut remote_refs = Vec::new();
     let mut tag_refs = Vec::new();
@@ -237,7 +236,7 @@ fn refs_to_ref_tree_nodes(ref_names: Vec<String>) -> Vec<RefTreeNode> {
 fn ref_tree_nodes_to_tree_items(
     nodes: Vec<RefTreeNode>,
     color_theme: &ColorTheme,
-) -> Vec<TreeItem<'_, String>> {
+) -> Vec<TreeItem<'static, String>> {
     let mut items = Vec::new();
     for node in nodes {
         if node.children.is_empty() {
@@ -286,12 +285,12 @@ fn parse_semantic_version_tag(tag: &str) -> Option<Version> {
     Version::parse(tag).ok()
 }
 
-fn tree_item<'a>(
+fn tree_item(
     identifier: String,
     name: String,
-    children: Vec<TreeItem<'a, String>>,
-    color_theme: &'a ColorTheme,
-) -> TreeItem<'a, String> {
+    children: Vec<TreeItem<'static, String>>,
+    color_theme: &ColorTheme,
+) -> TreeItem<'static, String> {
     TreeItem::new(identifier, name.fg(color_theme.fg), children).unwrap()
 }
 
@@ -299,6 +298,6 @@ fn tree_leaf_item(
     identifier: String,
     name: String,
     color_theme: &ColorTheme,
-) -> TreeItem<'_, String> {
+) -> TreeItem<'static, String> {
     tree_item(identifier, name, Vec::new(), color_theme)
 }

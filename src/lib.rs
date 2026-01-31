@@ -12,7 +12,7 @@ mod keybind;
 mod view;
 mod widget;
 
-use std::path::Path;
+use std::{path::Path, rc::Rc};
 
 use app::App;
 use clap::{Parser, ValueEnum};
@@ -134,8 +134,8 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 pub fn run() -> Result<()> {
     let args = Args::parse();
-    let (core_config, ui_config, graph_config, color_theme, key_bind_patch) = config::load()?;
-    let key_bind = keybind::KeyBind::new(key_bind_patch);
+    let (core_config, ui_config, graph_config, color_theme, keybind_patch) = config::load()?;
+    let keybind = keybind::KeyBind::new(keybind_patch);
 
     let max_count = args.max_count;
     let image_protocol = args.protocol.or(core_config.option.protocol).into();
@@ -168,18 +168,21 @@ pub fn run() -> Result<()> {
 
     let (tx, rx) = event::init();
 
+    let ctx = Rc::new(app::AppContext {
+        keybind,
+        core_config,
+        ui_config,
+        color_theme,
+        image_protocol,
+    });
     let mut app = App::new(
         &repository,
         graph_image_manager,
         &graph,
-        &key_bind,
-        &core_config,
-        &ui_config,
-        &color_theme,
         &graph_color_set,
         cell_width_type,
-        image_protocol,
         initial_selection,
+        ctx,
         tx,
     );
     let ret = app.run(&mut terminal, rx);
