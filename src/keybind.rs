@@ -168,6 +168,34 @@ fn parse_key_code_with_modifiers(
             if modifiers.contains(KeyModifiers::SHIFT) {
                 c = c.to_ascii_uppercase();
             }
+            // INFO: special characters requiring shift to type (like ?, !, @, etc.) so add the SHIFT modifier.
+            if !modifiers.contains(KeyModifiers::SHIFT)
+                && matches!(
+                    c,
+                    '?' | '!'
+                        | '@'
+                        | '#'
+                        | '$'
+                        | '%'
+                        | '^'
+                        | '&'
+                        | '*'
+                        | '('
+                        | ')'
+                        | '_'
+                        | '+'
+                        | '{'
+                        | '}'
+                        | '|'
+                        | ':'
+                        | '"'
+                        | '<'
+                        | '>'
+                        | '~'
+                )
+            {
+                modifiers.insert(KeyModifiers::SHIFT);
+            }
             KeyCode::Char(c)
         }
         _ => return Err(format!("Unable to parse {raw}")),
