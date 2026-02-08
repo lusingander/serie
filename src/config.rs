@@ -282,6 +282,16 @@ pub struct CoreExternalConfig {
 #[optional(derives = [Deserialize])]
 #[derive(Debug, Clone, PartialEq, Eq, SmartDefault, Validate)]
 pub struct UiListConfig {
+    #[garde(length(min = 1))]
+    #[default(vec![
+        UserListColumnType::Graph,
+        UserListColumnType::Marker,
+        UserListColumnType::Subject,
+        UserListColumnType::Name,
+        UserListColumnType::Hash,
+        UserListColumnType::Date,
+    ])]
+    pub columns: Vec<UserListColumnType>,
     #[garde(range(min = 1))]
     #[default = 20]
     pub subject_min_width: u16,
@@ -297,6 +307,17 @@ pub struct UiListConfig {
     #[garde(range(min = 0))]
     #[default = 20]
     pub name_width: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UserListColumnType {
+    Graph,
+    Marker,
+    Subject,
+    Name,
+    Hash,
+    Date,
 }
 
 #[optional(derives = [Deserialize])]
@@ -404,6 +425,14 @@ mod tests {
                     cursor_type: CursorType::Native,
                 },
                 list: UiListConfig {
+                    columns: vec![
+                        UserListColumnType::Graph,
+                        UserListColumnType::Marker,
+                        UserListColumnType::Subject,
+                        UserListColumnType::Name,
+                        UserListColumnType::Hash,
+                        UserListColumnType::Date,
+                    ],
                     subject_min_width: 20,
                     date_format: "%Y-%m-%d".into(),
                     date_width: 10,
@@ -458,6 +487,7 @@ mod tests {
             [ui.common]
             cursor_type = { Virtual = "|" }
             [ui.list]
+            columns = ["date", "subject", "hash", "graph"]
             subject_min_width = 40
             date_format = "%Y/%m/%d"
             date_width = 20
@@ -530,6 +560,12 @@ mod tests {
                     cursor_type: CursorType::Virtual("|".into()),
                 },
                 list: UiListConfig {
+                    columns: vec![
+                        UserListColumnType::Date,
+                        UserListColumnType::Subject,
+                        UserListColumnType::Hash,
+                        UserListColumnType::Graph,
+                    ],
                     subject_min_width: 40,
                     date_format: "%Y/%m/%d".into(),
                     date_width: 20,
@@ -603,6 +639,14 @@ mod tests {
                     cursor_type: CursorType::Native,
                 },
                 list: UiListConfig {
+                    columns: vec![
+                        UserListColumnType::Graph,
+                        UserListColumnType::Marker,
+                        UserListColumnType::Subject,
+                        UserListColumnType::Name,
+                        UserListColumnType::Hash,
+                        UserListColumnType::Date,
+                    ],
                     subject_min_width: 20,
                     date_format: "%Y/%m/%d".into(),
                     date_width: 10,
