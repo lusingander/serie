@@ -83,5 +83,5 @@ fn kitty_encode(bytes: &[u8], cell_width: usize, cell_height: usize) -> String {
 
 fn kitty_clear_line(y: u16) {
     let y = y + 1; // 1-based
-    print!("\x1b_Ga=d,d=P,x=1,y={y};\x1b\\");
+    print!("\x1b_Ga=d,d=Y,y={y};\x1b\\");
 }
