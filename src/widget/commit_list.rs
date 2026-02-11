@@ -17,6 +17,7 @@ use tui_input::{backend::crossterm::EventHandler, Input};
 use crate::{
     app::AppContext,
     color::ColorTheme,
+    config::UserListColumnType,
     git::{Commit, CommitHash, Head, Ref},
     graph::GraphImageManager,
 };
@@ -674,36 +675,38 @@ impl<'a> StatefulWidget for CommitList<'a> {
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         self.update_state(area, state);
 
-        let (
-            graph_cell_width,
-            marker_cell_width,
-            name_cell_width,
-            hash_cell_width,
-            date_cell_width,
-        ) = self.calc_cell_widths(
-            state,
+        let constraints = calc_cell_widths(
             area.width,
             self.ctx.ui_config.list.subject_min_width,
+            state.graph_area_cell_width(),
             self.ctx.ui_config.list.name_width,
             self.ctx.ui_config.list.date_width,
+            &self.ctx.ui_config.list.columns,
         );
+        let chunks = Layout::horizontal(constraints).split(area);
 
-        let chunks = Layout::horizontal([
-            Constraint::Length(graph_cell_width),
-            Constraint::Length(marker_cell_width),
-            Constraint::Min(0), // subject
-            Constraint::Length(name_cell_width),
-            Constraint::Length(hash_cell_width),
-            Constraint::Length(date_cell_width),
-        ])
-        .split(area);
-
-        self.render_graph(buf, chunks[0], state);
-        self.render_marker(buf, chunks[1], state);
-        self.render_subject(buf, chunks[2], state);
-        self.render_name(buf, chunks[3], state);
-        self.render_hash(buf, chunks[4], state);
-        self.render_date(buf, chunks[5], state);
+        for (i, col) in self.ctx.ui_config.list.columns.iter().enumerate() {
+            match col {
+                UserListColumnType::Graph => {
+                    self.render_graph(buf, chunks[i], state);
+                }
+                UserListColumnType::Marker => {
+                    self.render_marker(buf, chunks[i], state);
+                }
+                UserListColumnType::Subject => {
+                    self.render_subject(buf, chunks[i], state);
+                }
+                UserListColumnType::Name => {
+                    self.render_name(buf, chunks[i], state);
+                }
+                UserListColumnType::Hash => {
+                    self.render_hash(buf, chunks[i], state);
+                }
+                UserListColumnType::Date => {
+                    self.render_date(buf, chunks[i], state);
+                }
+            }
+        }
     }
 }
 
@@ -734,50 +737,10 @@ impl CommitList<'_> {
             });
     }
 
-    fn calc_cell_widths(
-        &self,
-        state: &CommitListState,
-        width: u16,
-        subject_min_width: u16,
-        name_width: u16,
-        date_width: u16,
-    ) -> (u16, u16, u16, u16, u16) {
-        let pad = 2;
-        let graph_cell_width = state.graph_area_cell_width();
-        let marker_cell_width = 1;
-        let mut name_cell_width = name_width + pad;
-        let mut hash_cell_width = 7 + pad;
-        let mut date_cell_width = date_width + pad;
-
-        let mut total_width = graph_cell_width
-            + marker_cell_width
-            + hash_cell_width
-            + name_cell_width
-            + date_cell_width
-            + subject_min_width;
-
-        if total_width > width {
-            total_width = total_width.saturating_sub(name_cell_width);
-            name_cell_width = 0;
-        }
-        if total_width > width {
-            total_width = total_width.saturating_sub(date_cell_width);
-            date_cell_width = 0;
-        }
-        if total_width > width {
-            hash_cell_width = 0;
-        }
-
-        (
-            graph_cell_width,
-            marker_cell_width,
-            name_cell_width,
-            hash_cell_width,
-            date_cell_width,
-        )
-    }
-
     fn render_graph(&self, buf: &mut Buffer, area: Rect, state: &CommitListState) {
+        if area.is_empty() {
+            return;
+        }
         self.rendering_commit_info_iter(state)
             .for_each(|(i, commit_info)| {
                 buf[(area.left(), area.top() + i as u16)]
@@ -791,6 +754,9 @@ impl CommitList<'_> {
     }
 
     fn render_marker(&self, buf: &mut Buffer, area: Rect, state: &CommitListState) {
+        if area.is_empty() {
+            return;
+        }
         let items: Vec<ListItem> = self
             .rendering_commit_info_iter(state)
             .map(|(_, commit_info)| ListItem::new("│".fg(commit_info.graph_color)))
@@ -1077,4 +1043,276 @@ fn highlighted_spans(
         hm = hm.ellipsis(ELLIPSIS);
     }
     hm.into_spans()
+}
+
+fn calc_cell_widths(
+    area_width: u16,
+    subject_min_width: u16,
+    graph_width: u16,
+    name_width: u16,
+    date_width: u16,
+    columns: &[UserListColumnType],
+) -> Vec<Constraint> {
+    let pad = 2;
+    let (
+        mut graph_cell_width,
+        mut marker_cell_width,
+        mut name_cell_width,
+        mut hash_cell_width,
+        mut date_cell_width,
+    ) = (0, 0, 0, 0, 0);
+
+    for col in columns {
+        match col {
+            UserListColumnType::Graph => {
+                graph_cell_width = graph_width;
+            }
+            UserListColumnType::Marker => {
+                marker_cell_width = 1;
+            }
+            UserListColumnType::Name => {
+                name_cell_width = name_width + pad;
+            }
+            UserListColumnType::Hash => {
+                hash_cell_width = 7 + pad;
+            }
+            UserListColumnType::Date => {
+                date_cell_width = date_width + pad;
+            }
+            UserListColumnType::Subject => {}
+        }
+    }
+
+    let mut total_width = graph_cell_width
+        + marker_cell_width
+        + hash_cell_width
+        + name_cell_width
+        + date_cell_width
+        + subject_min_width;
+
+    if total_width > area_width {
+        total_width = total_width.saturating_sub(name_cell_width);
+        name_cell_width = 0;
+    }
+    if total_width > area_width {
+        total_width = total_width.saturating_sub(date_cell_width);
+        date_cell_width = 0;
+    }
+    if total_width > area_width {
+        hash_cell_width = 0;
+    }
+
+    let mut constraints = Vec::new();
+    for col in columns {
+        match col {
+            UserListColumnType::Graph => {
+                constraints.push(Constraint::Length(graph_cell_width));
+            }
+            UserListColumnType::Marker => {
+                constraints.push(Constraint::Length(marker_cell_width));
+            }
+            UserListColumnType::Subject => {
+                constraints.push(Constraint::Min(0));
+            }
+            UserListColumnType::Name => {
+                constraints.push(Constraint::Length(name_cell_width));
+            }
+            UserListColumnType::Hash => {
+                constraints.push(Constraint::Length(hash_cell_width));
+            }
+            UserListColumnType::Date => {
+                constraints.push(Constraint::Length(date_cell_width));
+            }
+        }
+    }
+    constraints
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calc_cell_widths_all_columns() {
+        let area_width = 80;
+        let subject_min_width = 20;
+        let graph_width = 6;
+        let name_width = 10;
+        let date_width = 15;
+        let columns = vec![
+            UserListColumnType::Graph,
+            UserListColumnType::Marker,
+            UserListColumnType::Subject,
+            UserListColumnType::Name,
+            UserListColumnType::Hash,
+            UserListColumnType::Date,
+        ];
+
+        let actual = calc_cell_widths(
+            area_width,
+            subject_min_width,
+            graph_width,
+            name_width,
+            date_width,
+            &columns,
+        );
+
+        let expected = vec![
+            Constraint::Length(6),  // Graph
+            Constraint::Length(1),  // Marker
+            Constraint::Min(0),     // Subject
+            Constraint::Length(12), // Name (10 + 2 pad)
+            Constraint::Length(9),  // Hash (7 + 2 pad)
+            Constraint::Length(17), // Date (15 + 2 pad)
+        ];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_calc_cell_width_all_columns_small_area_remove_name_date_hash() {
+        let area_width = 30;
+        let subject_min_width = 20;
+        let graph_width = 6;
+        let name_width = 10;
+        let date_width = 15;
+        let columns = vec![
+            UserListColumnType::Graph,
+            UserListColumnType::Marker,
+            UserListColumnType::Subject,
+            UserListColumnType::Name,
+            UserListColumnType::Hash,
+            UserListColumnType::Date,
+        ];
+
+        let actual = calc_cell_widths(
+            area_width,
+            subject_min_width,
+            graph_width,
+            name_width,
+            date_width,
+            &columns,
+        );
+
+        // Graph + Marker + Subject + Hash = 6 + 1 + 20 + 9 = 36 > 30
+        // => Name, Date, and Hash are removed
+        let expected = vec![
+            Constraint::Length(6), // Graph
+            Constraint::Length(1), // Marker
+            Constraint::Min(0),    // Subject
+            Constraint::Length(0), // Name removed
+            Constraint::Length(0), // Hash removed
+            Constraint::Length(0), // Date removed
+        ];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_calc_cell_width_all_columns_small_area_remove_name_date() {
+        let area_width = 40;
+        let subject_min_width = 20;
+        let graph_width = 6;
+        let name_width = 10;
+        let date_width = 15;
+        let columns = vec![
+            UserListColumnType::Graph,
+            UserListColumnType::Marker,
+            UserListColumnType::Subject,
+            UserListColumnType::Name,
+            UserListColumnType::Hash,
+            UserListColumnType::Date,
+        ];
+
+        let actual = calc_cell_widths(
+            area_width,
+            subject_min_width,
+            graph_width,
+            name_width,
+            date_width,
+            &columns,
+        );
+
+        // Graph + Marker + Subject + Hash = 6 + 1 + 20 + 9 = 36
+        // Graph + Marker + Subject + Date + Hash = 6 + 1 + 20 + 17 + 9 = 53 > 40
+        // => Name and Date are removed
+        let expected = vec![
+            Constraint::Length(6), // Graph
+            Constraint::Length(1), // Marker
+            Constraint::Min(0),    // Subject
+            Constraint::Length(0), // Name removed
+            Constraint::Length(9), // Hash (7 + 2 pad)
+            Constraint::Length(0), // Date removed
+        ];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_calc_cell_width_all_columns_small_area_remove_name() {
+        let area_width = 60;
+        let subject_min_width = 20;
+        let graph_width = 6;
+        let name_width = 10;
+        let date_width = 15;
+        let columns = vec![
+            UserListColumnType::Graph,
+            UserListColumnType::Marker,
+            UserListColumnType::Subject,
+            UserListColumnType::Name,
+            UserListColumnType::Hash,
+            UserListColumnType::Date,
+        ];
+
+        let actual = calc_cell_widths(
+            area_width,
+            subject_min_width,
+            graph_width,
+            name_width,
+            date_width,
+            &columns,
+        );
+
+        // Graph + Marker + Subject + Date + Hash = 6 + 1 + 20 + 17 + 9 = 53 <= 60
+        // Graph + Marker + Subject + Name + Date + Hash = 6 + 1 + 20 + 12 + 17 + 9 = 65 > 60
+        // => Name is removed
+        let expected = vec![
+            Constraint::Length(6),  // Graph
+            Constraint::Length(1),  // Marker
+            Constraint::Min(0),     // Subject
+            Constraint::Length(0),  // Name removed
+            Constraint::Length(9),  // Hash (7 + 2 pad)
+            Constraint::Length(17), // Date (15 + 2 pad)
+        ];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_calc_cell_width_columns_order() {
+        let area_width = 80;
+        let subject_min_width = 20;
+        let graph_width = 6;
+        let name_width = 10;
+        let date_width = 15;
+        let columns = vec![
+            UserListColumnType::Date,
+            UserListColumnType::Subject,
+            UserListColumnType::Hash,
+            UserListColumnType::Graph,
+        ];
+
+        let actual = calc_cell_widths(
+            area_width,
+            subject_min_width,
+            graph_width,
+            name_width,
+            date_width,
+            &columns,
+        );
+
+        let expected = vec![
+            Constraint::Length(17), // Date (15 + 2 pad)
+            Constraint::Min(0),     // Subject
+            Constraint::Length(9),  // Hash (7 + 2 pad)
+            Constraint::Length(6),  // Graph
+        ];
+        assert_eq!(actual, expected);
+    }
 }
