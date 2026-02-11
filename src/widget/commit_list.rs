@@ -17,6 +17,7 @@ use tui_input::{backend::crossterm::EventHandler, Input};
 use crate::{
     app::AppContext,
     color::ColorTheme,
+    config::UserListColumnType,
     git::{Commit, CommitHash, Head, Ref},
     graph::GraphImageManager,
 };
@@ -674,36 +675,38 @@ impl<'a> StatefulWidget for CommitList<'a> {
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         self.update_state(area, state);
 
-        let (
-            graph_cell_width,
-            marker_cell_width,
-            name_cell_width,
-            hash_cell_width,
-            date_cell_width,
-        ) = self.calc_cell_widths(
+        let constraints = self.calc_cell_widths(
             state,
             area.width,
             self.ctx.ui_config.list.subject_min_width,
             self.ctx.ui_config.list.name_width,
             self.ctx.ui_config.list.date_width,
+            &self.ctx.ui_config.list.columns,
         );
+        let chunks = Layout::horizontal(constraints).split(area);
 
-        let chunks = Layout::horizontal([
-            Constraint::Length(graph_cell_width),
-            Constraint::Length(marker_cell_width),
-            Constraint::Min(0), // subject
-            Constraint::Length(name_cell_width),
-            Constraint::Length(hash_cell_width),
-            Constraint::Length(date_cell_width),
-        ])
-        .split(area);
-
-        self.render_graph(buf, chunks[0], state);
-        self.render_marker(buf, chunks[1], state);
-        self.render_subject(buf, chunks[2], state);
-        self.render_name(buf, chunks[3], state);
-        self.render_hash(buf, chunks[4], state);
-        self.render_date(buf, chunks[5], state);
+        for (i, col) in self.ctx.ui_config.list.columns.iter().enumerate() {
+            match col {
+                UserListColumnType::Graph => {
+                    self.render_graph(buf, chunks[i], state);
+                }
+                UserListColumnType::Marker => {
+                    self.render_marker(buf, chunks[i], state);
+                }
+                UserListColumnType::Subject => {
+                    self.render_subject(buf, chunks[i], state);
+                }
+                UserListColumnType::Name => {
+                    self.render_name(buf, chunks[i], state);
+                }
+                UserListColumnType::Hash => {
+                    self.render_hash(buf, chunks[i], state);
+                }
+                UserListColumnType::Date => {
+                    self.render_date(buf, chunks[i], state);
+                }
+            }
+        }
     }
 }
 
@@ -741,13 +744,34 @@ impl CommitList<'_> {
         subject_min_width: u16,
         name_width: u16,
         date_width: u16,
-    ) -> (u16, u16, u16, u16, u16) {
+        columns: &[UserListColumnType],
+    ) -> Vec<Constraint> {
         let pad = 2;
-        let graph_cell_width = state.graph_area_cell_width();
-        let marker_cell_width = 1;
-        let mut name_cell_width = name_width + pad;
-        let mut hash_cell_width = 7 + pad;
-        let mut date_cell_width = date_width + pad;
+        let graph_cell_width = if columns.contains(&UserListColumnType::Graph) {
+            state.graph_area_cell_width()
+        } else {
+            0
+        };
+        let marker_cell_width = if columns.contains(&UserListColumnType::Marker) {
+            1
+        } else {
+            0
+        };
+        let mut name_cell_width = if columns.contains(&UserListColumnType::Name) {
+            name_width + pad
+        } else {
+            0
+        };
+        let mut hash_cell_width = if columns.contains(&UserListColumnType::Hash) {
+            7 + pad
+        } else {
+            0
+        };
+        let mut date_cell_width = if columns.contains(&UserListColumnType::Date) {
+            date_width + pad
+        } else {
+            0
+        };
 
         let mut total_width = graph_cell_width
             + marker_cell_width
@@ -768,16 +792,36 @@ impl CommitList<'_> {
             hash_cell_width = 0;
         }
 
-        (
-            graph_cell_width,
-            marker_cell_width,
-            name_cell_width,
-            hash_cell_width,
-            date_cell_width,
-        )
+        let mut constraints = Vec::new();
+        for col in columns {
+            match col {
+                UserListColumnType::Graph => {
+                    constraints.push(Constraint::Length(graph_cell_width));
+                }
+                UserListColumnType::Marker => {
+                    constraints.push(Constraint::Length(marker_cell_width));
+                }
+                UserListColumnType::Subject => {
+                    constraints.push(Constraint::Min(0));
+                }
+                UserListColumnType::Name => {
+                    constraints.push(Constraint::Length(name_cell_width));
+                }
+                UserListColumnType::Hash => {
+                    constraints.push(Constraint::Length(hash_cell_width));
+                }
+                UserListColumnType::Date => {
+                    constraints.push(Constraint::Length(date_cell_width));
+                }
+            }
+        }
+        constraints
     }
 
     fn render_graph(&self, buf: &mut Buffer, area: Rect, state: &CommitListState) {
+        if area.is_empty() {
+            return;
+        }
         self.rendering_commit_info_iter(state)
             .for_each(|(i, commit_info)| {
                 buf[(area.left(), area.top() + i as u16)]
@@ -791,6 +835,9 @@ impl CommitList<'_> {
     }
 
     fn render_marker(&self, buf: &mut Buffer, area: Rect, state: &CommitListState) {
+        if area.is_empty() {
+            return;
+        }
         let items: Vec<ListItem> = self
             .rendering_commit_info_iter(state)
             .map(|(_, commit_info)| ListItem::new("│".fg(commit_info.graph_color)))
