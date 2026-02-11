@@ -63,6 +63,9 @@ clipboard = "Auto"
 cursor_type = "Native"
 
 [ui.list]
+# The order and visibility of columns in the commit list.
+# type: array of enum (possible values: "graph", "marker", "subject", "name", "hash", "date")
+columns = ["graph", "marker", "subject", "name", "hash", "date"]
 # The minimum width of a subject in the commit list.
 # type: u16
 subject_min_width = 20
