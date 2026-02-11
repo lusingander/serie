@@ -1127,3 +1127,192 @@ fn calc_cell_widths(
     }
     constraints
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calc_cell_widths_all_columns() {
+        let area_width = 80;
+        let subject_min_width = 20;
+        let graph_width = 6;
+        let name_width = 10;
+        let date_width = 15;
+        let columns = vec![
+            UserListColumnType::Graph,
+            UserListColumnType::Marker,
+            UserListColumnType::Subject,
+            UserListColumnType::Name,
+            UserListColumnType::Hash,
+            UserListColumnType::Date,
+        ];
+
+        let actual = calc_cell_widths(
+            area_width,
+            subject_min_width,
+            graph_width,
+            name_width,
+            date_width,
+            &columns,
+        );
+
+        let expected = vec![
+            Constraint::Length(6),  // Graph
+            Constraint::Length(1),  // Marker
+            Constraint::Min(0),     // Subject
+            Constraint::Length(12), // Name (10 + 2 pad)
+            Constraint::Length(9),  // Hash (7 + 2 pad)
+            Constraint::Length(17), // Date (15 + 2 pad)
+        ];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_calc_cell_width_all_columns_small_area_remove_name_date_hash() {
+        let area_width = 30;
+        let subject_min_width = 20;
+        let graph_width = 6;
+        let name_width = 10;
+        let date_width = 15;
+        let columns = vec![
+            UserListColumnType::Graph,
+            UserListColumnType::Marker,
+            UserListColumnType::Subject,
+            UserListColumnType::Name,
+            UserListColumnType::Hash,
+            UserListColumnType::Date,
+        ];
+
+        let actual = calc_cell_widths(
+            area_width,
+            subject_min_width,
+            graph_width,
+            name_width,
+            date_width,
+            &columns,
+        );
+
+        // Graph + Marker + Subject + Hash = 6 + 1 + 20 + 9 = 36 > 30
+        // => Name, Date, and Hash are removed
+        let expected = vec![
+            Constraint::Length(6), // Graph
+            Constraint::Length(1), // Marker
+            Constraint::Min(0),    // Subject
+            Constraint::Length(0), // Name removed
+            Constraint::Length(0), // Hash removed
+            Constraint::Length(0), // Date removed
+        ];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_calc_cell_width_all_columns_small_area_remove_name_date() {
+        let area_width = 40;
+        let subject_min_width = 20;
+        let graph_width = 6;
+        let name_width = 10;
+        let date_width = 15;
+        let columns = vec![
+            UserListColumnType::Graph,
+            UserListColumnType::Marker,
+            UserListColumnType::Subject,
+            UserListColumnType::Name,
+            UserListColumnType::Hash,
+            UserListColumnType::Date,
+        ];
+
+        let actual = calc_cell_widths(
+            area_width,
+            subject_min_width,
+            graph_width,
+            name_width,
+            date_width,
+            &columns,
+        );
+
+        // Graph + Marker + Subject + Hash = 6 + 1 + 20 + 9 = 36
+        // Graph + Marker + Subject + Date + Hash = 6 + 1 + 20 + 17 + 9 = 53 > 40
+        // => Name and Date are removed
+        let expected = vec![
+            Constraint::Length(6), // Graph
+            Constraint::Length(1), // Marker
+            Constraint::Min(0),    // Subject
+            Constraint::Length(0), // Name removed
+            Constraint::Length(9), // Hash (7 + 2 pad)
+            Constraint::Length(0), // Date removed
+        ];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_calc_cell_width_all_columns_small_area_remove_name() {
+        let area_width = 60;
+        let subject_min_width = 20;
+        let graph_width = 6;
+        let name_width = 10;
+        let date_width = 15;
+        let columns = vec![
+            UserListColumnType::Graph,
+            UserListColumnType::Marker,
+            UserListColumnType::Subject,
+            UserListColumnType::Name,
+            UserListColumnType::Hash,
+            UserListColumnType::Date,
+        ];
+
+        let actual = calc_cell_widths(
+            area_width,
+            subject_min_width,
+            graph_width,
+            name_width,
+            date_width,
+            &columns,
+        );
+
+        // Graph + Marker + Subject + Date + Hash = 6 + 1 + 20 + 17 + 9 = 53 <= 60
+        // Graph + Marker + Subject + Name + Date + Hash = 6 + 1 + 20 + 12 + 17 + 9 = 65 > 60
+        // => Name is removed
+        let expected = vec![
+            Constraint::Length(6),  // Graph
+            Constraint::Length(1),  // Marker
+            Constraint::Min(0),     // Subject
+            Constraint::Length(0),  // Name removed
+            Constraint::Length(9),  // Hash (7 + 2 pad)
+            Constraint::Length(17), // Date (15 + 2 pad)
+        ];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_calc_cell_width_columns_order() {
+        let area_width = 80;
+        let subject_min_width = 20;
+        let graph_width = 6;
+        let name_width = 10;
+        let date_width = 15;
+        let columns = vec![
+            UserListColumnType::Date,
+            UserListColumnType::Subject,
+            UserListColumnType::Hash,
+            UserListColumnType::Graph,
+        ];
+
+        let actual = calc_cell_widths(
+            area_width,
+            subject_min_width,
+            graph_width,
+            name_width,
+            date_width,
+            &columns,
+        );
+
+        let expected = vec![
+            Constraint::Length(17), // Date (15 + 2 pad)
+            Constraint::Min(0),     // Subject
+            Constraint::Length(9),  // Hash (7 + 2 pad)
+            Constraint::Length(6),  // Graph
+        ];
+        assert_eq!(actual, expected);
+    }
+}
