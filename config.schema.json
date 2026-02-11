@@ -201,6 +201,21 @@
           "type": "object",
           "description": "Settings for the commit list view.",
           "properties": {
+            "columns": {
+              "type": "array",
+              "description": "The order and visibility of columns in the commit list.",
+              "items": {
+                "$ref": "#/definitions/userListColumnType"
+              },
+              "default": [
+                "graph",
+                "marker",
+                "subject",
+                "name",
+                "hash",
+                "date"
+              ]
+            },
             "subject_min_width": {
               "type": "integer",
               "description": "The minimum width of a subject in the commit list.",
@@ -639,6 +654,17 @@
       "items": {
         "type": "string"
       }
+    },
+    "userListColumnType": {
+      "type": "string",
+      "enum": [
+        "graph",
+        "marker",
+        "subject",
+        "name",
+        "hash",
+        "date"
+      ]
     }
   }
 }
