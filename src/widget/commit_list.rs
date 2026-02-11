@@ -675,10 +675,10 @@ impl<'a> StatefulWidget for CommitList<'a> {
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         self.update_state(area, state);
 
-        let constraints = self.calc_cell_widths(
-            state,
+        let constraints = calc_cell_widths(
             area.width,
             self.ctx.ui_config.list.subject_min_width,
+            state.graph_area_cell_width(),
             self.ctx.ui_config.list.name_width,
             self.ctx.ui_config.list.date_width,
             &self.ctx.ui_config.list.columns,
@@ -735,90 +735,6 @@ impl CommitList<'_> {
                     .graph_image_manager
                     .load_encoded_image(&commit_info.commit.commit_hash);
             });
-    }
-
-    fn calc_cell_widths(
-        &self,
-        state: &CommitListState,
-        width: u16,
-        subject_min_width: u16,
-        name_width: u16,
-        date_width: u16,
-        columns: &[UserListColumnType],
-    ) -> Vec<Constraint> {
-        let pad = 2;
-        let (
-            mut graph_cell_width,
-            mut marker_cell_width,
-            mut name_cell_width,
-            mut hash_cell_width,
-            mut date_cell_width,
-        ) = (0, 0, 0, 0, 0);
-
-        for col in columns {
-            match col {
-                UserListColumnType::Graph => {
-                    graph_cell_width = state.graph_area_cell_width();
-                }
-                UserListColumnType::Marker => {
-                    marker_cell_width = 1;
-                }
-                UserListColumnType::Name => {
-                    name_cell_width = name_width + pad;
-                }
-                UserListColumnType::Hash => {
-                    hash_cell_width = 7 + pad;
-                }
-                UserListColumnType::Date => {
-                    date_cell_width = date_width + pad;
-                }
-                UserListColumnType::Subject => {}
-            }
-        }
-
-        let mut total_width = graph_cell_width
-            + marker_cell_width
-            + hash_cell_width
-            + name_cell_width
-            + date_cell_width
-            + subject_min_width;
-
-        if total_width > width {
-            total_width = total_width.saturating_sub(name_cell_width);
-            name_cell_width = 0;
-        }
-        if total_width > width {
-            total_width = total_width.saturating_sub(date_cell_width);
-            date_cell_width = 0;
-        }
-        if total_width > width {
-            hash_cell_width = 0;
-        }
-
-        let mut constraints = Vec::new();
-        for col in columns {
-            match col {
-                UserListColumnType::Graph => {
-                    constraints.push(Constraint::Length(graph_cell_width));
-                }
-                UserListColumnType::Marker => {
-                    constraints.push(Constraint::Length(marker_cell_width));
-                }
-                UserListColumnType::Subject => {
-                    constraints.push(Constraint::Min(0));
-                }
-                UserListColumnType::Name => {
-                    constraints.push(Constraint::Length(name_cell_width));
-                }
-                UserListColumnType::Hash => {
-                    constraints.push(Constraint::Length(hash_cell_width));
-                }
-                UserListColumnType::Date => {
-                    constraints.push(Constraint::Length(date_cell_width));
-                }
-            }
-        }
-        constraints
     }
 
     fn render_graph(&self, buf: &mut Buffer, area: Rect, state: &CommitListState) {
@@ -1127,4 +1043,87 @@ fn highlighted_spans(
         hm = hm.ellipsis(ELLIPSIS);
     }
     hm.into_spans()
+}
+
+fn calc_cell_widths(
+    area_width: u16,
+    subject_min_width: u16,
+    graph_width: u16,
+    name_width: u16,
+    date_width: u16,
+    columns: &[UserListColumnType],
+) -> Vec<Constraint> {
+    let pad = 2;
+    let (
+        mut graph_cell_width,
+        mut marker_cell_width,
+        mut name_cell_width,
+        mut hash_cell_width,
+        mut date_cell_width,
+    ) = (0, 0, 0, 0, 0);
+
+    for col in columns {
+        match col {
+            UserListColumnType::Graph => {
+                graph_cell_width = graph_width;
+            }
+            UserListColumnType::Marker => {
+                marker_cell_width = 1;
+            }
+            UserListColumnType::Name => {
+                name_cell_width = name_width + pad;
+            }
+            UserListColumnType::Hash => {
+                hash_cell_width = 7 + pad;
+            }
+            UserListColumnType::Date => {
+                date_cell_width = date_width + pad;
+            }
+            UserListColumnType::Subject => {}
+        }
+    }
+
+    let mut total_width = graph_cell_width
+        + marker_cell_width
+        + hash_cell_width
+        + name_cell_width
+        + date_cell_width
+        + subject_min_width;
+
+    if total_width > area_width {
+        total_width = total_width.saturating_sub(name_cell_width);
+        name_cell_width = 0;
+    }
+    if total_width > area_width {
+        total_width = total_width.saturating_sub(date_cell_width);
+        date_cell_width = 0;
+    }
+    if total_width > area_width {
+        hash_cell_width = 0;
+    }
+
+    let mut constraints = Vec::new();
+    for col in columns {
+        match col {
+            UserListColumnType::Graph => {
+                constraints.push(Constraint::Length(graph_cell_width));
+            }
+            UserListColumnType::Marker => {
+                constraints.push(Constraint::Length(marker_cell_width));
+            }
+            UserListColumnType::Subject => {
+                constraints.push(Constraint::Min(0));
+            }
+            UserListColumnType::Name => {
+                constraints.push(Constraint::Length(name_cell_width));
+            }
+            UserListColumnType::Hash => {
+                constraints.push(Constraint::Length(hash_cell_width));
+            }
+            UserListColumnType::Date => {
+                constraints.push(Constraint::Length(date_cell_width));
+            }
+        }
+    }
+    constraints
 }
