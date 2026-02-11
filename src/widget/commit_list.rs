@@ -747,31 +747,34 @@ impl CommitList<'_> {
         columns: &[UserListColumnType],
     ) -> Vec<Constraint> {
         let pad = 2;
-        let graph_cell_width = if columns.contains(&UserListColumnType::Graph) {
-            state.graph_area_cell_width()
-        } else {
-            0
-        };
-        let marker_cell_width = if columns.contains(&UserListColumnType::Marker) {
-            1
-        } else {
-            0
-        };
-        let mut name_cell_width = if columns.contains(&UserListColumnType::Name) {
-            name_width + pad
-        } else {
-            0
-        };
-        let mut hash_cell_width = if columns.contains(&UserListColumnType::Hash) {
-            7 + pad
-        } else {
-            0
-        };
-        let mut date_cell_width = if columns.contains(&UserListColumnType::Date) {
-            date_width + pad
-        } else {
-            0
-        };
+        let (
+            mut graph_cell_width,
+            mut marker_cell_width,
+            mut name_cell_width,
+            mut hash_cell_width,
+            mut date_cell_width,
+        ) = (0, 0, 0, 0, 0);
+
+        for col in columns {
+            match col {
+                UserListColumnType::Graph => {
+                    graph_cell_width = state.graph_area_cell_width();
+                }
+                UserListColumnType::Marker => {
+                    marker_cell_width = 1;
+                }
+                UserListColumnType::Name => {
+                    name_cell_width = name_width + pad;
+                }
+                UserListColumnType::Hash => {
+                    hash_cell_width = 7 + pad;
+                }
+                UserListColumnType::Date => {
+                    date_cell_width = date_width + pad;
+                }
+                UserListColumnType::Subject => {}
+            }
+        }
 
         let mut total_width = graph_cell_width
             + marker_cell_width
