@@ -121,6 +121,9 @@ impl<'a> UserCommandView<'a> {
                     self.tx.send(AppEvent::OpenUserCommand(n));
                 }
             }
+            UserEvent::Confirm => {
+                self.tx.send(AppEvent::OpenDetail);
+            }
             UserEvent::Cancel | UserEvent::Close => {
                 self.close();
             }

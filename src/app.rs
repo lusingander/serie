@@ -349,25 +349,27 @@ impl App<'_> {
     }
 
     fn open_detail(&mut self) {
-        if let View::List(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
-            let selected = commit_list_state.selected_commit_hash().clone();
-            let (commit, changes) = self.repository.commit_detail(&selected);
-            let refs = self
-                .repository
-                .refs(&selected)
-                .into_iter()
-                .cloned()
-                .collect();
-            self.view = View::of_detail(
-                commit_list_state,
-                commit,
-                changes,
-                refs,
-                self.ctx.clone(),
-                self.tx.clone(),
-            );
-        }
+        let commit_list_state = match self.view {
+            View::List(ref mut view) => view.take_list_state(),
+            View::UserCommand(ref mut view) => view.take_list_state(),
+            _ => return,
+        };
+        let selected = commit_list_state.selected_commit_hash().clone();
+        let (commit, changes) = self.repository.commit_detail(&selected);
+        let refs = self
+            .repository
+            .refs(&selected)
+            .into_iter()
+            .cloned()
+            .collect();
+        self.view = View::of_detail(
+            commit_list_state,
+            commit,
+            changes,
+            refs,
+            self.ctx.clone(),
+            self.tx.clone(),
+        );
     }
 
     fn close_detail(&mut self) {
