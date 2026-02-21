@@ -275,7 +275,7 @@ fn build_lines(
     let (list_key_lines, list_value_lines) = build_block_lines("Commit List:", list_helps, color_theme, keybind);
     
     let mut detail_helps = vec![
-        (vec![UserEvent::Cancel, UserEvent::Close], "Close commit details".into()),
+        (vec![UserEvent::Cancel, UserEvent::Close, UserEvent::Confirm], "Close commit details".into()),
         (vec![UserEvent::NavigateDown], "Scroll down".into()),
         (vec![UserEvent::NavigateUp], "Scroll up".into()),
         (vec![UserEvent::PageDown], "Scroll page down".into()),
@@ -318,6 +318,7 @@ fn build_lines(
         (vec![UserEvent::SelectDown], "Select older commit".into()),
         (vec![UserEvent::SelectUp], "Select newer commit".into()),
         (vec![UserEvent::GoToParent], "Select parent commit".into()),
+        (vec![UserEvent::Confirm], "Show commit details".into()),
     ];
     user_command_helps.extend(user_command_view_toggle_helps);
     let (user_command_key_lines, user_command_value_lines) = build_block_lines("User Command:", user_command_helps, color_theme, keybind);

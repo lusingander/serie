@@ -7,11 +7,8 @@ use crate::{
     event::{Sender, UserEventWithCount},
     git::{Commit, FileChange, Ref},
     view::{
-        detail::DetailView,
-        help::HelpView,
-        list::ListView,
-        refs::RefsView,
-        user_command::{UserCommandView, UserCommandViewBeforeView},
+        detail::DetailView, help::HelpView, list::ListView, refs::RefsView,
+        user_command::UserCommandView,
     },
     widget::commit_list::CommitListState,
 };
@@ -76,7 +73,7 @@ impl<'a> View<'a> {
         )))
     }
 
-    pub fn of_user_command_from_list(
+    pub fn of_user_command(
         commit_list_state: CommitListState<'a>,
         commit: Commit,
         user_command_number: usize,
@@ -91,26 +88,6 @@ impl<'a> View<'a> {
             view_area,
             ctx,
             tx,
-            UserCommandViewBeforeView::List,
-        )))
-    }
-
-    pub fn of_user_command_from_detail(
-        commit_list_state: CommitListState<'a>,
-        commit: Commit,
-        user_command_number: usize,
-        view_area: Rect,
-        ctx: Rc<AppContext>,
-        tx: Sender,
-    ) -> Self {
-        View::UserCommand(Box::new(UserCommandView::new(
-            commit_list_state,
-            commit,
-            user_command_number,
-            view_area,
-            ctx,
-            tx,
-            UserCommandViewBeforeView::Detail,
         )))
     }
 
