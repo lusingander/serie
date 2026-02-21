@@ -384,79 +384,28 @@ impl App<'_> {
     }
 
     fn open_user_command(&mut self, user_command_number: usize) {
-        if let View::List(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
-            let selected = commit_list_state.selected_commit_hash().clone();
-            let (commit, _) = self.repository.commit_detail(&selected);
-            self.view = View::of_user_command_from_list(
-                commit_list_state,
-                commit,
-                user_command_number,
-                self.app_status.view_area,
-                self.ctx.clone(),
-                self.tx.clone(),
-            );
-        } else if let View::Detail(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
-            let selected = commit_list_state.selected_commit_hash().clone();
-            let (commit, _) = self.repository.commit_detail(&selected);
-            self.view = View::of_user_command_from_detail(
-                commit_list_state,
-                commit,
-                user_command_number,
-                self.app_status.view_area,
-                self.ctx.clone(),
-                self.tx.clone(),
-            );
-        } else if let View::UserCommand(ref mut view) = self.view {
-            let commit_list_state = view.take_list_state();
-            let selected = commit_list_state.selected_commit_hash().clone();
-            let (commit, _) = self.repository.commit_detail(&selected);
-            if view.before_view_is_list() {
-                self.view = View::of_user_command_from_list(
-                    commit_list_state,
-                    commit,
-                    user_command_number,
-                    self.app_status.view_area,
-                    self.ctx.clone(),
-                    self.tx.clone(),
-                );
-            } else {
-                self.view = View::of_user_command_from_detail(
-                    commit_list_state,
-                    commit,
-                    user_command_number,
-                    self.app_status.view_area,
-                    self.ctx.clone(),
-                    self.tx.clone(),
-                );
-            }
-        }
+        let commit_list_state = match self.view {
+            View::List(ref mut view) => view.take_list_state(),
+            View::Detail(ref mut view) => view.take_list_state(),
+            View::UserCommand(ref mut view) => view.take_list_state(),
+            _ => return,
+        };
+        let selected = commit_list_state.selected_commit_hash().clone();
+        let (commit, _) = self.repository.commit_detail(&selected);
+        self.view = View::of_user_command(
+            commit_list_state,
+            commit,
+            user_command_number,
+            self.app_status.view_area,
+            self.ctx.clone(),
+            self.tx.clone(),
+        );
     }
 
     fn close_user_command(&mut self) {
         if let View::UserCommand(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            let selected = commit_list_state.selected_commit_hash().clone();
-            let (commit, changes) = self.repository.commit_detail(&selected);
-            let refs = self
-                .repository
-                .refs(&selected)
-                .into_iter()
-                .cloned()
-                .collect();
-            if view.before_view_is_list() {
-                self.view = View::of_list(commit_list_state, self.ctx.clone(), self.tx.clone());
-            } else {
-                self.view = View::of_detail(
-                    commit_list_state,
-                    commit,
-                    changes,
-                    refs,
-                    self.ctx.clone(),
-                    self.tx.clone(),
-                );
-            }
+            self.view = View::of_list(commit_list_state, self.ctx.clone(), self.tx.clone());
         }
     }
 

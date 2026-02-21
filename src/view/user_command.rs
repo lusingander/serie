@@ -21,12 +21,6 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum UserCommandViewBeforeView {
-    List,
-    Detail,
-}
-
-#[derive(Debug)]
 pub struct UserCommandView<'a> {
     commit_list_state: Option<CommitListState<'a>>,
     commit_user_command_state: CommitUserCommandState,
@@ -36,7 +30,6 @@ pub struct UserCommandView<'a> {
 
     ctx: Rc<AppContext>,
     tx: Sender,
-    before_view: UserCommandViewBeforeView,
     clear: bool,
 }
 
@@ -48,7 +41,6 @@ impl<'a> UserCommandView<'a> {
         view_area: Rect,
         ctx: Rc<AppContext>,
         tx: Sender,
-        before_view: UserCommandViewBeforeView,
     ) -> UserCommandView<'a> {
         let user_command_output_lines =
             build_user_command_output_lines(&commit, user_command_number, view_area, ctx.clone())
@@ -64,7 +56,6 @@ impl<'a> UserCommandView<'a> {
             user_command_output_lines,
             ctx,
             tx,
-            before_view,
             clear: false,
         }
     }
@@ -215,10 +206,6 @@ impl<'a> UserCommandView<'a> {
 
     pub fn clear(&mut self) {
         self.clear = true;
-    }
-
-    pub fn before_view_is_list(&self) -> bool {
-        matches!(self.before_view, UserCommandViewBeforeView::List)
     }
 
     fn close(&self) {
