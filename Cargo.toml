@@ -19,7 +19,7 @@ ansi-to-tui = "8.0.1"
 arboard = { version = "3.6.1", features = ["wayland-data-control"] }
 base64 = "0.22.1"
 chrono = "0.4.43"
-clap = { version = "4.5.54", features = ["derive"] }
+clap = { version = "4.5.60", features = ["derive"] }
 console = "0.16.2"
 fuzzy-matcher = "0.3.7"
 garde = { version = "0.22.1", features = ["derive", "regex"] }
@@ -43,7 +43,7 @@ umbra = "0.4.0"
 [dev-dependencies]
 dircpy = "0.3.19"
 rstest = "0.26.1"
-tempfile = "3.24.0"
+tempfile = "3.25.0"
 text-to-png = "0.3.0"
 
 [profile.release]
