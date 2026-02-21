@@ -275,7 +275,7 @@ fn build_lines(
     let (list_key_lines, list_value_lines) = build_block_lines("Commit List:", list_helps, color_theme, keybind);
     
     let mut detail_helps = vec![
-        (vec![UserEvent::Cancel, UserEvent::Close], "Close commit details".into()),
+        (vec![UserEvent::Cancel, UserEvent::Close, UserEvent::Confirm], "Close commit details".into()),
         (vec![UserEvent::NavigateDown], "Scroll down".into()),
         (vec![UserEvent::NavigateUp], "Scroll up".into()),
         (vec![UserEvent::PageDown], "Scroll page down".into()),

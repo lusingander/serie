@@ -114,7 +114,7 @@ impl<'a> DetailView<'a> {
             UserEvent::HelpToggle => {
                 self.tx.send(AppEvent::OpenHelp);
             }
-            UserEvent::Cancel | UserEvent::Close => {
+            UserEvent::Confirm | UserEvent::Cancel | UserEvent::Close => {
                 self.tx.send(AppEvent::ClearDetail); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseDetail);
             }
