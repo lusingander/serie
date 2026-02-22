@@ -16,7 +16,7 @@ use crate::{
     config::{CoreConfig, CursorType, UiConfig},
     event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
     external::copy_to_clipboard,
-    git::{CommitHash, Head, Repository},
+    git::{Head, Repository},
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -497,10 +497,9 @@ impl App<'_> {
 
     fn init_with_context(&mut self, context: RefreshViewContext) {
         match context {
-            RefreshViewContext::List { commit } => {
+            RefreshViewContext::List { list } => {
                 if let View::List(ref mut view) = self.view {
-                    let commit_hash = CommitHash::from(commit.as_str());
-                    view.reset_commit_list_with(&commit_hash);
+                    view.reset_commit_list_with(list);
                 }
             }
             RefreshViewContext::Detail => {

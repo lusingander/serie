@@ -392,6 +392,14 @@ impl<'a> CommitListState<'a> {
         self.offset + self.selected
     }
 
+    pub fn current_list_status(&self) -> (usize, usize, usize) {
+        (self.selected, self.offset, self.height)
+    }
+
+    pub fn reset_height(&mut self, height: usize) {
+        self.height = height;
+    }
+
     pub fn select_ref(&mut self, ref_name: &str) {
         if let Some(&index) = self.ref_name_to_commit_index_map.get(ref_name) {
             if self.total > self.height {

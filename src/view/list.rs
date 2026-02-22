@@ -6,7 +6,7 @@ use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     git::CommitHash,
-    view::RefreshViewContext,
+    view::{ListRefreshViewContext, RefreshViewContext},
     widget::commit_list::{CommitList, CommitListState, SearchState},
 };
 
@@ -237,13 +237,29 @@ impl<'a> ListView<'a> {
     }
 
     fn refresh(&self) {
-        let context = RefreshViewContext::List {
-            commit: self.as_list_state().selected_commit_hash().as_str().into(),
+        let list_state = self.as_list_state();
+        let commit_hash = list_state.selected_commit_hash().as_str().into();
+        let (selected, _, height) = list_state.current_list_status();
+        let list = ListRefreshViewContext {
+            commit_hash,
+            selected,
+            height,
         };
+        let context = RefreshViewContext::List { list };
         self.tx.send(AppEvent::Refresh(context));
     }
 
-    pub fn reset_commit_list_with(&mut self, commit_hash: &CommitHash) {
-        self.as_mut_list_state().select_commit_hash(commit_hash);
+    pub fn reset_commit_list_with(&mut self, context: ListRefreshViewContext) {
+        let ListRefreshViewContext {
+            commit_hash,
+            selected,
+            height,
+        } = context;
+        let list_state = self.as_mut_list_state();
+        list_state.reset_height(height);
+        list_state.select_commit_hash(&CommitHash::from(commit_hash.as_str()));
+        for _ in 0..selected {
+            list_state.scroll_up();
+        }
     }
 }

@@ -16,11 +16,18 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum RefreshViewContext {
     List {
-        commit: String,
+        list: ListRefreshViewContext,
     },
     Detail,
     UserCommand { n: usize },
     Refs,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListRefreshViewContext {
+    pub commit_hash: String,
+    pub selected: usize,
+    pub height: usize,
 }
 
 #[derive(Debug, Default)]
