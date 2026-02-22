@@ -5,6 +5,7 @@ use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
+    git::CommitHash,
     view::RefreshViewContext,
     widget::commit_list::{CommitList, CommitListState, SearchState},
 };
@@ -236,7 +237,13 @@ impl<'a> ListView<'a> {
     }
 
     fn refresh(&self) {
-        let context = RefreshViewContext::List;
+        let context = RefreshViewContext::List {
+            commit: self.as_list_state().selected_commit_hash().as_str().into(),
+        };
         self.tx.send(AppEvent::Refresh(context));
+    }
+
+    pub fn reset_commit_list_with(&mut self, commit_hash: &CommitHash) {
+        self.as_mut_list_state().select_commit_hash(commit_hash);
     }
 }

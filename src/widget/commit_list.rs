@@ -404,6 +404,9 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn select_commit_hash(&mut self, commit_hash: &CommitHash) {
+        if !self.commit_hash_set.contains(commit_hash) {
+            return;
+        }
         for (i, commit_info) in self.commits.iter().enumerate() {
             if commit_info.commit.commit_hash == *commit_hash {
                 if self.total > self.height {

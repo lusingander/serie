@@ -16,7 +16,7 @@ use crate::{
     config::{CoreConfig, CursorType, UiConfig},
     event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
     external::copy_to_clipboard,
-    git::{Head, Repository},
+    git::{CommitHash, Head, Repository},
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -134,12 +134,7 @@ impl<'a> App<'a> {
         };
 
         if let Some(context) = refresh_view_context {
-            match context {
-                RefreshViewContext::List => {}
-                RefreshViewContext::Detail => app.open_detail(),
-                RefreshViewContext::UserCommand { n } => app.open_user_command(n),
-                RefreshViewContext::Refs => app.open_refs(),
-            }
+            app.init_with_context(context);
         }
 
         app
@@ -497,6 +492,26 @@ impl App<'_> {
             view.select_parent_commit(self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
             view.select_parent_commit(self.repository, self.app_status.view_area);
+        }
+    }
+
+    fn init_with_context(&mut self, context: RefreshViewContext) {
+        match context {
+            RefreshViewContext::List { commit } => {
+                if let View::List(ref mut view) = self.view {
+                    let commit_hash = CommitHash::from(commit.as_str());
+                    view.reset_commit_list_with(&commit_hash);
+                }
+            }
+            RefreshViewContext::Detail => {
+                self.open_detail();
+            }
+            RefreshViewContext::UserCommand { n } => {
+                self.open_user_command(n);
+            }
+            RefreshViewContext::Refs => {
+                self.open_refs();
+            }
         }
     }
 

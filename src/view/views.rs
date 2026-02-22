@@ -13,9 +13,11 @@ use crate::{
     widget::commit_list::CommitListState,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum RefreshViewContext {
-    List,
+    List {
+        commit: String,
+    },
     Detail,
     UserCommand { n: usize },
     Refs,
