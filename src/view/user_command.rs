@@ -14,7 +14,7 @@ use crate::{
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     external::exec_user_command,
     git::{Commit, Repository},
-    view::RefreshViewContext,
+    view::{ListRefreshViewContext, RefreshViewContext},
     widget::{
         commit_list::{CommitList, CommitListState},
         commit_user_command::{CommitUserCommand, CommitUserCommandState},
@@ -173,6 +173,10 @@ impl<'a> UserCommandView<'a> {
         self.commit_list_state.as_mut().unwrap()
     }
 
+    fn as_list_state(&self) -> &CommitListState<'a> {
+        self.commit_list_state.as_ref().unwrap()
+    }
+
     pub fn select_older_commit(&mut self, repository: &Repository, view_area: Rect) {
         self.update_selected_commit(repository, view_area, |state| state.select_next());
     }
@@ -221,7 +225,16 @@ impl<'a> UserCommandView<'a> {
     }
 
     fn refresh(&self) {
+        let list_state = self.as_list_state();
+        let commit_hash = list_state.selected_commit_hash().as_str().into();
+        let (selected, _, height) = list_state.current_list_status();
+        let list_context = ListRefreshViewContext {
+            commit_hash,
+            selected,
+            height,
+        };
         let context = RefreshViewContext::UserCommand {
+            list_context,
             n: self.user_command_number,
         };
         self.tx.send(AppEvent::Refresh(context));

@@ -240,25 +240,25 @@ impl<'a> ListView<'a> {
         let list_state = self.as_list_state();
         let commit_hash = list_state.selected_commit_hash().as_str().into();
         let (selected, _, height) = list_state.current_list_status();
-        let list = ListRefreshViewContext {
+        let list_context = ListRefreshViewContext {
             commit_hash,
             selected,
             height,
         };
-        let context = RefreshViewContext::List { list };
+        let context = RefreshViewContext::List { list_context };
         self.tx.send(AppEvent::Refresh(context));
     }
 
-    pub fn reset_commit_list_with(&mut self, context: ListRefreshViewContext) {
+    pub fn reset_commit_list_with(&mut self, list_context: &ListRefreshViewContext) {
         let ListRefreshViewContext {
             commit_hash,
             selected,
             height,
-        } = context;
+        } = list_context;
         let list_state = self.as_mut_list_state();
-        list_state.reset_height(height);
+        list_state.reset_height(*height);
         list_state.select_commit_hash(&CommitHash::from(commit_hash.as_str()));
-        for _ in 0..selected {
+        for _ in 0..*selected {
             list_state.scroll_up();
         }
     }

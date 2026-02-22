@@ -496,19 +496,18 @@ impl App<'_> {
     }
 
     fn init_with_context(&mut self, context: RefreshViewContext) {
+        if let View::List(ref mut view) = self.view {
+            view.reset_commit_list_with(context.list_context());
+        }
         match context {
-            RefreshViewContext::List { list } => {
-                if let View::List(ref mut view) = self.view {
-                    view.reset_commit_list_with(list);
-                }
-            }
-            RefreshViewContext::Detail => {
+            RefreshViewContext::List { .. } => {}
+            RefreshViewContext::Detail { .. } => {
                 self.open_detail();
             }
-            RefreshViewContext::UserCommand { n } => {
+            RefreshViewContext::UserCommand { n, .. } => {
                 self.open_user_command(n);
             }
-            RefreshViewContext::Refs => {
+            RefreshViewContext::Refs { .. } => {
                 self.open_refs();
             }
         }

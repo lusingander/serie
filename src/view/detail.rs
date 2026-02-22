@@ -11,7 +11,7 @@ use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     git::{Commit, FileChange, Ref, Repository},
-    view::RefreshViewContext,
+    view::{ListRefreshViewContext, RefreshViewContext},
     widget::{
         commit_detail::{CommitDetail, CommitDetailState},
         commit_list::{CommitList, CommitListState},
@@ -159,6 +159,10 @@ impl<'a> DetailView<'a> {
         self.commit_list_state.as_mut().unwrap()
     }
 
+    fn as_list_state(&self) -> &CommitListState<'a> {
+        self.commit_list_state.as_ref().unwrap()
+    }
+
     pub fn select_older_commit(&mut self, repository: &Repository) {
         self.update_selected_commit(repository, |state| state.select_next());
     }
@@ -206,7 +210,15 @@ impl<'a> DetailView<'a> {
     }
 
     fn refresh(&self) {
-        let context = RefreshViewContext::Detail;
+        let list_state = self.as_list_state();
+        let commit_hash = list_state.selected_commit_hash().as_str().into();
+        let (selected, _, height) = list_state.current_list_status();
+        let list_context = ListRefreshViewContext {
+            commit_hash,
+            selected,
+            height,
+        };
+        let context = RefreshViewContext::Detail { list_context };
         self.tx.send(AppEvent::Refresh(context));
     }
 }

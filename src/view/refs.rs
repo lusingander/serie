@@ -10,7 +10,7 @@ use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     git::Ref,
-    view::RefreshViewContext,
+    view::{ListRefreshViewContext, RefreshViewContext},
     widget::{
         commit_list::{CommitList, CommitListState},
         ref_list::{RefList, RefListState},
@@ -144,7 +144,15 @@ impl<'a> RefsView<'a> {
     }
 
     fn refresh(&self) {
-        let context = RefreshViewContext::Refs;
+        let list_state = self.as_list_state();
+        let commit_hash = list_state.selected_commit_hash().as_str().into();
+        let (selected, _, height) = list_state.current_list_status();
+        let list_context = ListRefreshViewContext {
+            commit_hash,
+            selected,
+            height,
+        };
+        let context = RefreshViewContext::Refs { list_context };
         self.tx.send(AppEvent::Refresh(context));
     }
 }

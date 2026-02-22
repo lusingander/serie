@@ -16,11 +16,29 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum RefreshViewContext {
     List {
-        list: ListRefreshViewContext,
+        list_context: ListRefreshViewContext,
     },
-    Detail,
-    UserCommand { n: usize },
-    Refs,
+    Detail {
+        list_context: ListRefreshViewContext,
+    },
+    UserCommand {
+        list_context: ListRefreshViewContext,
+        n: usize,
+    },
+    Refs {
+        list_context: ListRefreshViewContext,
+    },
+}
+
+impl RefreshViewContext {
+    pub fn list_context(&self) -> &ListRefreshViewContext {
+        match self {
+            RefreshViewContext::List { list_context }
+            | RefreshViewContext::Detail { list_context }
+            | RefreshViewContext::UserCommand { list_context, .. }
+            | RefreshViewContext::Refs { list_context } => list_context,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
