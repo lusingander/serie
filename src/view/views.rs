@@ -48,6 +48,18 @@ pub struct ListRefreshViewContext {
     pub height: usize,
 }
 
+impl From<&CommitListState<'_>> for ListRefreshViewContext {
+    fn from(list_state: &CommitListState) -> Self {
+        let commit_hash = list_state.selected_commit_hash().as_str().into();
+        let (selected, _, height) = list_state.current_list_status();
+        ListRefreshViewContext {
+            commit_hash,
+            selected,
+            height,
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub enum View<'a> {
     #[default]

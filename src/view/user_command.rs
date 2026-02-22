@@ -226,13 +226,7 @@ impl<'a> UserCommandView<'a> {
 
     fn refresh(&self) {
         let list_state = self.as_list_state();
-        let commit_hash = list_state.selected_commit_hash().as_str().into();
-        let (selected, _, height) = list_state.current_list_status();
-        let list_context = ListRefreshViewContext {
-            commit_hash,
-            selected,
-            height,
-        };
+        let list_context = ListRefreshViewContext::from(list_state);
         let context = RefreshViewContext::UserCommand {
             list_context,
             n: self.user_command_number,

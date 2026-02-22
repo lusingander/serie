@@ -211,13 +211,7 @@ impl<'a> DetailView<'a> {
 
     fn refresh(&self) {
         let list_state = self.as_list_state();
-        let commit_hash = list_state.selected_commit_hash().as_str().into();
-        let (selected, _, height) = list_state.current_list_status();
-        let list_context = ListRefreshViewContext {
-            commit_hash,
-            selected,
-            height,
-        };
+        let list_context = ListRefreshViewContext::from(list_state);
         let context = RefreshViewContext::Detail { list_context };
         self.tx.send(AppEvent::Refresh(context));
     }
