@@ -35,9 +35,19 @@ enum StatusLine {
     NotificationError(String),
 }
 
+#[derive(Clone, Copy)]
 pub enum InitialSelection {
     Latest,
     Head,
+}
+
+pub enum Ret {
+    Quit,
+    Refresh(RefreshRequest),
+}
+
+pub struct RefreshRequest {
+    pub rx: Receiver,
 }
 
 #[derive(Debug)]
@@ -128,7 +138,7 @@ impl App<'_> {
         &mut self,
         terminal: &mut Terminal<B>,
         rx: Receiver,
-    ) -> Result<(), B::Error> {
+    ) -> Result<Ret, B::Error> {
         loop {
             terminal.draw(|f| self.render(f))?;
             match rx.recv() {
@@ -164,6 +174,9 @@ impl App<'_> {
                         Some(UserEvent::ForceQuit) => {
                             self.tx.send(AppEvent::Quit);
                         }
+                        Some(UserEvent::Refresh) => {
+                            self.tx.send(AppEvent::Refresh);
+                        }
                         Some(ue) => {
                             let event_with_count =
                                 process_numeric_prefix(&self.app_status.numeric_prefix, *ue, key);
@@ -195,7 +208,7 @@ impl App<'_> {
                     let _ = (w, h);
                 }
                 AppEvent::Quit => {
-                    return Ok(());
+                    return Ok(Ret::Quit);
                 }
                 AppEvent::OpenDetail => {
                     self.open_detail();
@@ -241,6 +254,10 @@ impl App<'_> {
                 }
                 AppEvent::CopyToClipboard { name, value } => {
                     self.copy_to_clipboard(name, value);
+                }
+                AppEvent::Refresh => {
+                    let request = RefreshRequest { rx };
+                    return Ok(Ret::Refresh(request));
                 }
                 AppEvent::ClearStatusLine => {
                     self.clear_status_line();
