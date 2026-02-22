@@ -13,53 +13,6 @@ use crate::{
     widget::commit_list::CommitListState,
 };
 
-#[derive(Debug, Clone)]
-pub enum RefreshViewContext {
-    List {
-        list_context: ListRefreshViewContext,
-    },
-    Detail {
-        list_context: ListRefreshViewContext,
-    },
-    UserCommand {
-        list_context: ListRefreshViewContext,
-        n: usize,
-    },
-    Refs {
-        list_context: ListRefreshViewContext,
-    },
-}
-
-impl RefreshViewContext {
-    pub fn list_context(&self) -> &ListRefreshViewContext {
-        match self {
-            RefreshViewContext::List { list_context }
-            | RefreshViewContext::Detail { list_context }
-            | RefreshViewContext::UserCommand { list_context, .. }
-            | RefreshViewContext::Refs { list_context } => list_context,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ListRefreshViewContext {
-    pub commit_hash: String,
-    pub selected: usize,
-    pub height: usize,
-}
-
-impl From<&CommitListState<'_>> for ListRefreshViewContext {
-    fn from(list_state: &CommitListState) -> Self {
-        let commit_hash = list_state.selected_commit_hash().as_str().into();
-        let (selected, _, height) = list_state.current_list_status();
-        ListRefreshViewContext {
-            commit_hash,
-            selected,
-            height,
-        }
-    }
-}
-
 #[derive(Debug, Default)]
 pub enum View<'a> {
     #[default]
@@ -150,4 +103,56 @@ impl<'a> View<'a> {
     pub fn of_help(before: View<'a>, ctx: Rc<AppContext>, tx: Sender) -> Self {
         View::Help(Box::new(HelpView::new(before, ctx, tx)))
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum RefreshViewContext {
+    List {
+        list_context: ListRefreshViewContext,
+    },
+    Detail {
+        list_context: ListRefreshViewContext,
+    },
+    UserCommand {
+        list_context: ListRefreshViewContext,
+        user_command_context: UserCommandRefreshViewContext,
+    },
+    Refs {
+        list_context: ListRefreshViewContext,
+    },
+}
+
+impl RefreshViewContext {
+    pub fn list_context(&self) -> &ListRefreshViewContext {
+        match self {
+            RefreshViewContext::List { list_context }
+            | RefreshViewContext::Detail { list_context }
+            | RefreshViewContext::UserCommand { list_context, .. }
+            | RefreshViewContext::Refs { list_context } => list_context,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ListRefreshViewContext {
+    pub commit_hash: String,
+    pub selected: usize,
+    pub height: usize,
+}
+
+impl From<&CommitListState<'_>> for ListRefreshViewContext {
+    fn from(list_state: &CommitListState) -> Self {
+        let commit_hash = list_state.selected_commit_hash().as_str().into();
+        let (selected, _, height) = list_state.current_list_status();
+        ListRefreshViewContext {
+            commit_hash,
+            selected,
+            height,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct UserCommandRefreshViewContext {
+    pub n: usize,
 }

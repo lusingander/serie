@@ -504,8 +504,11 @@ impl App<'_> {
             RefreshViewContext::Detail { .. } => {
                 self.open_detail();
             }
-            RefreshViewContext::UserCommand { n, .. } => {
-                self.open_user_command(n);
+            RefreshViewContext::UserCommand {
+                user_command_context,
+                ..
+            } => {
+                self.open_user_command(user_command_context.n);
             }
             RefreshViewContext::Refs { .. } => {
                 self.open_refs();

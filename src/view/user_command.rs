@@ -14,7 +14,7 @@ use crate::{
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     external::exec_user_command,
     git::{Commit, Repository},
-    view::{ListRefreshViewContext, RefreshViewContext},
+    view::{ListRefreshViewContext, RefreshViewContext, UserCommandRefreshViewContext},
     widget::{
         commit_list::{CommitList, CommitListState},
         commit_user_command::{CommitUserCommand, CommitUserCommandState},
@@ -227,9 +227,12 @@ impl<'a> UserCommandView<'a> {
     fn refresh(&self) {
         let list_state = self.as_list_state();
         let list_context = ListRefreshViewContext::from(list_state);
+        let user_command_context = UserCommandRefreshViewContext {
+            n: self.user_command_number,
+        };
         let context = RefreshViewContext::UserCommand {
             list_context,
-            n: self.user_command_number,
+            user_command_context,
         };
         self.tx.send(AppEvent::Refresh(context));
     }
@@ -263,8 +266,10 @@ fn build_user_command_output_lines<'a>(
         .map(|c| c.as_str())
         .unwrap_or_default();
 
-    let area_width = view_area.width - 4; // minus the left and right padding
-    let area_height = (view_area.height - 1).min(ctx.ui_config.user_command.height) - 1; // minus the top border
+    let area_width = view_area.width.saturating_sub(4); // minus the left and right padding
+    let area_height = (view_area.height.saturating_sub(1))
+        .min(ctx.ui_config.user_command.height)
+        .saturating_sub(1); // minus the top border
 
     let tab_spaces = " ".repeat(ctx.core_config.user_command.tab_width as usize);
     exec_user_command(&command, target_hash, parent_hash, area_width, area_height)
