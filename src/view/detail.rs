@@ -11,6 +11,7 @@ use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     git::{Commit, FileChange, Ref, Repository},
+    view::RefreshViewContext,
     widget::{
         commit_detail::{CommitDetail, CommitDetailState},
         commit_list::{CommitList, CommitListState},
@@ -118,6 +119,9 @@ impl<'a> DetailView<'a> {
                 self.tx.send(AppEvent::ClearDetail); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseDetail);
             }
+            UserEvent::Refresh => {
+                self.refresh();
+            }
             _ => {}
         }
     }
@@ -199,5 +203,10 @@ impl<'a> DetailView<'a> {
 
     fn copy_to_clipboard(&self, name: String, value: String) {
         self.tx.send(AppEvent::CopyToClipboard { name, value });
+    }
+
+    fn refresh(&self) {
+        let context = RefreshViewContext::Detail;
+        self.tx.send(AppEvent::Refresh(context));
     }
 }

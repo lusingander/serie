@@ -5,6 +5,7 @@ use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
+    view::RefreshViewContext,
     widget::commit_list::{CommitList, CommitListState, SearchState},
 };
 
@@ -147,6 +148,9 @@ impl<'a> ListView<'a> {
                 UserEvent::RefListToggle => {
                     self.tx.send(AppEvent::OpenRefs);
                 }
+                UserEvent::Refresh => {
+                    self.refresh();
+                }
                 _ => {}
             }
         }
@@ -229,5 +233,10 @@ impl<'a> ListView<'a> {
 
     fn copy_to_clipboard(&self, name: String, value: String) {
         self.tx.send(AppEvent::CopyToClipboard { name, value });
+    }
+
+    fn refresh(&self) {
+        let context = RefreshViewContext::List;
+        self.tx.send(AppEvent::Refresh(context));
     }
 }

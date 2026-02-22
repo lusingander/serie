@@ -13,6 +13,14 @@ use crate::{
     widget::commit_list::CommitListState,
 };
 
+#[derive(Debug, Clone, Copy)]
+pub enum RefreshViewContext {
+    List,
+    Detail,
+    UserCommand { n: usize },
+    Refs,
+}
+
 #[derive(Debug, Default)]
 pub enum View<'a> {
     #[default]

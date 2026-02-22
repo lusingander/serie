@@ -10,6 +10,8 @@ use serde::{
     Deserialize,
 };
 
+use crate::view::RefreshViewContext;
+
 pub enum AppEvent {
     Key(KeyEvent),
     Resize(usize, usize),
@@ -29,7 +31,7 @@ pub enum AppEvent {
     SelectOlderCommit,
     SelectParentCommit,
     CopyToClipboard { name: String, value: String },
-    Refresh,
+    Refresh(RefreshViewContext),
     ClearStatusLine,
     UpdateStatusInput(String, Option<u16>, Option<String>),
     NotifyInfo(String),

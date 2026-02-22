@@ -14,6 +14,7 @@ use crate::{
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     external::exec_user_command,
     git::{Commit, Repository},
+    view::RefreshViewContext,
     widget::{
         commit_list::{CommitList, CommitListState},
         commit_user_command::{CommitUserCommand, CommitUserCommandState},
@@ -127,6 +128,9 @@ impl<'a> UserCommandView<'a> {
             UserEvent::Cancel | UserEvent::Close => {
                 self.close();
             }
+            UserEvent::Refresh => {
+                self.refresh();
+            }
             _ => {}
         }
     }
@@ -214,6 +218,13 @@ impl<'a> UserCommandView<'a> {
     fn close(&self) {
         self.tx.send(AppEvent::ClearUserCommand); // hack: reset the rendering of the image area
         self.tx.send(AppEvent::CloseUserCommand);
+    }
+
+    fn refresh(&self) {
+        let context = RefreshViewContext::UserCommand {
+            n: self.user_command_number,
+        };
+        self.tx.send(AppEvent::Refresh(context));
     }
 }
 

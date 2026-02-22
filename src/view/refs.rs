@@ -10,6 +10,7 @@ use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     git::Ref,
+    view::RefreshViewContext,
     widget::{
         commit_list::{CommitList, CommitListState},
         ref_list::{RefList, RefListState},
@@ -88,6 +89,9 @@ impl<'a> RefsView<'a> {
             UserEvent::HelpToggle => {
                 self.tx.send(AppEvent::OpenHelp);
             }
+            UserEvent::Refresh => {
+                self.refresh();
+            }
             _ => {}
         }
     }
@@ -137,5 +141,10 @@ impl<'a> RefsView<'a> {
 
     fn copy_to_clipboard(&self, name: String, value: String) {
         self.tx.send(AppEvent::CopyToClipboard { name, value });
+    }
+
+    fn refresh(&self) {
+        let context = RefreshViewContext::Refs;
+        self.tx.send(AppEvent::Refresh(context));
     }
 }

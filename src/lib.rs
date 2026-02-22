@@ -158,6 +158,7 @@ pub fn run() -> Result<()> {
     });
 
     let (tx, mut rx) = event::init();
+    let mut refresh_view_context = None;
     let mut terminal = None;
 
     let ret = loop {
@@ -189,6 +190,7 @@ pub fn run() -> Result<()> {
             initial_selection,
             ctx.clone(),
             tx.clone(),
+            refresh_view_context,
         );
 
         match app.run(terminal.as_mut().unwrap(), rx) {
@@ -197,6 +199,7 @@ pub fn run() -> Result<()> {
             }
             Ok(Ret::Refresh(request)) => {
                 rx = request.rx;
+                refresh_view_context = Some(request.context);
                 continue;
             }
             Err(e) => {

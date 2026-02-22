@@ -20,7 +20,7 @@ use crate::{
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
-    view::View,
+    view::{RefreshViewContext, View},
     widget::commit_list::{CommitInfo, CommitListState},
 };
 
@@ -48,6 +48,7 @@ pub enum Ret {
 
 pub struct RefreshRequest {
     pub rx: Receiver,
+    pub context: RefreshViewContext,
 }
 
 #[derive(Debug)]
@@ -85,6 +86,7 @@ impl<'a> App<'a> {
         initial_selection: InitialSelection,
         ctx: Rc<AppContext>,
         tx: Sender,
+        refresh_view_context: Option<RefreshViewContext>,
     ) -> Self {
         let mut ref_name_to_commit_index_map = FxHashMap::default();
         let commits = graph
@@ -123,13 +125,24 @@ impl<'a> App<'a> {
         }
         let view = View::of_list(commit_list_state, ctx.clone(), tx.clone());
 
-        Self {
+        let mut app = Self {
             repository,
             view,
             app_status: AppStatus::default(),
             ctx,
             tx,
+        };
+
+        if let Some(context) = refresh_view_context {
+            match context {
+                RefreshViewContext::List => {}
+                RefreshViewContext::Detail => app.open_detail(),
+                RefreshViewContext::UserCommand { n } => app.open_user_command(n),
+                RefreshViewContext::Refs => app.open_refs(),
+            }
         }
+
+        app
     }
 }
 
@@ -173,9 +186,6 @@ impl App<'_> {
                     match user_event {
                         Some(UserEvent::ForceQuit) => {
                             self.tx.send(AppEvent::Quit);
-                        }
-                        Some(UserEvent::Refresh) => {
-                            self.tx.send(AppEvent::Refresh);
                         }
                         Some(ue) => {
                             let event_with_count =
@@ -255,8 +265,8 @@ impl App<'_> {
                 AppEvent::CopyToClipboard { name, value } => {
                     self.copy_to_clipboard(name, value);
                 }
-                AppEvent::Refresh => {
-                    let request = RefreshRequest { rx };
+                AppEvent::Refresh(context) => {
+                    let request = RefreshRequest { rx, context };
                     return Ok(Ret::Refresh(request));
                 }
                 AppEvent::ClearStatusLine => {
