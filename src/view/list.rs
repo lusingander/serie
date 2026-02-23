@@ -5,6 +5,8 @@ use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
+    git::CommitHash,
+    view::{ListRefreshViewContext, RefreshViewContext},
     widget::commit_list::{CommitList, CommitListState, SearchState},
 };
 
@@ -147,6 +149,9 @@ impl<'a> ListView<'a> {
                 UserEvent::RefListToggle => {
                     self.tx.send(AppEvent::OpenRefs);
                 }
+                UserEvent::Refresh => {
+                    self.refresh();
+                }
                 _ => {}
             }
         }
@@ -229,5 +234,32 @@ impl<'a> ListView<'a> {
 
     fn copy_to_clipboard(&self, name: String, value: String) {
         self.tx.send(AppEvent::CopyToClipboard { name, value });
+    }
+
+    fn refresh(&self) {
+        let list_state = self.as_list_state();
+        let list_context = ListRefreshViewContext::from(list_state);
+        let context = RefreshViewContext::List { list_context };
+        self.tx.send(AppEvent::Clear); // hack: reset the rendering of the image area
+        self.tx.send(AppEvent::Refresh(context));
+    }
+
+    pub fn reset_commit_list_with(&mut self, list_context: &ListRefreshViewContext) {
+        let ListRefreshViewContext {
+            commit_hash,
+            selected,
+            height,
+            scroll_to_top,
+        } = list_context;
+        let list_state = self.as_mut_list_state();
+        list_state.reset_height(*height);
+        if *scroll_to_top {
+            list_state.select_first();
+        } else {
+            list_state.select_commit_hash(&CommitHash::from(commit_hash.as_str()));
+            for _ in 0..*selected {
+                list_state.scroll_up();
+            }
+        }
     }
 }

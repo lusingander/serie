@@ -268,6 +268,7 @@ fn build_lines(
         (vec![UserEvent::GoToPrevious], "Go to previous search match".into()),
         (vec![UserEvent::IgnoreCaseToggle], "Toggle ignore case".into()),
         (vec![UserEvent::FuzzyToggle], "Toggle fuzzy match".into()),
+        (vec![UserEvent::Refresh], "Refresh".into()),
         (vec![UserEvent::ShortCopy], "Copy commit short hash".into()),
         (vec![UserEvent::FullCopy], "Copy commit hash".into()),
     ];
@@ -287,6 +288,7 @@ fn build_lines(
         (vec![UserEvent::SelectDown], "Select older commit".into()),
         (vec![UserEvent::SelectUp], "Select newer commit".into()),
         (vec![UserEvent::GoToParent], "Select parent commit".into()),
+        (vec![UserEvent::Refresh], "Refresh".into()),
         (vec![UserEvent::ShortCopy], "Copy commit short hash".into()),
         (vec![UserEvent::FullCopy], "Copy commit hash".into()),
     ];
@@ -301,6 +303,7 @@ fn build_lines(
         (vec![UserEvent::GoToBottom], "Go to bottom".into()),
         (vec![UserEvent::NavigateRight], "Open node".into()),
         (vec![UserEvent::NavigateLeft], "Close node".into()),
+        (vec![UserEvent::Refresh], "Refresh".into()),
         (vec![UserEvent::ShortCopy], "Copy ref name".into()),
     ];
     let (refs_key_lines, refs_value_lines) = build_block_lines("Refs List:", refs_helps, color_theme, keybind);
@@ -318,6 +321,7 @@ fn build_lines(
         (vec![UserEvent::SelectDown], "Select older commit".into()),
         (vec![UserEvent::SelectUp], "Select newer commit".into()),
         (vec![UserEvent::GoToParent], "Select parent commit".into()),
+        (vec![UserEvent::Refresh], "Refresh".into()),
         (vec![UserEvent::Confirm], "Show commit details".into()),
     ];
     user_command_helps.extend(user_command_view_toggle_helps);

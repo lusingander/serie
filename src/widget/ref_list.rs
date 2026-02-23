@@ -83,6 +83,19 @@ impl RefListState {
             None
         }
     }
+
+    pub fn current_tree_status(&self) -> (Vec<String>, Vec<Vec<String>>) {
+        let selected = self.tree_state.selected().into();
+        let opened = self.tree_state.opened().iter().cloned().collect();
+        (selected, opened)
+    }
+
+    pub fn reset_tree_status(&mut self, selected: Vec<String>, opened: Vec<Vec<String>>) {
+        self.tree_state.select(selected);
+        for node in opened {
+            self.tree_state.open(node);
+        }
+    }
 }
 
 pub struct RefList {

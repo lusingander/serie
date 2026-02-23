@@ -392,6 +392,14 @@ impl<'a> CommitListState<'a> {
         self.offset + self.selected
     }
 
+    pub fn current_list_status(&self) -> (usize, usize, usize) {
+        (self.selected, self.offset, self.height)
+    }
+
+    pub fn reset_height(&mut self, height: usize) {
+        self.height = height;
+    }
+
     pub fn select_ref(&mut self, ref_name: &str) {
         if let Some(&index) = self.ref_name_to_commit_index_map.get(ref_name) {
             if self.total > self.height {
@@ -404,6 +412,9 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn select_commit_hash(&mut self, commit_hash: &CommitHash) {
+        if !self.commit_hash_set.contains(commit_hash) {
+            return;
+        }
         for (i, commit_info) in self.commits.iter().enumerate() {
             if commit_info.commit.commit_hash == *commit_hash {
                 if self.total > self.height {

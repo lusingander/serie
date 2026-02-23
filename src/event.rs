@@ -10,10 +10,13 @@ use serde::{
     Deserialize,
 };
 
+use crate::view::RefreshViewContext;
+
 pub enum AppEvent {
     Key(KeyEvent),
     Resize(usize, usize),
     Quit,
+    Clear,
     OpenDetail,
     CloseDetail,
     ClearDetail,
@@ -29,6 +32,7 @@ pub enum AppEvent {
     SelectOlderCommit,
     SelectParentCommit,
     CopyToClipboard { name: String, value: String },
+    Refresh(RefreshViewContext),
     ClearStatusLine,
     UpdateStatusInput(String, Option<u16>, Option<String>),
     NotifyInfo(String),
@@ -124,6 +128,7 @@ pub enum UserEvent {
     UserCommandViewToggle(usize),
     IgnoreCaseToggle,
     FuzzyToggle,
+    Refresh,
     ShortCopy,
     FullCopy,
     Unknown,
@@ -186,6 +191,7 @@ impl<'de> Deserialize<'de> for UserEvent {
                         "search" => Ok(UserEvent::Search),
                         "ignore_case_toggle" => Ok(UserEvent::IgnoreCaseToggle),
                         "fuzzy_toggle" => Ok(UserEvent::FuzzyToggle),
+                        "refresh" => Ok(UserEvent::Refresh),
                         "short_copy" => Ok(UserEvent::ShortCopy),
                         "full_copy" => Ok(UserEvent::FullCopy),
                         _ => {

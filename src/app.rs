@@ -6,7 +6,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
     text::Line,
-    widgets::{Block, Borders, Padding, Paragraph},
+    widgets::{Block, Borders, Clear, Padding, Paragraph},
     Frame, Terminal,
 };
 use rustc_hash::FxHashMap;
@@ -20,7 +20,7 @@ use crate::{
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
-    view::View,
+    view::{RefreshViewContext, View},
     widget::commit_list::{CommitInfo, CommitListState},
 };
 
@@ -35,9 +35,20 @@ enum StatusLine {
     NotificationError(String),
 }
 
+#[derive(Clone, Copy)]
 pub enum InitialSelection {
     Latest,
     Head,
+}
+
+pub enum Ret {
+    Quit,
+    Refresh(RefreshRequest),
+}
+
+pub struct RefreshRequest {
+    pub rx: Receiver,
+    pub context: RefreshViewContext,
 }
 
 #[derive(Debug)]
@@ -54,6 +65,7 @@ struct AppStatus {
     status_line: StatusLine,
     numeric_prefix: String,
     view_area: Rect,
+    clear: bool,
 }
 
 #[derive(Debug)]
@@ -75,6 +87,7 @@ impl<'a> App<'a> {
         initial_selection: InitialSelection,
         ctx: Rc<AppContext>,
         tx: Sender,
+        refresh_view_context: Option<RefreshViewContext>,
     ) -> Self {
         let mut ref_name_to_commit_index_map = FxHashMap::default();
         let commits = graph
@@ -113,13 +126,19 @@ impl<'a> App<'a> {
         }
         let view = View::of_list(commit_list_state, ctx.clone(), tx.clone());
 
-        Self {
+        let mut app = Self {
             repository,
             view,
             app_status: AppStatus::default(),
             ctx,
             tx,
+        };
+
+        if let Some(context) = refresh_view_context {
+            app.init_with_context(context);
         }
+
+        app
     }
 }
 
@@ -128,7 +147,7 @@ impl App<'_> {
         &mut self,
         terminal: &mut Terminal<B>,
         rx: Receiver,
-    ) -> Result<(), B::Error> {
+    ) -> Result<Ret, B::Error> {
         loop {
             terminal.draw(|f| self.render(f))?;
             match rx.recv() {
@@ -195,7 +214,10 @@ impl App<'_> {
                     let _ = (w, h);
                 }
                 AppEvent::Quit => {
-                    return Ok(());
+                    return Ok(Ret::Quit);
+                }
+                AppEvent::Clear => {
+                    self.clear();
                 }
                 AppEvent::OpenDetail => {
                     self.open_detail();
@@ -242,6 +264,10 @@ impl App<'_> {
                 AppEvent::CopyToClipboard { name, value } => {
                     self.copy_to_clipboard(name, value);
                 }
+                AppEvent::Refresh(context) => {
+                    let request = RefreshRequest { rx, context };
+                    return Ok(Ret::Refresh(request));
+                }
                 AppEvent::ClearStatusLine => {
                     self.clear_status_line();
                 }
@@ -273,6 +299,12 @@ impl App<'_> {
         let [view_area, status_line_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(f.area());
 
+        if self.app_status.clear {
+            self.render_clear(f, view_area);
+            self.reset_clear();
+            return;
+        }
+
         self.update_state(view_area);
 
         self.view.render(f, view_area);
@@ -281,6 +313,13 @@ impl App<'_> {
 }
 
 impl App<'_> {
+    fn render_clear(&mut self, f: &mut Frame, area: Rect) {
+        f.render_widget(Clear, area);
+        for y in area.top()..area.bottom() {
+            self.ctx.image_protocol.clear_line(y);
+        }
+    }
+
     fn render_status_line(&self, f: &mut Frame, area: Rect) {
         let text: Line = match &self.app_status.status_line {
             StatusLine::None => {
@@ -346,6 +385,14 @@ impl App<'_> {
 impl App<'_> {
     fn update_state(&mut self, view_area: Rect) {
         self.app_status.view_area = view_area;
+    }
+
+    fn clear(&mut self) {
+        self.app_status.clear = true;
+    }
+
+    fn reset_clear(&mut self) {
+        self.app_status.clear = false;
     }
 
     fn open_detail(&mut self) {
@@ -470,6 +517,30 @@ impl App<'_> {
             view.select_parent_commit(self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
             view.select_parent_commit(self.repository, self.app_status.view_area);
+        }
+    }
+
+    fn init_with_context(&mut self, context: RefreshViewContext) {
+        if let View::List(ref mut view) = self.view {
+            view.reset_commit_list_with(context.list_context());
+        }
+        match context {
+            RefreshViewContext::List { .. } => {}
+            RefreshViewContext::Detail { .. } => {
+                self.open_detail();
+            }
+            RefreshViewContext::UserCommand {
+                user_command_context,
+                ..
+            } => {
+                self.open_user_command(user_command_context.n);
+            }
+            RefreshViewContext::Refs { refs_context, .. } => {
+                self.open_refs();
+                if let View::Refs(ref mut view) = self.view {
+                    view.reset_refs_with(refs_context);
+                }
+            }
         }
     }
 

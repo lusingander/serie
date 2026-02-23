@@ -14,7 +14,7 @@ mod widget;
 
 use std::{path::Path, rc::Rc};
 
-use app::App;
+use app::{App, Ret};
 use clap::{Parser, ValueEnum};
 use graph::GraphImageManager;
 use serde::Deserialize;
@@ -149,25 +149,6 @@ pub fn run() -> Result<()> {
 
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 
-    let repository = git::Repository::load(Path::new("."), order, max_count)?;
-
-    let graph = graph::calc_graph(&repository);
-
-    let cell_width_type = check::decide_cell_width_type(&graph, graph_width)?;
-
-    let graph_image_manager = GraphImageManager::new(
-        &graph,
-        &graph_color_set,
-        cell_width_type,
-        graph_style,
-        image_protocol,
-        args.preload,
-    );
-
-    let mut terminal = ratatui::init();
-
-    let (tx, rx) = event::init();
-
     let ctx = Rc::new(app::AppContext {
         keybind,
         core_config,
@@ -175,17 +156,57 @@ pub fn run() -> Result<()> {
         color_theme,
         image_protocol,
     });
-    let mut app = App::new(
-        &repository,
-        graph_image_manager,
-        &graph,
-        &graph_color_set,
-        cell_width_type,
-        initial_selection,
-        ctx,
-        tx,
-    );
-    let ret = app.run(&mut terminal, rx);
+
+    let (tx, mut rx) = event::init();
+    let mut refresh_view_context = None;
+    let mut terminal = None;
+
+    let ret = loop {
+        let repository = git::Repository::load(Path::new("."), order, max_count)?;
+
+        let graph = graph::calc_graph(&repository);
+
+        let cell_width_type = check::decide_cell_width_type(&graph, graph_width)?;
+
+        let graph_image_manager = GraphImageManager::new(
+            &graph,
+            &graph_color_set,
+            cell_width_type,
+            graph_style,
+            image_protocol,
+            args.preload,
+        );
+
+        if terminal.is_none() {
+            terminal = Some(ratatui::init());
+        }
+
+        let mut app = App::new(
+            &repository,
+            graph_image_manager,
+            &graph,
+            &graph_color_set,
+            cell_width_type,
+            initial_selection,
+            ctx.clone(),
+            tx.clone(),
+            refresh_view_context,
+        );
+
+        match app.run(terminal.as_mut().unwrap(), rx) {
+            Ok(Ret::Quit) => {
+                break Ok(());
+            }
+            Ok(Ret::Refresh(request)) => {
+                rx = request.rx;
+                refresh_view_context = Some(request.context);
+                continue;
+            }
+            Err(e) => {
+                break Err(e);
+            }
+        }
+    };
 
     ratatui::restore();
     ret.map_err(Into::into)

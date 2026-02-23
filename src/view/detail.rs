@@ -11,6 +11,7 @@ use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
     git::{Commit, FileChange, Ref, Repository},
+    view::{ListRefreshViewContext, RefreshViewContext},
     widget::{
         commit_detail::{CommitDetail, CommitDetailState},
         commit_list::{CommitList, CommitListState},
@@ -118,6 +119,9 @@ impl<'a> DetailView<'a> {
                 self.tx.send(AppEvent::ClearDetail); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseDetail);
             }
+            UserEvent::Refresh => {
+                self.refresh();
+            }
             _ => {}
         }
     }
@@ -153,6 +157,10 @@ impl<'a> DetailView<'a> {
 
     fn as_mut_list_state(&mut self) -> &mut CommitListState<'a> {
         self.commit_list_state.as_mut().unwrap()
+    }
+
+    fn as_list_state(&self) -> &CommitListState<'a> {
+        self.commit_list_state.as_ref().unwrap()
     }
 
     pub fn select_older_commit(&mut self, repository: &Repository) {
@@ -199,5 +207,13 @@ impl<'a> DetailView<'a> {
 
     fn copy_to_clipboard(&self, name: String, value: String) {
         self.tx.send(AppEvent::CopyToClipboard { name, value });
+    }
+
+    fn refresh(&self) {
+        let list_state = self.as_list_state();
+        let list_context = ListRefreshViewContext::from(list_state);
+        let context = RefreshViewContext::Detail { list_context };
+        self.tx.send(AppEvent::Clear); // hack: reset the rendering of the image area
+        self.tx.send(AppEvent::Refresh(context));
     }
 }
