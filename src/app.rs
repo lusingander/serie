@@ -510,8 +510,11 @@ impl App<'_> {
             } => {
                 self.open_user_command(user_command_context.n);
             }
-            RefreshViewContext::Refs { .. } => {
+            RefreshViewContext::Refs { refs_context, .. } => {
                 self.open_refs();
+                if let View::Refs(ref mut view) = self.view {
+                    view.reset_refs_with(refs_context);
+                }
             }
         }
     }

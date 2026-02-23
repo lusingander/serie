@@ -119,6 +119,7 @@ pub enum RefreshViewContext {
     },
     Refs {
         list_context: ListRefreshViewContext,
+        refs_context: RefsRefreshViewContext,
     },
 }
 
@@ -128,7 +129,7 @@ impl RefreshViewContext {
             RefreshViewContext::List { list_context }
             | RefreshViewContext::Detail { list_context }
             | RefreshViewContext::UserCommand { list_context, .. }
-            | RefreshViewContext::Refs { list_context } => list_context,
+            | RefreshViewContext::Refs { list_context, .. } => list_context,
         }
     }
 }
@@ -155,4 +156,10 @@ impl From<&CommitListState<'_>> for ListRefreshViewContext {
 #[derive(Debug, Clone)]
 pub struct UserCommandRefreshViewContext {
     pub n: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct RefsRefreshViewContext {
+    pub selected: Vec<String>,
+    pub opened: Vec<Vec<String>>,
 }
