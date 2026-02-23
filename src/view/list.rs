@@ -248,12 +248,17 @@ impl<'a> ListView<'a> {
             commit_hash,
             selected,
             height,
+            scroll_to_top,
         } = list_context;
         let list_state = self.as_mut_list_state();
         list_state.reset_height(*height);
-        list_state.select_commit_hash(&CommitHash::from(commit_hash.as_str()));
-        for _ in 0..*selected {
-            list_state.scroll_up();
+        if *scroll_to_top {
+            list_state.select_first();
+        } else {
+            list_state.select_commit_hash(&CommitHash::from(commit_hash.as_str()));
+            for _ in 0..*selected {
+                list_state.scroll_up();
+            }
         }
     }
 }
