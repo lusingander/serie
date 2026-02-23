@@ -16,6 +16,7 @@ pub enum AppEvent {
     Key(KeyEvent),
     Resize(usize, usize),
     Quit,
+    Clear,
     OpenDetail,
     CloseDetail,
     ClearDetail,

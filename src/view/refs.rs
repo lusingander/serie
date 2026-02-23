@@ -155,6 +155,7 @@ impl<'a> RefsView<'a> {
             list_context,
             refs_context,
         };
+        self.tx.send(AppEvent::Clear); // hack: reset the rendering of the image area
         self.tx.send(AppEvent::Refresh(context));
     }
 

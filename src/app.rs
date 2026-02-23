@@ -6,7 +6,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
     text::Line,
-    widgets::{Block, Borders, Padding, Paragraph},
+    widgets::{Block, Borders, Clear, Padding, Paragraph},
     Frame, Terminal,
 };
 use rustc_hash::FxHashMap;
@@ -65,6 +65,7 @@ struct AppStatus {
     status_line: StatusLine,
     numeric_prefix: String,
     view_area: Rect,
+    clear: bool,
 }
 
 #[derive(Debug)]
@@ -215,6 +216,9 @@ impl App<'_> {
                 AppEvent::Quit => {
                     return Ok(Ret::Quit);
                 }
+                AppEvent::Clear => {
+                    self.clear();
+                }
                 AppEvent::OpenDetail => {
                     self.open_detail();
                 }
@@ -295,6 +299,12 @@ impl App<'_> {
         let [view_area, status_line_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(f.area());
 
+        if self.app_status.clear {
+            self.render_clear(f, view_area);
+            self.reset_clear();
+            return;
+        }
+
         self.update_state(view_area);
 
         self.view.render(f, view_area);
@@ -303,6 +313,13 @@ impl App<'_> {
 }
 
 impl App<'_> {
+    fn render_clear(&mut self, f: &mut Frame, area: Rect) {
+        f.render_widget(Clear, area);
+        for y in area.top()..area.bottom() {
+            self.ctx.image_protocol.clear_line(y);
+        }
+    }
+
     fn render_status_line(&self, f: &mut Frame, area: Rect) {
         let text: Line = match &self.app_status.status_line {
             StatusLine::None => {
@@ -368,6 +385,14 @@ impl App<'_> {
 impl App<'_> {
     fn update_state(&mut self, view_area: Rect) {
         self.app_status.view_area = view_area;
+    }
+
+    fn clear(&mut self) {
+        self.app_status.clear = true;
+    }
+
+    fn reset_clear(&mut self) {
+        self.app_status.clear = false;
     }
 
     fn open_detail(&mut self) {

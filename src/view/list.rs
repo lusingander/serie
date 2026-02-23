@@ -240,6 +240,7 @@ impl<'a> ListView<'a> {
         let list_state = self.as_list_state();
         let list_context = ListRefreshViewContext::from(list_state);
         let context = RefreshViewContext::List { list_context };
+        self.tx.send(AppEvent::Clear); // hack: reset the rendering of the image area
         self.tx.send(AppEvent::Refresh(context));
     }
 

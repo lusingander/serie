@@ -234,6 +234,7 @@ impl<'a> UserCommandView<'a> {
             list_context,
             user_command_context,
         };
+        self.tx.send(AppEvent::Clear); // hack: reset the rendering of the image area
         self.tx.send(AppEvent::Refresh(context));
     }
 }
