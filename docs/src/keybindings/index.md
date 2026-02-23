@@ -32,6 +32,7 @@ The default key bindings can be overridden.
 | <kbd>n/N</kbd>                       | Go to next/previous search match                   | `go_to_next` `go_to_previous`                |
 | <kbd>Ctrl-g</kbd>                    | Toggle ignore case (if searching)                  | `ignore_case_toggle`                         |
 | <kbd>Ctrl-x</kbd>                    | Toggle fuzzy match (if searching)                  | `fuzzy_toggle`                               |
+| <kbd>R</kbd>                         | Refresh                                            | `refresh`                                    |
 | <kbd>c/C</kbd>                       | Copy commit short/full hash                        | `short_copy` `full_copy`                     |
 | <kbd>d</kbd>                         | Toggle custom user command view                    | `user_command_view_toggle_1`                 |
 
@@ -46,6 +47,7 @@ The default key bindings can be overridden.
 | <kbd>g/G</kbd>                       | Go to top/bottom                | `go_to_top` `go_to_bottom`      |
 | <kbd>J/K</kbd>                       | Select older/newer commit       | `select_down` `select_up`       |
 | <kbd>Alt-Down</kbd> <kbd>Alt-j</kbd> | Select parent commit            | `go_to_parent`                  |
+| <kbd>R</kbd>                         | Refresh                         | `refresh`                       |
 | <kbd>c/C</kbd>                       | Copy commit short/full hash     | `short_copy` `full_copy`        |
 | <kbd>d</kbd>                         | Toggle custom user command view | `user_command_view_toggle_1`    |
 
@@ -58,6 +60,7 @@ The default key bindings can be overridden.
 | <kbd>J/K</kbd>                                     | Move down/up     | `select_down` `select_up`          |
 | <kbd>g/G</kbd>                                     | Go to top/bottom | `go_to_top` `go_to_bottom`         |
 | <kbd>Right/Left</kbd> <kbd>l/h</kbd>               | Open/Close node  | `navigate_right` `navigate_left`   |
+| <kbd>R</kbd>                                       | Refresh          | `refresh`                          |
 | <kbd>c</kbd>                                       | Copy ref name    | `short_copy`                       |
 
 #### User Command
@@ -72,6 +75,7 @@ The default key bindings can be overridden.
 | <kbd>g/G</kbd>                       | Go to top/bottom            | `go_to_top` `go_to_bottom`      |
 | <kbd>J/K</kbd>                       | Select older/newer commit   | `select_down` `select_up`       |
 | <kbd>Alt-Down</kbd> <kbd>Alt-j</kbd> | Select parent commit        | `go_to_parent`                  |
+| <kbd>R</kbd>                         | Refresh                     | `refresh`                       |
 
 #### Help
 
