@@ -122,6 +122,7 @@ impl<'a> App<'a> {
             match repository.head() {
                 Head::Branch { name } => commit_list_state.select_ref(name),
                 Head::Detached { target } => commit_list_state.select_commit_hash(target),
+                Head::None => {}
             }
         }
         let view = View::of_list(commit_list_state, ctx.clone(), tx.clone());
