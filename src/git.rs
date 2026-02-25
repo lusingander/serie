@@ -96,6 +96,7 @@ impl Ref {
 pub enum Head {
     Branch { name: String },
     Detached { target: CommitHash },
+    None,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -127,8 +128,13 @@ impl Repository {
     pub fn load(path: &Path, sort: SortCommit, max_count: Option<usize>) -> Result<Self> {
         check_git_repository(path)?;
 
+        let (mut ref_map, head) = load_refs(path);
+
         let stashes = load_all_stashes(path);
-        let commits = load_all_commits(path, sort, &stashes, max_count);
+        let commits = load_all_commits(path, sort, &head, &stashes, max_count);
+        if commits.is_empty() {
+            return Err("no commits in the repository".into());
+        }
 
         let commits = merge_stashes_to_commits(commits, stashes);
         let commit_hashes = commits.iter().map(|c| c.commit_hash.clone()).collect();
@@ -136,7 +142,6 @@ impl Repository {
         let (parents_map, children_map) = build_commits_maps(&commits);
         let commit_map = to_commit_map(commits);
 
-        let (mut ref_map, head) = load_refs(path);
         let stash_ref_map = load_stashes_as_refs(path);
         merge_ref_maps(&mut ref_map, stash_ref_map);
 
@@ -253,6 +258,7 @@ fn is_bare_repository(path: &Path) -> bool {
 fn load_all_commits(
     path: &Path,
     sort: SortCommit,
+    head: &Head,
     stashes: &[Commit],
     max_count: Option<usize>,
 ) -> Vec<Commit> {
@@ -274,7 +280,10 @@ fn load_all_commits(
     stashes.iter().for_each(|stash| {
         cmd.arg(stash.parent_commit_hashes[0].as_str());
     });
-    cmd.arg("HEAD");
+
+    if !matches!(head, Head::None) {
+        cmd.arg("HEAD");
+    }
 
     if let Some(n) = max_count {
         cmd.arg("--max-count").arg(n.to_string());
@@ -456,7 +465,7 @@ fn load_refs(path: &Path) -> (RefMap, Head) {
 
     let mut ref_map = RefMap::default();
     let mut tag_map: FxHashMap<String, Ref> = FxHashMap::default();
-    let mut head: Option<Head> = None;
+    let mut head: Head = Head::None;
 
     for line in reader.lines() {
         let line = line.unwrap();
@@ -471,11 +480,11 @@ fn load_refs(path: &Path) -> (RefMap, Head) {
 
         if refs == "HEAD" {
             head = if let Some(branch) = get_current_branch(path) {
-                Some(Head::Branch { name: branch })
+                Head::Branch { name: branch }
             } else {
-                Some(Head::Detached {
+                Head::Detached {
                     target: hash.into(),
-                })
+                }
             };
         } else if let Some(r) = parse_branch_refs(hash, refs) {
             ref_map.entry(hash.into()).or_default().push(r);
@@ -485,8 +494,6 @@ fn load_refs(path: &Path) -> (RefMap, Head) {
             tag_map.insert(r.name().into(), r);
         }
     }
-
-    let head = head.expect("HEAD not found in `git show-ref --head` output");
 
     for tag in tag_map.into_values() {
         ref_map.entry(tag.target().clone()).or_default().push(tag);
