@@ -146,7 +146,7 @@ impl<'a> ListView<'a> {
                 UserEvent::Confirm => {
                     self.tx.send(AppEvent::OpenDetail);
                 }
-                UserEvent::RefListToggle => {
+                UserEvent::RefList => {
                     self.tx.send(AppEvent::OpenRefs);
                 }
                 UserEvent::Refresh => {

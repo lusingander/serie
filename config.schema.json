@@ -618,7 +618,7 @@
         "confirm": {
           "$ref": "#/definitions/keybindArray"
         },
-        "ref_list_toggle": {
+        "ref_list": {
           "$ref": "#/definitions/keybindArray"
         },
         "search": {
