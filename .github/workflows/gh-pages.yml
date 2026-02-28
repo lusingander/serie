@@ -2,8 +2,8 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - v*
     paths:
       - docs/**
   workflow_dispatch:
