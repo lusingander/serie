@@ -261,11 +261,11 @@ fn build_user_command_output_lines<'a>(
         .map(String::as_str)
         .collect::<Vec<_>>();
     let target_hash = commit.commit_hash.as_str();
-    let parent_hash = commit
+    let parent_hashes: Vec<&str> = commit
         .parent_commit_hashes
-        .first()
+        .iter()
         .map(|c| c.as_str())
-        .unwrap_or_default();
+        .collect();
 
     let area_width = view_area.width.saturating_sub(4); // minus the left and right padding
     let area_height = (view_area.height.saturating_sub(1))
@@ -273,13 +273,19 @@ fn build_user_command_output_lines<'a>(
         .saturating_sub(1); // minus the top border
 
     let tab_spaces = " ".repeat(ctx.core_config.user_command.tab_width as usize);
-    exec_user_command(&command, target_hash, parent_hash, area_width, area_height)
-        .and_then(|output| {
-            output
-                .replace('\t', &tab_spaces) // tab is not rendered correctly, so replace it
-                .into_text()
-                .map(|t| t.into_iter().collect())
-                .map_err(|e| e.to_string())
-        })
-        .map_err(|err| format!("Failed to execute command: {}", err))
+    exec_user_command(
+        &command,
+        target_hash,
+        &parent_hashes,
+        area_width,
+        area_height,
+    )
+    .and_then(|output| {
+        output
+            .replace('\t', &tab_spaces) // tab is not rendered correctly, so replace it
+            .into_text()
+            .map(|t| t.into_iter().collect())
+            .map_err(|e| e.to_string())
+    })
+    .map_err(|err| format!("Failed to execute command: {}", err))
 }
