@@ -5,7 +5,7 @@ This allows you to do things like view commit diffs using your favorite tools.
 
 To define a user command, you need to configure the following two settings:
 - Keybinding definition. Specify the key to display each user command.
-  - Config: `keybind.user_command_view_toggle_{n}`
+  - Config: `keybind.user_command_{n}`
 - Command definition. Specify the actual command you want to execute.
   - Config: `core.user_command.commands_{n}`
 
@@ -13,8 +13,8 @@ To define a user command, you need to configure the following two settings:
 
 ```toml
 [keybind]
-user_command_view_toggle_1 = ["d"]
-user_command_view_toggle_2 = ["shift-d"]
+user_command_1 = ["d"]
+user_command_2 = ["shift-d"]
 
 [core.user_command]
 commands_1 = { "name" = "git diff", commands = ["git", "--no-pager", "diff", "--color=always", "{{first_parent_hash}}", "{{target_hash}}"] }

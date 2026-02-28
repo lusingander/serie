@@ -49,11 +49,11 @@ impl KeyBind {
         key_events.into_iter().map(key_event_to_string).collect()
     }
 
-    pub fn user_command_view_toggle_event_numbers(&self) -> Vec<usize> {
+    pub fn user_command_event_numbers(&self) -> Vec<usize> {
         let mut numbers: Vec<usize> = self
             .values()
             .filter_map(|ue| {
-                if let UserEvent::UserCommandViewToggle(n) = ue {
+                if let UserEvent::UserCommand(n) = ue {
                     Some(*n)
                 } else {
                     None
@@ -257,7 +257,7 @@ mod tests {
             navigate_left = ["ctrl-h", "shift-h", "alt-h"]
             navigate_right = ["ctrl-shift-l", "alt-shift-ctrl-l"]
             quit = ["esc", "f12"]
-            user_command_view_toggle_1 = ["d"]
+            user_command_1 = ["d"]
             user_command_view_toggle_10 = ["e"]
         "#;
 
@@ -305,11 +305,11 @@ mod tests {
                 ),
                 (
                     KeyEvent::new(KeyCode::Char('d'), KeyModifiers::empty()),
-                    UserEvent::UserCommandViewToggle(1),
+                    UserEvent::UserCommand(1),
                 ),
                 (
                     KeyEvent::new(KeyCode::Char('e'), KeyModifiers::empty()),
-                    UserEvent::UserCommandViewToggle(10),
+                    UserEvent::UserCommand(10),
                 ),
             ]
             .into_iter()

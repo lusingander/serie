@@ -618,7 +618,7 @@
         "confirm": {
           "$ref": "#/definitions/keybindArray"
         },
-        "ref_list_toggle": {
+        "ref_list": {
           "$ref": "#/definitions/keybindArray"
         },
         "search": {
@@ -638,7 +638,7 @@
         }
       },
       "patternProperties": {
-        "^user_command_view_toggle_[0-9]+$": {
+        "^user_command_[0-9]+$": {
           "description": "Keybinding to toggle a specific user command view, where the number corresponds to the command in 'core.user_command'.",
           "$ref": "#/definitions/keybindArray"
         }
