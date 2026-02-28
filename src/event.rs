@@ -125,7 +125,7 @@ pub enum UserEvent {
     Confirm,
     RefList,
     Search,
-    UserCommandViewToggle(usize),
+    UserCommand(usize),
     IgnoreCaseToggle,
     FuzzyToggle,
     Refresh,
@@ -152,11 +152,11 @@ impl<'de> Deserialize<'de> for UserEvent {
             where
                 E: de::Error,
             {
-                if let Some(num_str) = value.strip_prefix("user_command_view_toggle_") {
-                    if let Ok(num) = num_str.parse::<usize>() {
-                        Ok(UserEvent::UserCommandViewToggle(num))
+                if value.starts_with("user_command_") {
+                    if let Some(num) = parse_user_command_number(value) {
+                        Ok(UserEvent::UserCommand(num))
                     } else {
-                        let msg = format!("Invalid user_command_view_toggle_n format: {}", value);
+                        let msg = format!("Invalid user_command_n format: {}", value);
                         Err(de::Error::custom(msg))
                     }
                 } else {
@@ -205,6 +205,20 @@ impl<'de> Deserialize<'de> for UserEvent {
 
         deserializer.deserialize_str(UserEventVisitor)
     }
+}
+
+fn parse_user_command_number(s: &str) -> Option<usize> {
+    if let Some(num_str) = s.strip_prefix("user_command_") {
+        if num_str.parse::<usize>().is_ok() {
+            return num_str.parse::<usize>().ok();
+        }
+        if let Some(num_str) = s.strip_prefix("user_command_view_toggle_") {
+            if num_str.parse::<usize>().is_ok() {
+                return num_str.parse::<usize>().ok();
+            }
+        }
+    }
+    None
 }
 
 impl UserEvent {

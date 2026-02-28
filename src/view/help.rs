@@ -213,8 +213,8 @@ fn build_lines(
     keybind: &KeyBind,
     core_config: &CoreConfig,
 ) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
-    let user_command_view_toggle_helps = keybind
-        .user_command_view_toggle_event_numbers()
+    let user_command_help_items = keybind
+        .user_command_event_numbers()
         .into_iter()
         .flat_map(|n| {
             core_config
@@ -222,7 +222,7 @@ fn build_lines(
                 .commands
                 .get(&n.to_string())
                 .map(|c| format!("Toggle user command {} - {}", n, c.name))
-                .map(|desc| (vec![UserEvent::UserCommandViewToggle(n)], desc))
+                .map(|desc| (vec![UserEvent::UserCommand(n)], desc))
         })
         .collect::<Vec<_>>();
 
@@ -272,7 +272,7 @@ fn build_lines(
         (vec![UserEvent::ShortCopy], "Copy commit short hash".into()),
         (vec![UserEvent::FullCopy], "Copy commit hash".into()),
     ];
-    list_helps.extend(user_command_view_toggle_helps.clone());
+    list_helps.extend(user_command_help_items.clone());
     let (list_key_lines, list_value_lines) = build_block_lines("Commit List:", list_helps, color_theme, keybind);
     
     let mut detail_helps = vec![
@@ -292,7 +292,7 @@ fn build_lines(
         (vec![UserEvent::ShortCopy], "Copy commit short hash".into()),
         (vec![UserEvent::FullCopy], "Copy commit hash".into()),
     ];
-    detail_helps.extend(user_command_view_toggle_helps.clone());
+    detail_helps.extend(user_command_help_items.clone());
     let (detail_key_lines, detail_value_lines) = build_block_lines("Commit Detail:", detail_helps, color_theme, keybind);
 
     let refs_helps = vec![
@@ -324,7 +324,7 @@ fn build_lines(
         (vec![UserEvent::Refresh], "Refresh".into()),
         (vec![UserEvent::Confirm], "Show commit details".into()),
     ];
-    user_command_helps.extend(user_command_view_toggle_helps);
+    user_command_helps.extend(user_command_help_items);
     let (user_command_key_lines, user_command_value_lines) = build_block_lines("User Command:", user_command_helps, color_theme, keybind);
 
     let key_lines = join_line_groups_with_empty(vec![

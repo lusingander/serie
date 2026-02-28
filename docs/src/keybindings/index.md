@@ -34,7 +34,7 @@ The default key bindings can be overridden.
 | <kbd>Ctrl-x</kbd>                    | Toggle fuzzy match (if searching)                  | `fuzzy_toggle`                               |
 | <kbd>R</kbd>                         | Refresh                                            | `refresh`                                    |
 | <kbd>c/C</kbd>                       | Copy commit short/full hash                        | `short_copy` `full_copy`                     |
-| <kbd>d</kbd>                         | Toggle custom user command view                    | `user_command_view_toggle_1`                 |
+| <kbd>d</kbd>                         | Toggle custom user command view                    | `user_command_1`                             |
 
 #### Commit Detail
 
@@ -49,7 +49,7 @@ The default key bindings can be overridden.
 | <kbd>Alt-Down</kbd> <kbd>Alt-j</kbd> | Select parent commit            | `go_to_parent`                  |
 | <kbd>R</kbd>                         | Refresh                         | `refresh`                       |
 | <kbd>c/C</kbd>                       | Copy commit short/full hash     | `short_copy` `full_copy`        |
-| <kbd>d</kbd>                         | Toggle custom user command view | `user_command_view_toggle_1`    |
+| <kbd>d</kbd>                         | Toggle custom user command view | `user_command_1`                |
 
 #### Refs List
 
