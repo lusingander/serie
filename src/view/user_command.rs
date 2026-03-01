@@ -12,7 +12,7 @@ use ratatui::{
 use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
-    external::exec_user_command,
+    external::{exec_user_command, ExternalCommandParameters},
     git::{Commit, Ref, Repository},
     view::{ListRefreshViewContext, RefreshViewContext, UserCommandRefreshViewContext},
     widget::{
@@ -267,13 +267,13 @@ fn build_user_command_output_lines<'a>(
         })?
         .commands
         .iter()
-        .map(String::as_str)
-        .collect::<Vec<_>>();
-    let target_hash = commit.commit_hash.as_str();
-    let parent_hashes: Vec<&str> = commit
+        .map(String::to_string)
+        .collect();
+    let target_hash = commit.commit_hash.as_str().to_string();
+    let parent_hashes: Vec<String> = commit
         .parent_commit_hashes
         .iter()
-        .map(|c| c.as_str())
+        .map(|c| c.as_str().to_string())
         .collect();
 
     let mut all_refs = vec![];
@@ -282,37 +282,38 @@ fn build_user_command_output_lines<'a>(
     let mut tags = vec![];
     for r in refs {
         match r {
-            Ref::Tag { .. } => tags.push(r.name()),
-            Ref::Branch { .. } => branches.push(r.name()),
-            Ref::RemoteBranch { .. } => remote_branches.push(r.name()),
+            Ref::Tag { .. } => tags.push(r.name().to_string()),
+            Ref::Branch { .. } => branches.push(r.name().to_string()),
+            Ref::RemoteBranch { .. } => remote_branches.push(r.name().to_string()),
             Ref::Stash { .. } => continue, // skip stashes
         }
-        all_refs.push(r.name());
+        all_refs.push(r.name().to_string());
     }
 
     let area_width = view_area.width.saturating_sub(4); // minus the left and right padding
     let area_height = (view_area.height.saturating_sub(1))
         .min(ctx.ui_config.user_command.height)
         .saturating_sub(1); // minus the top border
-
-    let tab_spaces = " ".repeat(ctx.core_config.user_command.tab_width as usize);
-    exec_user_command(
-        &command,
+    let params = ExternalCommandParameters {
+        command,
         target_hash,
-        &parent_hashes,
-        &all_refs,
-        &branches,
-        &remote_branches,
-        &tags,
+        parent_hashes,
+        all_refs,
+        branches,
+        remote_branches,
+        tags,
         area_width,
         area_height,
-    )
-    .and_then(|output| {
-        output
-            .replace('\t', &tab_spaces) // tab is not rendered correctly, so replace it
-            .into_text()
-            .map(|t| t.into_iter().collect())
-            .map_err(|e| e.to_string())
-    })
-    .map_err(|err| format!("Failed to execute command: {}", err))
+    };
+
+    let tab_spaces = " ".repeat(ctx.core_config.user_command.tab_width as usize);
+    exec_user_command(params)
+        .and_then(|output| {
+            output
+                .replace('\t', &tab_spaces) // tab is not rendered correctly, so replace it
+                .into_text()
+                .map(|t| t.into_iter().collect())
+                .map_err(|e| e.to_string())
+        })
+        .map_err(|err| format!("Failed to execute command: {}", err))
 }

@@ -69,34 +69,46 @@ fn copy_to_clipboard_auto(value: String) -> Result<(), String> {
     })
 }
 
-pub fn exec_user_command(
-    command: &[&str],
-    target_hash: &str,
-    parent_hashes: &[&str],
-    all_refs: &[&str],
-    branches: &[&str],
-    remote_branches: &[&str],
-    tags: &[&str],
-    area_width: u16,
-    area_height: u16,
-) -> Result<String, String> {
+pub struct ExternalCommandParameters {
+    pub command: Vec<String>,
+    pub target_hash: String,
+    pub parent_hashes: Vec<String>,
+    pub all_refs: Vec<String>,
+    pub branches: Vec<String>,
+    pub remote_branches: Vec<String>,
+    pub tags: Vec<String>,
+    pub area_width: u16,
+    pub area_height: u16,
+}
+
+pub fn exec_user_command(params: ExternalCommandParameters) -> Result<String, String> {
     let sep = " ";
-    let first_parent_hash = parent_hashes.first().cloned().unwrap_or_default();
-    let command = command
+    let first_parent_hash = params.parent_hashes.first().cloned().unwrap_or_default();
+    let command = params
+        .command
         .iter()
         .map(|s| {
-            s.replace(USER_COMMAND_TARGET_HASH_MARKER, target_hash)
-                .replace(USER_COMMAND_FIRST_PARENT_HASH_MARKER, first_parent_hash)
-                .replace(USER_COMMAND_PARENT_HASHES_MARKER, &parent_hashes.join(sep))
-                .replace(USER_COMMAND_REFS_MARKER, &all_refs.join(sep))
-                .replace(USER_COMMAND_BRANCHES_MARKER, &branches.join(sep))
+            s.replace(USER_COMMAND_TARGET_HASH_MARKER, &params.target_hash)
+                .replace(USER_COMMAND_FIRST_PARENT_HASH_MARKER, &first_parent_hash)
+                .replace(
+                    USER_COMMAND_PARENT_HASHES_MARKER,
+                    &params.parent_hashes.join(sep),
+                )
+                .replace(USER_COMMAND_REFS_MARKER, &params.all_refs.join(sep))
+                .replace(USER_COMMAND_BRANCHES_MARKER, &params.branches.join(sep))
                 .replace(
                     USER_COMMAND_REMOTE_BRANCHES_MARKER,
-                    &remote_branches.join(sep),
+                    &params.remote_branches.join(sep),
                 )
-                .replace(USER_COMMAND_TAGS_MARKER, &tags.join(sep))
-                .replace(USER_COMMAND_AREA_WIDTH_MARKER, &area_width.to_string())
-                .replace(USER_COMMAND_AREA_HEIGHT_MARKER, &area_height.to_string())
+                .replace(USER_COMMAND_TAGS_MARKER, &params.tags.join(sep))
+                .replace(
+                    USER_COMMAND_AREA_WIDTH_MARKER,
+                    &params.area_width.to_string(),
+                )
+                .replace(
+                    USER_COMMAND_AREA_HEIGHT_MARKER,
+                    &params.area_height.to_string(),
+                )
         })
         .collect::<Vec<_>>();
 
