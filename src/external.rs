@@ -7,6 +7,10 @@ use crate::config::ClipboardConfig;
 const USER_COMMAND_TARGET_HASH_MARKER: &str = "{{target_hash}}";
 const USER_COMMAND_FIRST_PARENT_HASH_MARKER: &str = "{{first_parent_hash}}";
 const USER_COMMAND_PARENT_HASHES_MARKER: &str = "{{parent_hashes}}";
+const USER_COMMAND_REFS_MARKER: &str = "{{refs}}";
+const USER_COMMAND_BRANCHES_MARKER: &str = "{{branches}}";
+const USER_COMMAND_REMOTE_BRANCHES_MARKER: &str = "{{remote_branches}}";
+const USER_COMMAND_TAGS_MARKER: &str = "{{tags}}";
 const USER_COMMAND_AREA_WIDTH_MARKER: &str = "{{area_width}}";
 const USER_COMMAND_AREA_HEIGHT_MARKER: &str = "{{area_height}}";
 
@@ -69,6 +73,10 @@ pub fn exec_user_command(
     command: &[&str],
     target_hash: &str,
     parent_hashes: &[&str],
+    all_refs: &[&str],
+    branches: &[&str],
+    remote_branches: &[&str],
+    tags: &[&str],
     area_width: u16,
     area_height: u16,
 ) -> Result<String, String> {
@@ -80,6 +88,13 @@ pub fn exec_user_command(
             s.replace(USER_COMMAND_TARGET_HASH_MARKER, target_hash)
                 .replace(USER_COMMAND_FIRST_PARENT_HASH_MARKER, first_parent_hash)
                 .replace(USER_COMMAND_PARENT_HASHES_MARKER, &parent_hashes.join(sep))
+                .replace(USER_COMMAND_REFS_MARKER, &all_refs.join(sep))
+                .replace(USER_COMMAND_BRANCHES_MARKER, &branches.join(sep))
+                .replace(
+                    USER_COMMAND_REMOTE_BRANCHES_MARKER,
+                    &remote_branches.join(sep),
+                )
+                .replace(USER_COMMAND_TAGS_MARKER, &tags.join(sep))
                 .replace(USER_COMMAND_AREA_WIDTH_MARKER, &area_width.to_string())
                 .replace(USER_COMMAND_AREA_HEIGHT_MARKER, &area_height.to_string())
         })

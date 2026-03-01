@@ -442,9 +442,16 @@ impl App<'_> {
         };
         let selected = commit_list_state.selected_commit_hash().clone();
         let (commit, _) = self.repository.commit_detail(&selected);
+        let refs = self
+            .repository
+            .refs(&selected)
+            .into_iter()
+            .cloned()
+            .collect();
         self.view = View::of_user_command(
             commit_list_state,
             commit,
+            refs,
             user_command_number,
             self.app_status.view_area,
             self.ctx.clone(),
