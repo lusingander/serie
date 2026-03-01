@@ -237,6 +237,7 @@ pub struct UserCommand {
 pub enum UserCommandType {
     #[default]
     Inline,
+    Silent,
 }
 
 #[optional(derives = [Deserialize])]
@@ -493,7 +494,7 @@ mod tests {
             fuzzy = true
             [core.user_command]
             commands_1 = { name = "git diff no color", commands = ["git", "diff", "{{first_parent_hash}}", "{{target_hash}}"] }
-            commands_2 = { name = "echo hello", type = "inline", commands = ["echo", "hello"] }
+            commands_2 = { name = "echo hello", type = "silent", commands = ["echo", "hello"] }
             commands_10 = { name = "echo world", type = "inline", commands = ["echo", "world"] }
             tab_width = 2
             [ui.common]
@@ -551,7 +552,7 @@ mod tests {
                             "2".into(),
                             UserCommand {
                                 name: "echo hello".into(),
-                                r#type: UserCommandType::Inline,
+                                r#type: UserCommandType::Silent,
                                 commands: vec!["echo".into(), "hello".into()],
                             },
                         ),
