@@ -5,6 +5,7 @@ use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 use crate::{
     app::AppContext,
     event::{Sender, UserEventWithCount},
+    external::ExternalCommandParameters,
     git::{Commit, FileChange, Ref},
     view::{
         detail::DetailView, help::HelpView, list::ListView, refs::RefsView,
@@ -75,19 +76,15 @@ impl<'a> View<'a> {
 
     pub fn of_user_command(
         commit_list_state: CommitListState<'a>,
-        commit: Commit,
-        refs: Vec<Ref>,
+        params: ExternalCommandParameters,
         user_command_number: usize,
-        view_area: Rect,
         ctx: Rc<AppContext>,
         tx: Sender,
     ) -> Self {
         View::UserCommand(Box::new(UserCommandView::new(
             commit_list_state,
-            commit,
-            refs,
+            params,
             user_command_number,
-            view_area,
             ctx,
             tx,
         )))

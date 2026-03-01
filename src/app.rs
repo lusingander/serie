@@ -15,8 +15,8 @@ use crate::{
     color::{ColorTheme, GraphColorSet},
     config::{CoreConfig, CursorType, UiConfig},
     event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
-    external::copy_to_clipboard,
-    git::{Head, Repository},
+    external::{copy_to_clipboard, ExternalCommandParameters},
+    git::{Commit, Head, Ref, Repository},
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -442,21 +442,32 @@ impl App<'_> {
         };
         let selected = commit_list_state.selected_commit_hash().clone();
         let (commit, _) = self.repository.commit_detail(&selected);
-        let refs = self
+        let refs: Vec<Ref> = self
             .repository
             .refs(&selected)
             .into_iter()
             .cloned()
             .collect();
-        self.view = View::of_user_command(
-            commit_list_state,
-            commit,
-            refs,
+        match build_external_command_parameters(
+            &commit,
+            &refs,
             user_command_number,
             self.app_status.view_area,
             self.ctx.clone(),
-            self.tx.clone(),
-        );
+        ) {
+            Ok(params) => {
+                self.view = View::of_user_command(
+                    commit_list_state,
+                    params,
+                    user_command_number,
+                    self.ctx.clone(),
+                    self.tx.clone(),
+                );
+            }
+            Err(err) => {
+                self.tx.send(AppEvent::NotifyError(err));
+            }
+        };
     }
 
     fn close_user_command(&mut self) {
@@ -508,7 +519,11 @@ impl App<'_> {
         if let View::Detail(ref mut view) = self.view {
             view.select_older_commit(self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
-            view.select_older_commit(self.repository, self.app_status.view_area);
+            view.select_older_commit(
+                self.repository,
+                self.app_status.view_area,
+                build_external_command_parameters,
+            );
         }
     }
 
@@ -516,7 +531,11 @@ impl App<'_> {
         if let View::Detail(ref mut view) = self.view {
             view.select_newer_commit(self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
-            view.select_newer_commit(self.repository, self.app_status.view_area);
+            view.select_newer_commit(
+                self.repository,
+                self.app_status.view_area,
+                build_external_command_parameters,
+            );
         }
     }
 
@@ -524,7 +543,11 @@ impl App<'_> {
         if let View::Detail(ref mut view) = self.view {
             view.select_parent_commit(self.repository);
         } else if let View::UserCommand(ref mut view) = self.view {
-            view.select_parent_commit(self.repository, self.app_status.view_area);
+            view.select_parent_commit(
+                self.repository,
+                self.app_status.view_area,
+                build_external_command_parameters,
+            );
         }
     }
 
@@ -609,6 +632,66 @@ fn process_numeric_prefix(
     } else {
         UserEventWithCount::from_event(user_event)
     }
+}
+
+fn build_external_command_parameters(
+    commit: &Commit,
+    refs: &[Ref],
+    user_command_number: usize,
+    view_area: Rect,
+    ctx: Rc<AppContext>,
+) -> Result<ExternalCommandParameters, String> {
+    let command = ctx
+        .core_config
+        .user_command
+        .commands
+        .get(&user_command_number.to_string())
+        .ok_or_else(|| {
+            format!(
+                "No user command configured for number {}",
+                user_command_number
+            )
+        })?
+        .commands
+        .iter()
+        .map(String::to_string)
+        .collect();
+    let target_hash = commit.commit_hash.as_str().to_string();
+    let parent_hashes: Vec<String> = commit
+        .parent_commit_hashes
+        .iter()
+        .map(|c| c.as_str().to_string())
+        .collect();
+
+    let mut all_refs = vec![];
+    let mut branches = vec![];
+    let mut remote_branches = vec![];
+    let mut tags = vec![];
+    for r in refs {
+        match r {
+            Ref::Tag { .. } => tags.push(r.name().to_string()),
+            Ref::Branch { .. } => branches.push(r.name().to_string()),
+            Ref::RemoteBranch { .. } => remote_branches.push(r.name().to_string()),
+            Ref::Stash { .. } => continue, // skip stashes
+        }
+        all_refs.push(r.name().to_string());
+    }
+
+    let area_width = view_area.width.saturating_sub(4); // minus the left and right padding
+    let area_height = (view_area.height.saturating_sub(1))
+        .min(ctx.ui_config.user_command.height)
+        .saturating_sub(1); // minus the top border
+    Ok(ExternalCommandParameters {
+        command,
+        target_hash,
+        parent_hashes,
+        all_refs,
+        branches,
+        remote_branches,
+        tags,
+        area_width,
+        area_height,
+    })
 }
 
 #[cfg(test)]
