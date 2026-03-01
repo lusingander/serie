@@ -32,6 +32,21 @@ They will be replaced with their respective values command is executed.
 - `{{first_parent_hash}}`
   - The hash of the first parent of the selected commit.
   - example: `c103d9744df8ebf100773a11345f011152ec5581`
+- `{{parent_hashes}}`
+  - The hashes of all parents of the selected commit, separated by a space.
+  - example: `c103d9744df8ebf100773a11345f011152ec5581 a1b2c3d4e5f67890123456789abcdef0123456789`
+- `{{refs}}`
+  - The names of all refs (branches, tags, stashes) pointing to the selected commit, separated by a space.
+  - example: `master v1.0.0`
+- `{{branches}}`
+  - The names of all branches pointing to the selected commit, separated by a space.
+  - example: `master feature-branch`
+- `{{remote_branches}}`
+  - The names of all remote branches pointing to the selected commit, separated by a space.
+  - example: `origin/master origin/feature-branch`
+- `{{tags}}`
+  - The names of all tags pointing to the selected commit, separated by a space.
+  - example: `v1.0.0 v1.0.1`
 - `{{area_width}}`
   - Width of the user command display area (number of cells).
   - example: `80`

@@ -76,6 +76,7 @@ impl<'a> View<'a> {
     pub fn of_user_command(
         commit_list_state: CommitListState<'a>,
         commit: Commit,
+        refs: Vec<Ref>,
         user_command_number: usize,
         view_area: Rect,
         ctx: Rc<AppContext>,
@@ -84,6 +85,7 @@ impl<'a> View<'a> {
         View::UserCommand(Box::new(UserCommandView::new(
             commit_list_state,
             commit,
+            refs,
             user_command_number,
             view_area,
             ctx,
