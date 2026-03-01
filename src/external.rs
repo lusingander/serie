@@ -4,6 +4,7 @@ use arboard::Clipboard;
 
 use crate::config::ClipboardConfig;
 
+const USER_COMMAND_MARKER_PREFIX: &str = "{{";
 const USER_COMMAND_TARGET_HASH_MARKER: &str = "{{target_hash}}";
 const USER_COMMAND_FIRST_PARENT_HASH_MARKER: &str = "{{first_parent_hash}}";
 const USER_COMMAND_PARENT_HASHES_MARKER: &str = "{{parent_hashes}}";
@@ -82,34 +83,10 @@ pub struct ExternalCommandParameters {
 }
 
 pub fn exec_user_command(params: ExternalCommandParameters) -> Result<String, String> {
-    let sep = " ";
-    let first_parent_hash = params.parent_hashes.first().cloned().unwrap_or_default();
     let command = params
         .command
         .iter()
-        .map(|s| {
-            s.replace(USER_COMMAND_TARGET_HASH_MARKER, &params.target_hash)
-                .replace(USER_COMMAND_FIRST_PARENT_HASH_MARKER, &first_parent_hash)
-                .replace(
-                    USER_COMMAND_PARENT_HASHES_MARKER,
-                    &params.parent_hashes.join(sep),
-                )
-                .replace(USER_COMMAND_REFS_MARKER, &params.all_refs.join(sep))
-                .replace(USER_COMMAND_BRANCHES_MARKER, &params.branches.join(sep))
-                .replace(
-                    USER_COMMAND_REMOTE_BRANCHES_MARKER,
-                    &params.remote_branches.join(sep),
-                )
-                .replace(USER_COMMAND_TAGS_MARKER, &params.tags.join(sep))
-                .replace(
-                    USER_COMMAND_AREA_WIDTH_MARKER,
-                    &params.area_width.to_string(),
-                )
-                .replace(
-                    USER_COMMAND_AREA_HEIGHT_MARKER,
-                    &params.area_height.to_string(),
-                )
-        })
+        .map(|s| replace_command_arg(s, &params))
         .collect::<Vec<_>>();
 
     let output = Command::new(&command[0])
@@ -127,4 +104,31 @@ pub fn exec_user_command(params: ExternalCommandParameters) -> Result<String, St
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).into())
+}
+
+fn replace_command_arg(s: &str, params: &ExternalCommandParameters) -> String {
+    if !s.contains(USER_COMMAND_MARKER_PREFIX) {
+        return s.to_string();
+    }
+
+    let sep = " ";
+    let target_hash = &params.target_hash;
+    let first_parent_hash = &params.parent_hashes.first().cloned().unwrap_or_default();
+    let parent_hashes = &params.parent_hashes.join(sep);
+    let all_refs = &params.all_refs.join(sep);
+    let branches = &params.branches.join(sep);
+    let remote_branches = &params.remote_branches.join(sep);
+    let tags = &params.tags.join(sep);
+    let area_width = &params.area_width.to_string();
+    let area_height = &params.area_height.to_string();
+
+    s.replace(USER_COMMAND_TARGET_HASH_MARKER, target_hash)
+        .replace(USER_COMMAND_FIRST_PARENT_HASH_MARKER, first_parent_hash)
+        .replace(USER_COMMAND_PARENT_HASHES_MARKER, parent_hashes)
+        .replace(USER_COMMAND_REFS_MARKER, all_refs)
+        .replace(USER_COMMAND_BRANCHES_MARKER, branches)
+        .replace(USER_COMMAND_REMOTE_BRANCHES_MARKER, remote_branches)
+        .replace(USER_COMMAND_TAGS_MARKER, tags)
+        .replace(USER_COMMAND_AREA_WIDTH_MARKER, area_width)
+        .replace(USER_COMMAND_AREA_HEIGHT_MARKER, area_height)
 }
