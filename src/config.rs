@@ -143,6 +143,7 @@ pub struct CoreUserCommandConfig {
     #[garde(dive)]
     #[default(FxHashMap::from_iter([("1".into(), UserCommand {
         name: "git diff".into(),
+        r#type: UserCommandType::Inline,
         commands: vec![
             "git".into(),
             "--no-pager".into(),
@@ -224,8 +225,18 @@ impl<'de> Deserialize<'de> for OptionalCoreUserCommandConfig {
 pub struct UserCommand {
     #[garde(length(min = 1))]
     pub name: String,
+    #[serde(default)]
+    #[garde(skip)]
+    pub r#type: UserCommandType,
     #[garde(length(min = 1), inner(length(min = 1)))]
     pub commands: Vec<String>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UserCommandType {
+    #[default]
+    Inline,
 }
 
 #[optional(derives = [Deserialize])]
@@ -404,6 +415,7 @@ mod tests {
                         "1".into(),
                         UserCommand {
                             name: "git diff".into(),
+                            r#type: UserCommandType::Inline,
                             commands: vec![
                                 "git".into(),
                                 "--no-pager".into(),
@@ -481,8 +493,8 @@ mod tests {
             fuzzy = true
             [core.user_command]
             commands_1 = { name = "git diff no color", commands = ["git", "diff", "{{first_parent_hash}}", "{{target_hash}}"] }
-            commands_2 = { name = "echo hello", commands = ["echo", "hello"] }
-            commands_10 = { name = "echo world", commands = ["echo", "world"] }
+            commands_2 = { name = "echo hello", type = "inline", commands = ["echo", "hello"] }
+            commands_10 = { name = "echo world", type = "inline", commands = ["echo", "world"] }
             tab_width = 2
             [ui.common]
             cursor_type = { Virtual = "|" }
@@ -526,6 +538,7 @@ mod tests {
                             "1".into(),
                             UserCommand {
                                 name: "git diff no color".into(),
+                                r#type: UserCommandType::Inline,
                                 commands: vec![
                                     "git".into(),
                                     "diff".into(),
@@ -538,6 +551,7 @@ mod tests {
                             "2".into(),
                             UserCommand {
                                 name: "echo hello".into(),
+                                r#type: UserCommandType::Inline,
                                 commands: vec!["echo".into(), "hello".into()],
                             },
                         ),
@@ -545,6 +559,7 @@ mod tests {
                             "10".into(),
                             UserCommand {
                                 name: "echo world".into(),
+                                r#type: UserCommandType::Inline,
                                 commands: vec!["echo".into(), "world".into()],
                             },
                         ),
@@ -618,6 +633,7 @@ mod tests {
                         "1".into(),
                         UserCommand {
                             name: "git diff".into(),
+                            r#type: UserCommandType::Inline,
                             commands: vec![
                                 "git".into(),
                                 "--no-pager".into(),
