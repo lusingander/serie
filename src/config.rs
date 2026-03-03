@@ -232,8 +232,21 @@ pub struct UserCommand {
     #[garde(length(min = 1), inner(length(min = 1)))]
     pub commands: Vec<String>,
     #[serde(default)]
-    #[garde(skip)]
+    #[garde(custom(validate_user_command_refresh(&self.r#type)))]
     pub refresh: bool,
+}
+
+fn validate_user_command_refresh(
+    command_type: &UserCommandType,
+) -> impl FnOnce(&bool, &()) -> garde::Result + '_ {
+    move |refresh, _| {
+        if matches!(command_type, UserCommandType::Inline) && *refresh {
+            return Err(garde::Error::new(
+                "refresh cannot be true for inline command",
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
