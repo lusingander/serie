@@ -13,7 +13,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     color::{ColorTheme, GraphColorSet},
-    config::{CoreConfig, CursorType, UiConfig, UserCommandType},
+    config::{CoreConfig, CursorType, UiConfig, UserCommand, UserCommandType},
     event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
     external::{copy_to_clipboard, exec_user_command, ExternalCommandParameters},
     git::{Commit, Head, Ref, Repository},
@@ -434,7 +434,7 @@ impl App<'_> {
     }
 
     fn open_user_command(&mut self, user_command_number: usize) {
-        match extract_user_command_type(user_command_number, self.ctx.clone()) {
+        match extract_user_command_by_number(user_command_number, &self.ctx).map(|c| &c.r#type) {
             Ok(UserCommandType::Inline) => {
                 self.open_user_command_inline(user_command_number);
             }
@@ -676,15 +676,14 @@ fn process_numeric_prefix(
     }
 }
 
-fn extract_user_command_type(
+fn extract_user_command_by_number(
     user_command_number: usize,
-    ctx: Rc<AppContext>,
-) -> Result<UserCommandType, String> {
+    ctx: &AppContext,
+) -> Result<&UserCommand, String> {
     ctx.core_config
         .user_command
         .commands
         .get(&user_command_number.to_string())
-        .map(|cmd| cmd.r#type.clone())
         .ok_or_else(|| {
             format!(
                 "No user command configured for number {}",
@@ -700,17 +699,7 @@ fn build_external_command_parameters(
     view_area: Rect,
     ctx: Rc<AppContext>,
 ) -> Result<ExternalCommandParameters, String> {
-    let command = ctx
-        .core_config
-        .user_command
-        .commands
-        .get(&user_command_number.to_string())
-        .ok_or_else(|| {
-            format!(
-                "No user command configured for number {}",
-                user_command_number
-            )
-        })?
+    let command = extract_user_command_by_number(user_command_number, &ctx)?
         .commands
         .iter()
         .map(String::to_string)
