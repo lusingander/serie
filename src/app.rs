@@ -13,9 +13,9 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     color::{ColorTheme, GraphColorSet},
-    config::{CoreConfig, CursorType, UiConfig},
+    config::{CoreConfig, CursorType, UiConfig, UserCommandType},
     event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
-    external::{copy_to_clipboard, ExternalCommandParameters},
+    external::{copy_to_clipboard, exec_user_command, ExternalCommandParameters},
     git::{Commit, Head, Ref, Repository},
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
@@ -434,6 +434,20 @@ impl App<'_> {
     }
 
     fn open_user_command(&mut self, user_command_number: usize) {
+        match extract_user_command_type(user_command_number, self.ctx.clone()) {
+            Ok(UserCommandType::Inline) => {
+                self.open_user_command_inline(user_command_number);
+            }
+            Ok(UserCommandType::Silent) => {
+                self.open_user_command_silent(user_command_number);
+            }
+            Err(err) => {
+                self.tx.send(AppEvent::NotifyError(err));
+            }
+        }
+    }
+
+    fn open_user_command_inline(&mut self, user_command_number: usize) {
         let commit_list_state = match self.view {
             View::List(ref mut view) => view.take_list_state(),
             View::Detail(ref mut view) => view.take_list_state(),
@@ -468,6 +482,34 @@ impl App<'_> {
                 self.tx.send(AppEvent::NotifyError(err));
             }
         };
+    }
+
+    fn open_user_command_silent(&mut self, user_command_number: usize) {
+        let commit_list_state = match self.view {
+            View::List(ref mut view) => view.as_list_state(),
+            View::Detail(ref mut view) => view.as_list_state(),
+            View::UserCommand(ref mut view) => view.as_list_state(),
+            _ => return,
+        };
+        let selected = commit_list_state.selected_commit_hash().clone();
+        let (commit, _) = self.repository.commit_detail(&selected);
+        let refs: Vec<Ref> = self
+            .repository
+            .refs(&selected)
+            .into_iter()
+            .cloned()
+            .collect();
+        let result = build_external_command_parameters(
+            &commit,
+            &refs,
+            user_command_number,
+            self.app_status.view_area,
+            self.ctx.clone(),
+        )
+        .map(exec_user_command);
+        if let Err(err) = result {
+            self.tx.send(AppEvent::NotifyError(err));
+        }
     }
 
     fn close_user_command(&mut self) {
@@ -632,6 +674,23 @@ fn process_numeric_prefix(
     } else {
         UserEventWithCount::from_event(user_event)
     }
+}
+
+fn extract_user_command_type(
+    user_command_number: usize,
+    ctx: Rc<AppContext>,
+) -> Result<UserCommandType, String> {
+    ctx.core_config
+        .user_command
+        .commands
+        .get(&user_command_number.to_string())
+        .map(|cmd| cmd.r#type.clone())
+        .ok_or_else(|| {
+            format!(
+                "No user command configured for number {}",
+                user_command_number
+            )
+        })
 }
 
 fn build_external_command_parameters(
