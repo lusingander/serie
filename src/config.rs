@@ -152,6 +152,7 @@ pub struct CoreUserCommandConfig {
             "{{first_parent_hash}}".into(),
             "{{target_hash}}".into(),
         ],
+        refresh: false,
     })]))]
     pub commands: FxHashMap<String, UserCommand>,
     #[garde(range(min = 0))]
@@ -230,6 +231,9 @@ pub struct UserCommand {
     pub r#type: UserCommandType,
     #[garde(length(min = 1), inner(length(min = 1)))]
     pub commands: Vec<String>,
+    #[serde(default)]
+    #[garde(skip)]
+    pub refresh: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize)]
@@ -425,6 +429,7 @@ mod tests {
                                 "{{first_parent_hash}}".into(),
                                 "{{target_hash}}".into(),
                             ],
+                            refresh: false,
                         },
                     )]),
                     tab_width: 4,
@@ -494,8 +499,8 @@ mod tests {
             fuzzy = true
             [core.user_command]
             commands_1 = { name = "git diff no color", commands = ["git", "diff", "{{first_parent_hash}}", "{{target_hash}}"] }
-            commands_2 = { name = "echo hello", type = "silent", commands = ["echo", "hello"] }
-            commands_10 = { name = "echo world", type = "inline", commands = ["echo", "world"] }
+            commands_2 = { name = "echo hello", type = "silent", commands = ["echo", "hello"], refresh = true }
+            commands_10 = { name = "echo world", type = "inline", commands = ["echo", "world"], refresh = false }
             tab_width = 2
             [ui.common]
             cursor_type = { Virtual = "|" }
@@ -546,6 +551,7 @@ mod tests {
                                     "{{first_parent_hash}}".into(),
                                     "{{target_hash}}".into(),
                                 ],
+                                refresh: false,
                             },
                         ),
                         (
@@ -554,6 +560,7 @@ mod tests {
                                 name: "echo hello".into(),
                                 r#type: UserCommandType::Silent,
                                 commands: vec!["echo".into(), "hello".into()],
+                                refresh: true,
                             },
                         ),
                         (
@@ -562,6 +569,7 @@ mod tests {
                                 name: "echo world".into(),
                                 r#type: UserCommandType::Inline,
                                 commands: vec!["echo".into(), "world".into()],
+                                refresh: false,
                             },
                         ),
                     ]),
@@ -643,6 +651,7 @@ mod tests {
                                 "{{first_parent_hash}}".into(),
                                 "{{target_hash}}".into(),
                             ],
+                            refresh: false,
                         },
                     )]),
                     tab_width: 4,

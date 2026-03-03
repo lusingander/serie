@@ -507,8 +507,18 @@ impl App<'_> {
             self.ctx.clone(),
         )
         .map(exec_user_command);
-        if let Err(err) = result {
-            self.tx.send(AppEvent::NotifyError(err));
+        match result {
+            Ok(_) => {
+                if extract_user_command_by_number(user_command_number, &self.ctx)
+                    .map(|c| c.refresh)
+                    .unwrap_or_default()
+                {
+                    self.view.refresh();
+                }
+            }
+            Err(err) => {
+                self.tx.send(AppEvent::NotifyError(err));
+            }
         }
     }
 

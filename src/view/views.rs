@@ -102,6 +102,17 @@ impl<'a> View<'a> {
     pub fn of_help(before: View<'a>, ctx: Rc<AppContext>, tx: Sender) -> Self {
         View::Help(Box::new(HelpView::new(before, ctx, tx)))
     }
+
+    pub fn refresh(&mut self) {
+        match self {
+            View::Default => {}
+            View::List(view) => view.refresh(),
+            View::Detail(view) => view.refresh(),
+            View::UserCommand(view) => view.refresh(),
+            View::Refs(view) => view.refresh(),
+            View::Help(_) => {}
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

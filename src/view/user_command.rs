@@ -251,7 +251,7 @@ impl<'a> UserCommandView<'a> {
         self.tx.send(AppEvent::CloseUserCommand);
     }
 
-    fn refresh(&self) {
+    pub fn refresh(&self) {
         let list_state = self.as_list_state();
         let list_context = ListRefreshViewContext::from(list_state);
         let user_command_context = UserCommandRefreshViewContext {

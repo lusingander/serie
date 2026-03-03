@@ -236,7 +236,7 @@ impl<'a> ListView<'a> {
         self.tx.send(AppEvent::CopyToClipboard { name, value });
     }
 
-    fn refresh(&self) {
+    pub fn refresh(&self) {
         let list_state = self.as_list_state();
         let list_context = ListRefreshViewContext::from(list_state);
         let context = RefreshViewContext::List { list_context };
