@@ -83,11 +83,20 @@ pub struct ExternalCommandParameters {
 }
 
 pub fn exec_user_command(params: ExternalCommandParameters) -> Result<String, String> {
-    let command = params
-        .command
-        .iter()
-        .map(|s| replace_command_arg(s, &params))
-        .collect::<Vec<_>>();
+    let mut command = Vec::new();
+    for arg in &params.command {
+        match arg.as_str() {
+            // If the marker is used as a standalone argument, expand it into multiple arguments.
+            // This allows the command to receive each item as a separate argument and correctly handle items that contain spaces.
+            USER_COMMAND_BRANCHES_MARKER => command.extend(params.branches.clone()),
+            USER_COMMAND_REMOTE_BRANCHES_MARKER => command.extend(params.remote_branches.clone()),
+            USER_COMMAND_TAGS_MARKER => command.extend(params.tags.clone()),
+            USER_COMMAND_REFS_MARKER => command.extend(params.all_refs.clone()),
+            USER_COMMAND_PARENT_HASHES_MARKER => command.extend(params.parent_hashes.clone()),
+            // Otherwise, replace the marker within the single argument string.
+            _ => command.push(replace_command_arg(arg, &params)),
+        }
+    }
 
     let output = Command::new(&command[0])
         .args(&command[1..])
