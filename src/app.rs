@@ -506,7 +506,7 @@ impl App<'_> {
             self.app_status.view_area,
             self.ctx.clone(),
         )
-        .map(exec_user_command);
+        .and_then(exec_user_command);
         match result {
             Ok(_) => {
                 if extract_user_command_by_number(user_command_number, &self.ctx)
