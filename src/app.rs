@@ -467,7 +467,7 @@ impl App<'_> {
             &refs,
             user_command_number,
             self.app_status.view_area,
-            self.ctx.clone(),
+            &self.ctx,
         ) {
             Ok(params) => {
                 self.view = View::of_user_command(
@@ -504,7 +504,7 @@ impl App<'_> {
             &refs,
             user_command_number,
             self.app_status.view_area,
-            self.ctx.clone(),
+            &self.ctx,
         )
         .and_then(exec_user_command);
         match result {
@@ -707,9 +707,9 @@ fn build_external_command_parameters(
     refs: &[Ref],
     user_command_number: usize,
     view_area: Rect,
-    ctx: Rc<AppContext>,
+    ctx: &AppContext,
 ) -> Result<ExternalCommandParameters, String> {
-    let command = extract_user_command_by_number(user_command_number, &ctx)?
+    let command = extract_user_command_by_number(user_command_number, ctx)?
         .commands
         .iter()
         .map(String::to_string)

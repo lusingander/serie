@@ -22,7 +22,7 @@ use crate::{
 };
 
 type BuildParamsFn =
-    fn(&Commit, &[Ref], usize, Rect, Rc<AppContext>) -> Result<ExternalCommandParameters, String>;
+    fn(&Commit, &[Ref], usize, Rect, &AppContext) -> Result<ExternalCommandParameters, String>;
 
 #[derive(Debug)]
 pub struct UserCommandView<'a> {
@@ -231,7 +231,7 @@ impl<'a> UserCommandView<'a> {
             &refs,
             self.user_command_number,
             view_area,
-            self.ctx.clone(),
+            &self.ctx,
         )
         .and_then(|params| build_user_command_output_lines(params, self.ctx.clone()))
         .unwrap_or_else(|err| {
