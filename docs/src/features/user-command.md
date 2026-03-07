@@ -45,6 +45,8 @@ Note that `refresh = true` cannot be used with `inline` commands.
 The following variables can be used in command definitions.
 They will be replaced with their respective values command is executed.
 
+### Variable list
+
 - `{{target_hash}}`
   - The hash of the selected commit.
   - example: `b0ce4cb9c798576af9b4accc9f26ddce5e72063d`
@@ -73,3 +75,15 @@ They will be replaced with their respective values command is executed.
   - Height of the user command display area (number of cells).
   - example: `30`
 
+### List variables and argument expansion
+
+Variables that represent multiple values (marked with "separated by a space" below) are handled specially:
+
+- Standalone Marker
+  - If used as a single argument (e.g., `["git", "branch", "-D", "{{branches}}"]`), it is expanded into multiple separate arguments (e.g., `["git", "branch", "-D", "br1", "br2"]`).
+- Combined Marker
+  - If combined with other characters (e.g., `["echo", "refs: {{refs}}"]`), it is replaced as a single space-separated string (e.g., `["echo", "refs: ref1 ref2"]`).
+- Empty List
+  - If the list is empty and used as a standalone marker, the argument is completely removed (e.g., `["git", "branch", "-D", "{{branches}}"]` becomes `["git", "branch", "-D"]`).
+
+Using standalone markers is recommended when passing multiple values to commands that expect separate arguments, and it correctly handles names containing spaces.
