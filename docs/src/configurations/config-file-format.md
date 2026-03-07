@@ -182,7 +182,7 @@ Whether to enable fuzzy matching by default.
 
 ### `core.user_command.commands_{n}`
 
-The command definition for generating the content displayed in the user command view.
+The command definition for executing external commands.
 
 Multiple commands can be specified in the format `commands_{n}`.
 For details about user command, see the separate [User command](../features/user-command.md) section.
@@ -190,9 +190,17 @@ For details about user command, see the separate [User command](../features/user
 - type: `object`
 - fields:
   - `name`: `string` - The name of the user command.
+  - `type`: `string` (enum) - The type of user command.
+    - default: `inline`
+    - possible values:
+      - `inline`: Display the output of the command in the user command view.
+      - `silent`: Execute the command in the background without opening a view.
   - `commands`: `array of strings` - The command and its arguments.
+  - `refresh`: `boolean` - Whether to reload the repository and refresh the display after executing the command. Only available for `silent` commands.
+    - default: `false`
 - examples:
     - `commands_1 = { name = "git diff", commands = ["git", "--no-pager", "diff", "--color=always", "{{first_parent_hash}}", "{{target_hash}}"]}`
+    - `commands_2 = { name = "delete branch", type = "silent", commands = ["git", "branch", "-D", "{{branches}}"], refresh = true }`
   
 ### `core.user_command.tab_width`
 

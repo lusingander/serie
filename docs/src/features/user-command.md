@@ -1,10 +1,17 @@
 # User Command
 
-The User command view allows you to display the output (stdout) of your custom external commands.
-This allows you to do things like view commit diffs using your favorite tools.
+The User command feature allows you to execute custom external commands.
+There are two types of user commands: `inline` and `silent`.
+
+- `inline` (default)
+  - Displays the output (stdout) of the command in a dedicated view within the TUI.
+  - This allows you to do things like view commit diffs using your favorite tools.
+- `silent`
+  - Executes the command in the background without opening a view.
+  - This is useful for operations that don't require checking output, such as deleting branches or adding tags.
 
 To define a user command, you need to configure the following two settings:
-- Keybinding definition. Specify the key to display each user command.
+- Keybinding definition. Specify the key to execute each user command.
   - Config: `keybind.user_command_{n}`
 - Command definition. Specify the actual command you want to execute.
   - Config: `core.user_command.commands_{n}`
@@ -15,11 +22,23 @@ To define a user command, you need to configure the following two settings:
 [keybind]
 user_command_1 = ["d"]
 user_command_2 = ["shift-d"]
+user_command_3 = ["b"]
 
 [core.user_command]
+# Inline command (default)
 commands_1 = { "name" = "git diff", commands = ["git", "--no-pager", "diff", "--color=always", "{{first_parent_hash}}", "{{target_hash}}"] }
+# Inline command with custom area size
 commands_2 = { "name" = "xxx", commands = ["xxx", "{{first_parent_hash}}", "{{target_hash}}", "--width", "{{area_width}}", "--height", "{{area_height}}"] }
+# Silent command with refresh
+commands_3 = { "name" = "delete branch", type = "silent", commands = ["git", "branch", "-D", "{{branches}}"], refresh = true }
 ```
+
+## Refresh
+
+For `silent` commands, you can set `refresh = true` to automatically reload the repository and refresh the display (e.g., commit list) after the command is executed.
+This is useful when the command modifies the repository state.
+
+Note that `refresh = true` cannot be used with `inline` commands.
 
 ## Variables
 

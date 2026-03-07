@@ -98,12 +98,26 @@
                   "type": "string",
                   "description": "The name of the command to be displayed."
                 },
+                "type": {
+                  "type": "string",
+                  "description": "The type of user command.",
+                  "enum": [
+                    "inline",
+                    "silent"
+                  ],
+                  "default": "inline"
+                },
                 "commands": {
                   "type": "array",
                   "description": "The command and its arguments to execute.",
                   "items": {
                     "type": "string"
                   }
+                },
+                "refresh": {
+                  "type": "boolean",
+                  "description": "Whether to reload the repository and refresh the display after executing the command. Only available for 'silent' commands.",
+                  "default": false
                 }
               },
               "required": [
