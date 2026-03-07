@@ -221,7 +221,7 @@ fn build_lines(
                 .user_command
                 .commands
                 .get(&n.to_string())
-                .map(|c| format!("Toggle user command {} - {}", n, c.name))
+                .map(|c| format!("Execute user command {} - {}", n, c.name))
                 .map(|desc| (vec![UserEvent::UserCommand(n)], desc))
         })
         .collect::<Vec<_>>();

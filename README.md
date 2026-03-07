@@ -104,8 +104,8 @@ For detailed information about the config file format, see [Config File Format](
 
 ### User command
 
-The User command view allows you to display the output (stdout) of your custom external commands.
-This allows you to do things like view commit diffs using your favorite tools.
+The User command feature allows you to execute custom external commands.
+You can display the output of commands like `git diff` in a dedicated view, or execute commands like branch deletion in the background.
 
 For details on how to set commands, see [User Command](https://lusingander.github.io/serie/features/user-command.html).
 

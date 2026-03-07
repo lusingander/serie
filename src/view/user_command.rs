@@ -12,7 +12,7 @@ use ratatui::{
 use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
-    external::exec_user_command,
+    external::{exec_user_command, ExternalCommandParameters},
     git::{Commit, Ref, Repository},
     view::{ListRefreshViewContext, RefreshViewContext, UserCommandRefreshViewContext},
     widget::{
@@ -20,6 +20,9 @@ use crate::{
         commit_user_command::{CommitUserCommand, CommitUserCommandState},
     },
 };
+
+type BuildParamsFn =
+    fn(&Commit, &[Ref], usize, Rect, &AppContext) -> Result<ExternalCommandParameters, String>;
 
 #[derive(Debug)]
 pub struct UserCommandView<'a> {
@@ -37,24 +40,16 @@ pub struct UserCommandView<'a> {
 impl<'a> UserCommandView<'a> {
     pub fn new(
         commit_list_state: CommitListState<'a>,
-        commit: Commit,
-        refs: Vec<Ref>,
+        params: ExternalCommandParameters,
         user_command_number: usize,
-        view_area: Rect,
         ctx: Rc<AppContext>,
         tx: Sender,
     ) -> UserCommandView<'a> {
-        let user_command_output_lines = build_user_command_output_lines(
-            &commit,
-            &refs,
-            user_command_number,
-            view_area,
-            ctx.clone(),
-        )
-        .unwrap_or_else(|err| {
-            tx.send(AppEvent::NotifyError(err));
-            vec![]
-        });
+        let user_command_output_lines = build_user_command_output_lines(params, ctx.clone())
+            .unwrap_or_else(|err| {
+                tx.send(AppEvent::NotifyError(err));
+                vec![]
+            });
 
         UserCommandView {
             commit_list_state: Some(commit_list_state),
@@ -179,42 +174,66 @@ impl<'a> UserCommandView<'a> {
         self.commit_list_state.as_mut().unwrap()
     }
 
-    fn as_list_state(&self) -> &CommitListState<'a> {
+    pub fn as_list_state(&self) -> &CommitListState<'a> {
         self.commit_list_state.as_ref().unwrap()
     }
 
-    pub fn select_older_commit(&mut self, repository: &Repository, view_area: Rect) {
-        self.update_selected_commit(repository, view_area, |state| state.select_next());
+    pub fn select_older_commit(
+        &mut self,
+        repository: &Repository,
+        view_area: Rect,
+        build_parameters: BuildParamsFn,
+    ) {
+        self.update_selected_commit(repository, view_area, build_parameters, |state| {
+            state.select_next()
+        });
     }
 
-    pub fn select_newer_commit(&mut self, repository: &Repository, view_area: Rect) {
-        self.update_selected_commit(repository, view_area, |state| state.select_prev());
+    pub fn select_newer_commit(
+        &mut self,
+        repository: &Repository,
+        view_area: Rect,
+        build_parameters: BuildParamsFn,
+    ) {
+        self.update_selected_commit(repository, view_area, build_parameters, |state| {
+            state.select_prev()
+        });
     }
 
-    pub fn select_parent_commit(&mut self, repository: &Repository, view_area: Rect) {
-        self.update_selected_commit(repository, view_area, |state| state.select_parent());
+    pub fn select_parent_commit(
+        &mut self,
+        repository: &Repository,
+        view_area: Rect,
+        build_parameters: BuildParamsFn,
+    ) {
+        self.update_selected_commit(repository, view_area, build_parameters, |state| {
+            state.select_parent()
+        });
     }
 
     fn update_selected_commit<F>(
         &mut self,
         repository: &Repository,
         view_area: Rect,
+        build_parameters: BuildParamsFn,
         update_commit_list_state: F,
     ) where
         F: FnOnce(&mut CommitListState<'a>),
     {
         let commit_list_state = self.as_mut_list_state();
         update_commit_list_state(commit_list_state);
+
         let selected = commit_list_state.selected_commit_hash().clone();
         let (commit, _) = repository.commit_detail(&selected);
         let refs: Vec<Ref> = repository.refs(&selected).into_iter().cloned().collect();
-        self.user_command_output_lines = build_user_command_output_lines(
+        self.user_command_output_lines = build_parameters(
             &commit,
             &refs,
             self.user_command_number,
             view_area,
-            self.ctx.clone(),
+            &self.ctx,
         )
+        .and_then(|params| build_user_command_output_lines(params, self.ctx.clone()))
         .unwrap_or_else(|err| {
             self.tx.send(AppEvent::NotifyError(err));
             vec![]
@@ -232,7 +251,7 @@ impl<'a> UserCommandView<'a> {
         self.tx.send(AppEvent::CloseUserCommand);
     }
 
-    fn refresh(&self) {
+    pub fn refresh(&self) {
         let list_state = self.as_list_state();
         let list_context = ListRefreshViewContext::from(list_state);
         let user_command_context = UserCommandRefreshViewContext {
@@ -248,71 +267,17 @@ impl<'a> UserCommandView<'a> {
 }
 
 fn build_user_command_output_lines<'a>(
-    commit: &Commit,
-    refs: &[Ref],
-    user_command_number: usize,
-    view_area: Rect,
+    params: ExternalCommandParameters,
     ctx: Rc<AppContext>,
 ) -> Result<Vec<Line<'a>>, String> {
-    let command = ctx
-        .core_config
-        .user_command
-        .commands
-        .get(&user_command_number.to_string())
-        .ok_or_else(|| {
-            format!(
-                "No user command configured for number {}",
-                user_command_number
-            )
-        })?
-        .commands
-        .iter()
-        .map(String::as_str)
-        .collect::<Vec<_>>();
-    let target_hash = commit.commit_hash.as_str();
-    let parent_hashes: Vec<&str> = commit
-        .parent_commit_hashes
-        .iter()
-        .map(|c| c.as_str())
-        .collect();
-
-    let mut all_refs = vec![];
-    let mut branches = vec![];
-    let mut remote_branches = vec![];
-    let mut tags = vec![];
-    for r in refs {
-        match r {
-            Ref::Tag { .. } => tags.push(r.name()),
-            Ref::Branch { .. } => branches.push(r.name()),
-            Ref::RemoteBranch { .. } => remote_branches.push(r.name()),
-            Ref::Stash { .. } => continue, // skip stashes
-        }
-        all_refs.push(r.name());
-    }
-
-    let area_width = view_area.width.saturating_sub(4); // minus the left and right padding
-    let area_height = (view_area.height.saturating_sub(1))
-        .min(ctx.ui_config.user_command.height)
-        .saturating_sub(1); // minus the top border
-
     let tab_spaces = " ".repeat(ctx.core_config.user_command.tab_width as usize);
-    exec_user_command(
-        &command,
-        target_hash,
-        &parent_hashes,
-        &all_refs,
-        &branches,
-        &remote_branches,
-        &tags,
-        area_width,
-        area_height,
-    )
-    .and_then(|output| {
-        output
-            .replace('\t', &tab_spaces) // tab is not rendered correctly, so replace it
-            .into_text()
-            .map(|t| t.into_iter().collect())
-            .map_err(|e| e.to_string())
-    })
-    .map_err(|err| format!("Failed to execute command: {}", err))
+    exec_user_command(params)
+        .and_then(|output| {
+            output
+                .replace('\t', &tab_spaces) // tab is not rendered correctly, so replace it
+                .into_text()
+                .map(|t| t.into_iter().collect())
+                .map_err(|e| e.to_string())
+        })
+        .map_err(|err| format!("Failed to execute command: {}", err))
 }

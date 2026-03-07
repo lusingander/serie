@@ -159,7 +159,7 @@ impl<'a> DetailView<'a> {
         self.commit_list_state.as_mut().unwrap()
     }
 
-    fn as_list_state(&self) -> &CommitListState<'a> {
+    pub fn as_list_state(&self) -> &CommitListState<'a> {
         self.commit_list_state.as_ref().unwrap()
     }
 
@@ -209,7 +209,7 @@ impl<'a> DetailView<'a> {
         self.tx.send(AppEvent::CopyToClipboard { name, value });
     }
 
-    fn refresh(&self) {
+    pub fn refresh(&self) {
         let list_state = self.as_list_state();
         let list_context = ListRefreshViewContext::from(list_state);
         let context = RefreshViewContext::Detail { list_context };
