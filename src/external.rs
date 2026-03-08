@@ -83,20 +83,7 @@ pub struct ExternalCommandParameters {
 }
 
 pub fn exec_user_command(params: ExternalCommandParameters) -> Result<String, String> {
-    let mut command = Vec::new();
-    for arg in &params.command {
-        match arg.as_str() {
-            // If the marker is used as a standalone argument, expand it into multiple arguments.
-            // This allows the command to receive each item as a separate argument and correctly handle items that contain spaces.
-            USER_COMMAND_BRANCHES_MARKER => command.extend(params.branches.clone()),
-            USER_COMMAND_REMOTE_BRANCHES_MARKER => command.extend(params.remote_branches.clone()),
-            USER_COMMAND_TAGS_MARKER => command.extend(params.tags.clone()),
-            USER_COMMAND_REFS_MARKER => command.extend(params.all_refs.clone()),
-            USER_COMMAND_PARENT_HASHES_MARKER => command.extend(params.parent_hashes.clone()),
-            // Otherwise, replace the marker within the single argument string.
-            _ => command.push(replace_command_arg(arg, &params)),
-        }
-    }
+    let command = build_user_command(&params);
 
     let output = Command::new(&command[0])
         .args(&command[1..])
@@ -113,6 +100,40 @@ pub fn exec_user_command(params: ExternalCommandParameters) -> Result<String, St
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).into())
+}
+
+pub fn exec_user_command_suspend(params: ExternalCommandParameters) -> Result<(), String> {
+    let command = build_user_command(&params);
+
+    let output = Command::new(&command[0])
+        .args(&command[1..])
+        .status()
+        .map_err(|e| format!("Failed to execute command: {e:?}"))?;
+
+    if !output.success() {
+        let msg = format!("Command exited with non-zero status: {}", output);
+        return Err(msg);
+    }
+
+    Ok(())
+}
+
+fn build_user_command(params: &ExternalCommandParameters) -> Vec<String> {
+    let mut command = Vec::new();
+    for arg in &params.command {
+        match arg.as_str() {
+            // If the marker is used as a standalone argument, expand it into multiple arguments.
+            // This allows the command to receive each item as a separate argument and correctly handle items that contain spaces.
+            USER_COMMAND_BRANCHES_MARKER => command.extend(params.branches.clone()),
+            USER_COMMAND_REMOTE_BRANCHES_MARKER => command.extend(params.remote_branches.clone()),
+            USER_COMMAND_TAGS_MARKER => command.extend(params.tags.clone()),
+            USER_COMMAND_REFS_MARKER => command.extend(params.all_refs.clone()),
+            USER_COMMAND_PARENT_HASHES_MARKER => command.extend(params.parent_hashes.clone()),
+            // Otherwise, replace the marker within the single argument string.
+            _ => command.push(replace_command_arg(arg, params)),
+        }
+    }
+    command
 }
 
 fn replace_command_arg(s: &str, params: &ExternalCommandParameters) -> String {
