@@ -553,34 +553,11 @@ impl App<'_> {
             &self.ctx,
         ) {
             Ok(params) => {
-                // fixme
-                ratatui::crossterm::terminal::disable_raw_mode().unwrap();
-                ratatui::crossterm::execute!(
-                    std::io::stdout(),
-                    ratatui::crossterm::terminal::LeaveAlternateScreen
-                )
-                .unwrap();
-
-                self.ec.stop();
-
+                self.ec.suspend();
                 if let Err(err) = exec_user_command_suspend(params) {
                     self.tx.send(AppEvent::NotifyError(err));
                 }
-
-                ratatui::crossterm::terminal::enable_raw_mode().unwrap();
-                ratatui::crossterm::execute!(
-                    std::io::stdout(),
-                    ratatui::crossterm::terminal::EnterAlternateScreen
-                )
-                .unwrap();
-
-                while ratatui::crossterm::event::poll(std::time::Duration::from_millis(0))
-                    .unwrap_or(false)
-                {
-                    let _ = ratatui::crossterm::event::read();
-                }
-
-                self.ec.start();
+                self.ec.resume();
             }
             Err(err) => {
                 self.tx.send(AppEvent::NotifyError(err));
