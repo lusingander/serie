@@ -441,6 +441,9 @@ impl App<'_> {
             Ok(UserCommandType::Silent) => {
                 self.open_user_command_silent(user_command_number);
             }
+            Ok(UserCommandType::Suspend) => {
+                self.open_user_command_suspend(user_command_number);
+            }
             Err(err) => {
                 self.tx.send(AppEvent::NotifyError(err));
             }
@@ -520,6 +523,10 @@ impl App<'_> {
                 self.tx.send(AppEvent::NotifyError(err));
             }
         }
+    }
+
+    fn open_user_command_suspend(&mut self, user_command_number: usize) {
+        // todo
     }
 
     fn close_user_command(&mut self) {
