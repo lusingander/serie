@@ -14,7 +14,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     color::{ColorTheme, GraphColorSet},
     config::{CoreConfig, CursorType, UiConfig, UserCommand, UserCommandType},
-    event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
+    event::{AppEvent, EventController, Receiver, Sender, UserEvent, UserEventWithCount},
     external::{copy_to_clipboard, exec_user_command, ExternalCommandParameters},
     git::{Commit, Head, Ref, Repository},
     graph::{CellWidthType, Graph, GraphImageManager},
@@ -75,6 +75,7 @@ pub struct App<'a> {
     app_status: AppStatus,
     ctx: Rc<AppContext>,
     tx: Sender,
+    ec: &'a EventController,
 }
 
 impl<'a> App<'a> {
@@ -87,6 +88,7 @@ impl<'a> App<'a> {
         initial_selection: InitialSelection,
         ctx: Rc<AppContext>,
         tx: Sender,
+        ec: &'a EventController,
         refresh_view_context: Option<RefreshViewContext>,
     ) -> Self {
         let mut ref_name_to_commit_index_map = FxHashMap::default();
@@ -133,6 +135,7 @@ impl<'a> App<'a> {
             app_status: AppStatus::default(),
             ctx,
             tx,
+            ec,
         };
 
         if let Some(context) = refresh_view_context {

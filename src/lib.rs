@@ -157,7 +157,7 @@ pub fn run() -> Result<()> {
         image_protocol,
     });
 
-    let (tx, mut rx) = event::init();
+    let (ec, tx, mut rx) = event::EventController::init();
     let mut refresh_view_context = None;
     let mut terminal = None;
 
@@ -190,6 +190,7 @@ pub fn run() -> Result<()> {
             initial_selection,
             ctx.clone(),
             tx.clone(),
+            &ec,
             refresh_view_context,
         );
 
