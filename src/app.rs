@@ -15,7 +15,9 @@ use crate::{
     color::{ColorTheme, GraphColorSet},
     config::{CoreConfig, CursorType, UiConfig, UserCommand, UserCommandType},
     event::{AppEvent, EventController, Receiver, Sender, UserEvent, UserEventWithCount},
-    external::{copy_to_clipboard, exec_user_command, ExternalCommandParameters},
+    external::{
+        copy_to_clipboard, exec_user_command, exec_user_command_suspend, ExternalCommandParameters,
+    },
     git::{Commit, Head, Ref, Repository},
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
@@ -529,7 +531,61 @@ impl App<'_> {
     }
 
     fn open_user_command_suspend(&mut self, user_command_number: usize) {
-        // todo
+        let commit_list_state = match self.view {
+            View::List(ref mut view) => view.as_list_state(),
+            View::Detail(ref mut view) => view.as_list_state(),
+            View::UserCommand(ref mut view) => view.as_list_state(),
+            _ => return,
+        };
+        let selected = commit_list_state.selected_commit_hash().clone();
+        let (commit, _) = self.repository.commit_detail(&selected);
+        let refs: Vec<Ref> = self
+            .repository
+            .refs(&selected)
+            .into_iter()
+            .cloned()
+            .collect();
+        match build_external_command_parameters(
+            &commit,
+            &refs,
+            user_command_number,
+            self.app_status.view_area,
+            &self.ctx,
+        ) {
+            Ok(params) => {
+                // fixme
+                ratatui::crossterm::terminal::disable_raw_mode().unwrap();
+                ratatui::crossterm::execute!(
+                    std::io::stdout(),
+                    ratatui::crossterm::terminal::LeaveAlternateScreen
+                )
+                .unwrap();
+
+                self.ec.stop();
+
+                if let Err(err) = exec_user_command_suspend(params) {
+                    self.tx.send(AppEvent::NotifyError(err));
+                }
+
+                ratatui::crossterm::terminal::enable_raw_mode().unwrap();
+                ratatui::crossterm::execute!(
+                    std::io::stdout(),
+                    ratatui::crossterm::terminal::EnterAlternateScreen
+                )
+                .unwrap();
+
+                while ratatui::crossterm::event::poll(std::time::Duration::from_millis(0))
+                    .unwrap_or(false)
+                {
+                    let _ = ratatui::crossterm::event::read();
+                }
+
+                self.ec.start();
+            }
+            Err(err) => {
+                self.tx.send(AppEvent::NotifyError(err));
+            }
+        }
     }
 
     fn close_user_command(&mut self) {
