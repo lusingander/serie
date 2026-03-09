@@ -67,32 +67,40 @@ pub struct Receiver {
 }
 
 impl Receiver {
-    pub fn recv(&self) -> AppEvent {
+    fn recv(&self) -> AppEvent {
         self.rx.recv().unwrap()
+    }
+}
+
+impl Debug for Receiver {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Receiver")
     }
 }
 
 #[derive(Debug)]
 pub struct EventController {
     tx: Sender,
+    rx: Receiver,
     stop: Arc<AtomicBool>,
     handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
 }
 
 impl EventController {
-    pub fn init() -> (Self, Sender, Receiver) {
+    pub fn init() -> Self {
         let (tx, rx) = mpsc::channel();
         let tx = Sender { tx };
         let rx = Receiver { rx };
 
         let controller = EventController {
             tx: tx.clone(),
+            rx,
             stop: Arc::new(AtomicBool::new(false)),
             handle: Arc::new(Mutex::new(None)),
         };
         controller.start();
 
-        (controller, tx, rx)
+        controller
     }
 
     pub fn start(&self) {
@@ -163,6 +171,18 @@ impl EventController {
         while let Ok(true) = ratatui::crossterm::event::poll(std::time::Duration::from_millis(0)) {
             let _ = ratatui::crossterm::event::read();
         }
+    }
+
+    pub fn sender(&self) -> Sender {
+        self.tx.clone()
+    }
+
+    pub fn send(&self, event: AppEvent) {
+        self.tx.send(event);
+    }
+
+    pub fn recv(&self) -> AppEvent {
+        self.rx.recv()
     }
 }
 
