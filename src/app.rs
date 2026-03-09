@@ -234,7 +234,7 @@ impl App<'_> {
                     self.clear_detail();
                 }
                 AppEvent::OpenUserCommand(n) => {
-                    self.open_user_command(n);
+                    self.open_user_command(n, Some(terminal));
                 }
                 AppEvent::CloseUserCommand => {
                     self.close_user_command();
@@ -437,7 +437,11 @@ impl App<'_> {
         }
     }
 
-    fn open_user_command(&mut self, user_command_number: usize) {
+    fn open_user_command(
+        &mut self,
+        user_command_number: usize,
+        terminal: Option<&mut DefaultTerminal>,
+    ) {
         match extract_user_command_by_number(user_command_number, &self.ctx).map(|c| &c.r#type) {
             Ok(UserCommandType::Inline) => {
                 self.open_user_command_inline(user_command_number);
@@ -450,6 +454,12 @@ impl App<'_> {
             }
             Err(err) => {
                 self.tx.send(AppEvent::NotifyError(err));
+            }
+        }
+        if let Some(t) = terminal {
+            if let Err(err) = t.clear() {
+                let msg = format!("Failed to clear terminal: {err:?}");
+                self.tx.send(AppEvent::NotifyError(msg));
             }
         }
     }
@@ -658,7 +668,7 @@ impl App<'_> {
                 user_command_context,
                 ..
             } => {
-                self.open_user_command(user_command_context.n);
+                self.open_user_command(user_command_context.n, None);
             }
             RefreshViewContext::Refs { refs_context, .. } => {
                 self.open_refs();
