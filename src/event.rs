@@ -130,26 +130,26 @@ impl EventController {
     }
 
     pub fn resume(&self) {
-        ratatui::crossterm::terminal::enable_raw_mode().unwrap();
         ratatui::crossterm::execute!(
             std::io::stdout(),
             ratatui::crossterm::terminal::EnterAlternateScreen
         )
         .unwrap();
+        ratatui::crossterm::terminal::enable_raw_mode().unwrap();
 
         self.drain_crossterm_event();
         self.start();
     }
 
     pub fn suspend(&self) {
+        self.stop();
+
         ratatui::crossterm::terminal::disable_raw_mode().unwrap();
         ratatui::crossterm::execute!(
             std::io::stdout(),
             ratatui::crossterm::terminal::LeaveAlternateScreen
         )
         .unwrap();
-
-        self.stop();
     }
 
     fn stop(&self) {
