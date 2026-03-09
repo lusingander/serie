@@ -1,13 +1,12 @@
 use std::rc::Rc;
 
 use ratatui::{
-    backend::Backend,
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
     text::Line,
     widgets::{Block, Borders, Clear, Padding, Paragraph},
-    Frame, Terminal,
+    DefaultTerminal, Frame,
 };
 use rustc_hash::FxHashMap;
 
@@ -149,11 +148,11 @@ impl<'a> App<'a> {
 }
 
 impl App<'_> {
-    pub fn run<B: Backend>(
+    pub fn run(
         &mut self,
-        terminal: &mut Terminal<B>,
+        terminal: &mut DefaultTerminal,
         rx: Receiver,
-    ) -> Result<Ret, B::Error> {
+    ) -> Result<Ret, std::io::Error> {
         loop {
             terminal.draw(|f| self.render(f))?;
             match rx.recv() {
