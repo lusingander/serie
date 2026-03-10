@@ -17,7 +17,7 @@ use crate::{
     external::{
         copy_to_clipboard, exec_user_command, exec_user_command_suspend, ExternalCommandParameters,
     },
-    git::{Commit, Head, Ref, Repository},
+    git::{Commit, FileChange, Head, Ref, Repository},
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -398,14 +398,7 @@ impl App<'_> {
             View::UserCommand(ref mut view) => view.take_list_state(),
             _ => return,
         };
-        let selected = commit_list_state.selected_commit_hash().clone();
-        let (commit, changes) = self.repository.commit_detail(&selected);
-        let refs = self
-            .repository
-            .refs(&selected)
-            .into_iter()
-            .cloned()
-            .collect();
+        let (commit, changes, refs) = selected_commit_details(self.repository, &commit_list_state);
         self.view = View::of_detail(
             commit_list_state,
             commit,
@@ -463,14 +456,7 @@ impl App<'_> {
             View::UserCommand(ref mut view) => view.take_list_state(),
             _ => return,
         };
-        let selected = commit_list_state.selected_commit_hash().clone();
-        let (commit, _) = self.repository.commit_detail(&selected);
-        let refs: Vec<Ref> = self
-            .repository
-            .refs(&selected)
-            .into_iter()
-            .cloned()
-            .collect();
+        let (commit, _, refs) = selected_commit_details(self.repository, &commit_list_state);
         match build_external_command_parameters(
             &commit,
             &refs,
@@ -500,14 +486,7 @@ impl App<'_> {
             View::UserCommand(ref mut view) => view.as_list_state(),
             _ => return,
         };
-        let selected = commit_list_state.selected_commit_hash().clone();
-        let (commit, _) = self.repository.commit_detail(&selected);
-        let refs: Vec<Ref> = self
-            .repository
-            .refs(&selected)
-            .into_iter()
-            .cloned()
-            .collect();
+        let (commit, _, refs) = selected_commit_details(self.repository, commit_list_state);
         let result = build_external_command_parameters(
             &commit,
             &refs,
@@ -538,14 +517,7 @@ impl App<'_> {
             View::UserCommand(ref mut view) => view.as_list_state(),
             _ => return,
         };
-        let selected = commit_list_state.selected_commit_hash().clone();
-        let (commit, _) = self.repository.commit_detail(&selected);
-        let refs: Vec<Ref> = self
-            .repository
-            .refs(&selected)
-            .into_iter()
-            .cloned()
-            .collect();
+        let (commit, _, refs) = selected_commit_details(self.repository, commit_list_state);
         match build_external_command_parameters(
             &commit,
             &refs,
@@ -718,6 +690,16 @@ impl App<'_> {
             }
         }
     }
+}
+
+fn selected_commit_details(
+    repository: &Repository,
+    commit_list_state: &CommitListState,
+) -> (Commit, Vec<FileChange>, Vec<Ref>) {
+    let selected = commit_list_state.selected_commit_hash().clone();
+    let (commit, changes) = repository.commit_detail(&selected);
+    let refs: Vec<Ref> = repository.refs(&selected).into_iter().cloned().collect();
+    (commit, changes, refs)
 }
 
 fn process_numeric_prefix(
