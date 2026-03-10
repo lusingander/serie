@@ -559,6 +559,13 @@ impl App<'_> {
                     self.ec.send(AppEvent::NotifyError(err));
                 }
                 self.ec.resume();
+
+                if extract_user_command_by_number(user_command_number, &self.ctx)
+                    .map(|c| c.refresh)
+                    .unwrap_or_default()
+                {
+                    self.view.refresh();
+                }
             }
             Err(err) => {
                 self.ec.send(AppEvent::NotifyError(err));
