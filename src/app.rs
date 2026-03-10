@@ -497,10 +497,7 @@ impl App<'_> {
         .and_then(exec_user_command);
         match result {
             Ok(_) => {
-                if extract_user_command_by_number(user_command_number, &self.ctx)
-                    .map(|c| c.refresh)
-                    .unwrap_or_default()
-                {
+                if extract_user_command_refresh_by_number(user_command_number, &self.ctx) {
                     self.view.refresh();
                 }
             }
@@ -532,10 +529,7 @@ impl App<'_> {
                 }
                 self.ec.resume();
 
-                if extract_user_command_by_number(user_command_number, &self.ctx)
-                    .map(|c| c.refresh)
-                    .unwrap_or_default()
-                {
+                if extract_user_command_refresh_by_number(user_command_number, &self.ctx) {
                     self.view.refresh();
                 }
             }
@@ -733,6 +727,12 @@ fn extract_user_command_by_number(
                 user_command_number
             )
         })
+}
+
+fn extract_user_command_refresh_by_number(user_command_number: usize, ctx: &AppContext) -> bool {
+    extract_user_command_by_number(user_command_number, ctx)
+        .map(|c| c.refresh)
+        .unwrap_or_default()
 }
 
 fn build_external_command_parameters(
