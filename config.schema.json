@@ -103,7 +103,8 @@
                   "description": "The type of user command.",
                   "enum": [
                     "inline",
-                    "silent"
+                    "silent",
+                    "suspend"
                   ],
                   "default": "inline"
                 },
@@ -116,7 +117,7 @@
                 },
                 "refresh": {
                   "type": "boolean",
-                  "description": "Whether to reload the repository and refresh the display after executing the command. Only available for 'silent' commands.",
+                  "description": "Whether to reload the repository and refresh the display after executing the command. Available for 'silent' and 'suspend' commands.",
                   "default": false
                 }
               },
