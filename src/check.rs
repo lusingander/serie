@@ -1,4 +1,4 @@
-use ratatui::crossterm::terminal;
+use ratatui::crossterm::terminal::{self, WindowSize};
 
 use crate::{
     graph::{CellWidthType, Graph},
@@ -51,5 +51,23 @@ fn decide_cell_width_type_from(
             let msg = format!("Terminal too small ({term_width}x{term_height} characters). The current graph needs at least {single_required_width} columns to display properly.");
             Err(msg.into())
         }
+    }
+}
+
+pub fn detect_cell_size() -> Option<(u16, u16)> {
+    let ws = terminal::window_size().ok()?;
+    match ws {
+        WindowSize {
+            rows,
+            columns,
+            width,
+            height,
+        } if width == 0 || height == 0 || rows == 0 || columns == 0 => None,
+        WindowSize {
+            rows,
+            columns,
+            width,
+            height,
+        } => Some((width / columns, height / rows)),
     }
 }
