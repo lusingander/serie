@@ -157,7 +157,7 @@ pub fn run() -> Result<()> {
         image_protocol,
     });
 
-    let (tx, mut rx) = event::init();
+    let ec = event::EventController::init();
     let mut refresh_view_context = None;
     let mut terminal = None;
 
@@ -189,16 +189,15 @@ pub fn run() -> Result<()> {
             cell_width_type,
             initial_selection,
             ctx.clone(),
-            tx.clone(),
+            &ec,
             refresh_view_context,
         );
 
-        match app.run(terminal.as_mut().unwrap(), rx) {
+        match app.run(terminal.as_mut().unwrap()) {
             Ok(Ret::Quit) => {
                 break Ok(());
             }
             Ok(Ret::Refresh(request)) => {
-                rx = request.rx;
                 refresh_view_context = Some(request.context);
                 continue;
             }

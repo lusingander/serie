@@ -255,6 +255,7 @@ pub enum UserCommandType {
     #[default]
     Inline,
     Silent,
+    Suspend,
 }
 
 #[optional(derives = [Deserialize])]
@@ -514,6 +515,7 @@ mod tests {
             commands_1 = { name = "git diff no color", commands = ["git", "diff", "{{first_parent_hash}}", "{{target_hash}}"] }
             commands_2 = { name = "echo hello", type = "silent", commands = ["echo", "hello"], refresh = true }
             commands_10 = { name = "echo world", type = "inline", commands = ["echo", "world"], refresh = false }
+            commands_3 = { name = "open vim", type = "suspend", commands = ["vim"] }
             tab_width = 2
             [ui.common]
             cursor_type = { Virtual = "|" }
@@ -574,6 +576,15 @@ mod tests {
                                 r#type: UserCommandType::Silent,
                                 commands: vec!["echo".into(), "hello".into()],
                                 refresh: true,
+                            },
+                        ),
+                        (
+                            "3".into(),
+                            UserCommand {
+                                name: "open vim".into(),
+                                r#type: UserCommandType::Suspend,
+                                commands: vec!["vim".into()],
+                                refresh: false,
                             },
                         ),
                         (

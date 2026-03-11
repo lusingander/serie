@@ -1,7 +1,7 @@
 # User Command
 
 The User command feature allows you to execute custom external commands.
-There are two types of user commands: `inline` and `silent`.
+There are three types of user commands: `inline`, `silent` and `suspend`.
 
 - `inline` (default)
   - Displays the output (stdout) of the command in a dedicated view within the TUI.
@@ -9,6 +9,9 @@ There are two types of user commands: `inline` and `silent`.
 - `silent`
   - Executes the command in the background without opening a view.
   - This is useful for operations that don't require checking output, such as deleting branches or adding tags.
+- `suspend`
+  - Executes the command by suspending the application.
+  - This is useful for interactive commands that require terminal control, such as `git commit --amend` (which opens an editor) or `git diff` with a pager.
 
 To define a user command, you need to configure the following two settings:
 - Keybinding definition. Specify the key to execute each user command.
@@ -16,13 +19,14 @@ To define a user command, you need to configure the following two settings:
 - Command definition. Specify the actual command you want to execute.
   - Config: `core.user_command.commands_{n}`
 
-**Configuration example:**
+Example configuration in `config.toml`:
 
 ```toml
 [keybind]
 user_command_1 = ["d"]
 user_command_2 = ["shift-d"]
 user_command_3 = ["b"]
+user_command_4 = ["a"]
 
 [core.user_command]
 # Inline command (default)
@@ -31,11 +35,13 @@ commands_1 = { "name" = "git diff", commands = ["git", "--no-pager", "diff", "--
 commands_2 = { "name" = "xxx", commands = ["xxx", "{{first_parent_hash}}", "{{target_hash}}", "--width", "{{area_width}}", "--height", "{{area_height}}"] }
 # Silent command with refresh
 commands_3 = { "name" = "delete branch", type = "silent", commands = ["git", "branch", "-D", "{{branches}}"], refresh = true }
+# Suspend command with refresh
+commands_4 = { "name" = "amend commit", type = "suspend", commands = ["git", "commit", "--amend"], refresh = true }
 ```
 
 ## Refresh
 
-For `silent` commands, you can set `refresh = true` to automatically reload the repository and refresh the display (e.g., commit list) after the command is executed.
+For `silent` and `suspend` commands, you can set `refresh = true` to automatically reload the repository and refresh the display (e.g., commit list) after the command is executed.
 This is useful when the command modifies the repository state.
 
 Note that `refresh = true` cannot be used with `inline` commands.

@@ -195,12 +195,14 @@ For details about user command, see the separate [User command](../features/user
     - possible values:
       - `inline`: Display the output of the command in the user command view.
       - `silent`: Execute the command in the background without opening a view.
+      - `suspend`: Execute the command by suspending the application. This is useful for interactive commands.
   - `commands`: `array of strings` - The command and its arguments.
-  - `refresh`: `boolean` - Whether to reload the repository and refresh the display after executing the command. Only available for `silent` commands.
+  - `refresh`: `boolean` - Whether to reload the repository and refresh the display after executing the command. Available for `silent` and `suspend` commands.
     - default: `false`
 - examples:
     - `commands_1 = { name = "git diff", commands = ["git", "--no-pager", "diff", "--color=always", "{{first_parent_hash}}", "{{target_hash}}"]}`
     - `commands_2 = { name = "delete branch", type = "silent", commands = ["git", "branch", "-D", "{{branches}}"], refresh = true }`
+    - `commands_3 = { name = "amend commit", type = "suspend", commands = ["git", "commit", "--amend"], refresh = true }`
   
 ### `core.user_command.tab_width`
 

@@ -1,22 +1,23 @@
 use std::rc::Rc;
 
 use ratatui::{
-    backend::Backend,
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
     text::Line,
     widgets::{Block, Borders, Clear, Padding, Paragraph},
-    Frame, Terminal,
+    DefaultTerminal, Frame,
 };
 use rustc_hash::FxHashMap;
 
 use crate::{
     color::{ColorTheme, GraphColorSet},
     config::{CoreConfig, CursorType, UiConfig, UserCommand, UserCommandType},
-    event::{AppEvent, Receiver, Sender, UserEvent, UserEventWithCount},
-    external::{copy_to_clipboard, exec_user_command, ExternalCommandParameters},
-    git::{Commit, Head, Ref, Repository},
+    event::{AppEvent, EventController, UserEvent, UserEventWithCount},
+    external::{
+        copy_to_clipboard, exec_user_command, exec_user_command_suspend, ExternalCommandParameters,
+    },
+    git::{Commit, FileChange, Head, Ref, Repository},
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -47,7 +48,6 @@ pub enum Ret {
 }
 
 pub struct RefreshRequest {
-    pub rx: Receiver,
     pub context: RefreshViewContext,
 }
 
@@ -74,7 +74,7 @@ pub struct App<'a> {
     view: View<'a>,
     app_status: AppStatus,
     ctx: Rc<AppContext>,
-    tx: Sender,
+    ec: &'a EventController,
 }
 
 impl<'a> App<'a> {
@@ -86,7 +86,7 @@ impl<'a> App<'a> {
         cell_width_type: CellWidthType,
         initial_selection: InitialSelection,
         ctx: Rc<AppContext>,
-        tx: Sender,
+        ec: &'a EventController,
         refresh_view_context: Option<RefreshViewContext>,
     ) -> Self {
         let mut ref_name_to_commit_index_map = FxHashMap::default();
@@ -125,14 +125,14 @@ impl<'a> App<'a> {
                 Head::None => {}
             }
         }
-        let view = View::of_list(commit_list_state, ctx.clone(), tx.clone());
+        let view = View::of_list(commit_list_state, ctx.clone(), ec.sender());
 
         let mut app = Self {
             repository,
             view,
             app_status: AppStatus::default(),
             ctx,
-            tx,
+            ec,
         };
 
         if let Some(context) = refresh_view_context {
@@ -144,14 +144,10 @@ impl<'a> App<'a> {
 }
 
 impl App<'_> {
-    pub fn run<B: Backend>(
-        &mut self,
-        terminal: &mut Terminal<B>,
-        rx: Receiver,
-    ) -> Result<Ret, B::Error> {
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<Ret, std::io::Error> {
         loop {
             terminal.draw(|f| self.render(f))?;
-            match rx.recv() {
+            match self.ec.recv() {
                 AppEvent::Key(key) => {
                     match self.app_status.status_line {
                         StatusLine::None | StatusLine::Input(_, _, _) => {
@@ -182,7 +178,7 @@ impl App<'_> {
 
                     match user_event {
                         Some(UserEvent::ForceQuit) => {
-                            self.tx.send(AppEvent::Quit);
+                            self.ec.send(AppEvent::Quit);
                         }
                         Some(ue) => {
                             let event_with_count =
@@ -230,7 +226,7 @@ impl App<'_> {
                     self.clear_detail();
                 }
                 AppEvent::OpenUserCommand(n) => {
-                    self.open_user_command(n);
+                    self.open_user_command(n, Some(terminal));
                 }
                 AppEvent::CloseUserCommand => {
                     self.close_user_command();
@@ -266,7 +262,7 @@ impl App<'_> {
                     self.copy_to_clipboard(name, value);
                 }
                 AppEvent::Refresh(context) => {
-                    let request = RefreshRequest { rx, context };
+                    let request = RefreshRequest { context };
                     return Ok(Ret::Refresh(request));
                 }
                 AppEvent::ClearStatusLine => {
@@ -402,28 +398,21 @@ impl App<'_> {
             View::UserCommand(ref mut view) => view.take_list_state(),
             _ => return,
         };
-        let selected = commit_list_state.selected_commit_hash().clone();
-        let (commit, changes) = self.repository.commit_detail(&selected);
-        let refs = self
-            .repository
-            .refs(&selected)
-            .into_iter()
-            .cloned()
-            .collect();
+        let (commit, changes, refs) = selected_commit_details(self.repository, &commit_list_state);
         self.view = View::of_detail(
             commit_list_state,
             commit,
             changes,
             refs,
             self.ctx.clone(),
-            self.tx.clone(),
+            self.ec.sender(),
         );
     }
 
     fn close_detail(&mut self) {
         if let View::Detail(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            self.view = View::of_list(commit_list_state, self.ctx.clone(), self.tx.clone());
+            self.view = View::of_list(commit_list_state, self.ctx.clone(), self.ec.sender());
         }
     }
 
@@ -433,7 +422,11 @@ impl App<'_> {
         }
     }
 
-    fn open_user_command(&mut self, user_command_number: usize) {
+    fn open_user_command(
+        &mut self,
+        user_command_number: usize,
+        terminal: Option<&mut DefaultTerminal>,
+    ) {
         match extract_user_command_by_number(user_command_number, &self.ctx).map(|c| &c.r#type) {
             Ok(UserCommandType::Inline) => {
                 self.open_user_command_inline(user_command_number);
@@ -441,8 +434,17 @@ impl App<'_> {
             Ok(UserCommandType::Silent) => {
                 self.open_user_command_silent(user_command_number);
             }
+            Ok(UserCommandType::Suspend) => {
+                self.open_user_command_suspend(user_command_number);
+            }
             Err(err) => {
-                self.tx.send(AppEvent::NotifyError(err));
+                self.ec.send(AppEvent::NotifyError(err));
+            }
+        }
+        if let Some(t) = terminal {
+            if let Err(err) = t.clear() {
+                let msg = format!("Failed to clear terminal: {err:?}");
+                self.ec.send(AppEvent::NotifyError(msg));
             }
         }
     }
@@ -454,14 +456,7 @@ impl App<'_> {
             View::UserCommand(ref mut view) => view.take_list_state(),
             _ => return,
         };
-        let selected = commit_list_state.selected_commit_hash().clone();
-        let (commit, _) = self.repository.commit_detail(&selected);
-        let refs: Vec<Ref> = self
-            .repository
-            .refs(&selected)
-            .into_iter()
-            .cloned()
-            .collect();
+        let (commit, _, refs) = selected_commit_details(self.repository, &commit_list_state);
         match build_external_command_parameters(
             &commit,
             &refs,
@@ -475,11 +470,11 @@ impl App<'_> {
                     params,
                     user_command_number,
                     self.ctx.clone(),
-                    self.tx.clone(),
+                    self.ec.sender(),
                 );
             }
             Err(err) => {
-                self.tx.send(AppEvent::NotifyError(err));
+                self.ec.send(AppEvent::NotifyError(err));
             }
         };
     }
@@ -491,14 +486,7 @@ impl App<'_> {
             View::UserCommand(ref mut view) => view.as_list_state(),
             _ => return,
         };
-        let selected = commit_list_state.selected_commit_hash().clone();
-        let (commit, _) = self.repository.commit_detail(&selected);
-        let refs: Vec<Ref> = self
-            .repository
-            .refs(&selected)
-            .into_iter()
-            .cloned()
-            .collect();
+        let (commit, _, refs) = selected_commit_details(self.repository, commit_list_state);
         let result = build_external_command_parameters(
             &commit,
             &refs,
@@ -509,15 +497,44 @@ impl App<'_> {
         .and_then(exec_user_command);
         match result {
             Ok(_) => {
-                if extract_user_command_by_number(user_command_number, &self.ctx)
-                    .map(|c| c.refresh)
-                    .unwrap_or_default()
-                {
+                if extract_user_command_refresh_by_number(user_command_number, &self.ctx) {
                     self.view.refresh();
                 }
             }
             Err(err) => {
-                self.tx.send(AppEvent::NotifyError(err));
+                self.ec.send(AppEvent::NotifyError(err));
+            }
+        }
+    }
+
+    fn open_user_command_suspend(&mut self, user_command_number: usize) {
+        let commit_list_state = match self.view {
+            View::List(ref mut view) => view.as_list_state(),
+            View::Detail(ref mut view) => view.as_list_state(),
+            View::UserCommand(ref mut view) => view.as_list_state(),
+            _ => return,
+        };
+        let (commit, _, refs) = selected_commit_details(self.repository, commit_list_state);
+        match build_external_command_parameters(
+            &commit,
+            &refs,
+            user_command_number,
+            self.app_status.view_area,
+            &self.ctx,
+        ) {
+            Ok(params) => {
+                self.ec.suspend();
+                if let Err(err) = exec_user_command_suspend(params) {
+                    self.ec.send(AppEvent::NotifyError(err));
+                }
+                self.ec.resume();
+
+                if extract_user_command_refresh_by_number(user_command_number, &self.ctx) {
+                    self.view.refresh();
+                }
+            }
+            Err(err) => {
+                self.ec.send(AppEvent::NotifyError(err));
             }
         }
     }
@@ -525,7 +542,7 @@ impl App<'_> {
     fn close_user_command(&mut self) {
         if let View::UserCommand(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            self.view = View::of_list(commit_list_state, self.ctx.clone(), self.tx.clone());
+            self.view = View::of_list(commit_list_state, self.ctx.clone(), self.ec.sender());
         }
     }
 
@@ -539,20 +556,20 @@ impl App<'_> {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
             let refs = self.repository.all_refs().into_iter().cloned().collect();
-            self.view = View::of_refs(commit_list_state, refs, self.ctx.clone(), self.tx.clone());
+            self.view = View::of_refs(commit_list_state, refs, self.ctx.clone(), self.ec.sender());
         }
     }
 
     fn close_refs(&mut self) {
         if let View::Refs(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            self.view = View::of_list(commit_list_state, self.ctx.clone(), self.tx.clone());
+            self.view = View::of_list(commit_list_state, self.ctx.clone(), self.ec.sender());
         }
     }
 
     fn open_help(&mut self) {
         let before_view = std::mem::take(&mut self.view);
-        self.view = View::of_help(before_view, self.ctx.clone(), self.tx.clone());
+        self.view = View::of_help(before_view, self.ctx.clone(), self.ec.sender());
     }
 
     fn close_help(&mut self) {
@@ -616,7 +633,7 @@ impl App<'_> {
                 user_command_context,
                 ..
             } => {
-                self.open_user_command(user_command_context.n);
+                self.open_user_command(user_command_context.n, None);
             }
             RefreshViewContext::Refs { refs_context, .. } => {
                 self.open_refs();
@@ -660,13 +677,23 @@ impl App<'_> {
         match copy_to_clipboard(value, &self.ctx.core_config.external.clipboard) {
             Ok(_) => {
                 let msg = format!("Copied {name} to clipboard successfully");
-                self.tx.send(AppEvent::NotifySuccess(msg));
+                self.ec.send(AppEvent::NotifySuccess(msg));
             }
             Err(msg) => {
-                self.tx.send(AppEvent::NotifyError(msg));
+                self.ec.send(AppEvent::NotifyError(msg));
             }
         }
     }
+}
+
+fn selected_commit_details(
+    repository: &Repository,
+    commit_list_state: &CommitListState,
+) -> (Commit, Vec<FileChange>, Vec<Ref>) {
+    let selected = commit_list_state.selected_commit_hash().clone();
+    let (commit, changes) = repository.commit_detail(&selected);
+    let refs: Vec<Ref> = repository.refs(&selected).into_iter().cloned().collect();
+    (commit, changes, refs)
 }
 
 fn process_numeric_prefix(
@@ -700,6 +727,12 @@ fn extract_user_command_by_number(
                 user_command_number
             )
         })
+}
+
+fn extract_user_command_refresh_by_number(user_command_number: usize, ctx: &AppContext) -> bool {
+    extract_user_command_by_number(user_command_number, ctx)
+        .map(|c| c.refresh)
+        .unwrap_or_default()
 }
 
 fn build_external_command_parameters(

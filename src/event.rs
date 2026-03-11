@@ -1,6 +1,9 @@
 use std::{
     fmt::{self, Debug, Formatter},
-    sync::mpsc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc, Arc, Mutex,
+    },
     thread,
 };
 
@@ -12,6 +15,7 @@ use serde::{
 
 use crate::view::RefreshViewContext;
 
+#[derive(Debug)]
 pub enum AppEvent {
     Key(KeyEvent),
     Resize(usize, usize),
@@ -63,35 +67,123 @@ pub struct Receiver {
 }
 
 impl Receiver {
-    pub fn recv(&self) -> AppEvent {
+    fn recv(&self) -> AppEvent {
         self.rx.recv().unwrap()
     }
 }
 
-pub fn init() -> (Sender, Receiver) {
-    let (tx, rx) = mpsc::channel();
-    let tx = Sender { tx };
-    let rx = Receiver { rx };
+impl Debug for Receiver {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Receiver")
+    }
+}
 
-    let event_tx = tx.clone();
-    thread::spawn(move || loop {
-        match ratatui::crossterm::event::read() {
-            Ok(e) => match e {
-                ratatui::crossterm::event::Event::Key(key) => {
-                    event_tx.send(AppEvent::Key(key));
-                }
-                ratatui::crossterm::event::Event::Resize(w, h) => {
-                    event_tx.send(AppEvent::Resize(w as usize, h as usize));
-                }
-                _ => {}
-            },
-            Err(e) => {
-                panic!("Failed to read event: {e}");
+#[derive(Debug)]
+pub struct EventController {
+    tx: Sender,
+    rx: Receiver,
+    stop: Arc<AtomicBool>,
+    handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
+}
+
+impl EventController {
+    pub fn init() -> Self {
+        let (tx, rx) = mpsc::channel();
+        let tx = Sender { tx };
+        let rx = Receiver { rx };
+
+        let controller = EventController {
+            tx: tx.clone(),
+            rx,
+            stop: Arc::new(AtomicBool::new(false)),
+            handle: Arc::new(Mutex::new(None)),
+        };
+        controller.start();
+
+        controller
+    }
+
+    pub fn start(&self) {
+        self.stop.store(false, Ordering::Relaxed);
+        let stop = self.stop.clone();
+        let tx = self.tx.clone();
+        let handle = thread::spawn(move || loop {
+            if stop.load(Ordering::Relaxed) {
+                break;
             }
-        }
-    });
+            match ratatui::crossterm::event::poll(std::time::Duration::from_millis(100)) {
+                Ok(true) => match ratatui::crossterm::event::read() {
+                    Ok(e) => match e {
+                        ratatui::crossterm::event::Event::Key(key) => {
+                            tx.send(AppEvent::Key(key));
+                        }
+                        ratatui::crossterm::event::Event::Resize(w, h) => {
+                            tx.send(AppEvent::Resize(w as usize, h as usize));
+                        }
+                        _ => {}
+                    },
+                    Err(e) => {
+                        panic!("Failed to read event: {e}");
+                    }
+                },
+                Ok(false) => {
+                    continue;
+                }
+                Err(e) => {
+                    panic!("Failed to poll event: {e}");
+                }
+            }
+        });
+        *self.handle.lock().unwrap() = Some(handle);
+    }
 
-    (tx, rx)
+    pub fn resume(&self) {
+        ratatui::crossterm::execute!(
+            std::io::stdout(),
+            ratatui::crossterm::terminal::EnterAlternateScreen
+        )
+        .unwrap();
+        ratatui::crossterm::terminal::enable_raw_mode().unwrap();
+
+        self.drain_crossterm_event();
+        self.start();
+    }
+
+    pub fn suspend(&self) {
+        self.stop();
+
+        ratatui::crossterm::terminal::disable_raw_mode().unwrap();
+        ratatui::crossterm::execute!(
+            std::io::stdout(),
+            ratatui::crossterm::terminal::LeaveAlternateScreen
+        )
+        .unwrap();
+    }
+
+    fn stop(&self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(handle) = self.handle.lock().unwrap().take() {
+            handle.join().unwrap();
+        }
+    }
+
+    fn drain_crossterm_event(&self) {
+        while let Ok(true) = ratatui::crossterm::event::poll(std::time::Duration::from_millis(0)) {
+            let _ = ratatui::crossterm::event::read();
+        }
+    }
+
+    pub fn sender(&self) -> Sender {
+        self.tx.clone()
+    }
+
+    pub fn send(&self, event: AppEvent) {
+        self.tx.send(event);
+    }
+
+    pub fn recv(&self) -> AppEvent {
+        self.rx.recv()
+    }
 }
 
 // The event triggered by user's key input

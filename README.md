@@ -105,7 +105,7 @@ For detailed information about the config file format, see [Config File Format](
 ### User command
 
 The User command feature allows you to execute custom external commands.
-You can display the output of commands like `git diff` in a dedicated view, or execute commands like branch deletion in the background.
+You can display the output of commands like `git diff` in a dedicated view, execute commands like branch deletion in the background, or run interactive commands like `vim` by suspending the application.
 
 For details on how to set commands, see [User Command](https://lusingander.github.io/serie/features/user-command.html).
 
