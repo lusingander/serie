@@ -721,12 +721,7 @@ fn extract_user_command_by_number(
         .user_command
         .commands
         .get(&user_command_number.to_string())
-        .ok_or_else(|| {
-            format!(
-                "No user command configured for number {}",
-                user_command_number
-            )
-        })
+        .ok_or_else(|| format!("No user command configured for number {user_command_number}",))
 }
 
 fn extract_user_command_refresh_by_number(user_command_number: usize, ctx: &AppContext) -> bool {

@@ -111,7 +111,7 @@ pub fn exec_user_command_suspend(params: ExternalCommandParameters) -> Result<()
         .map_err(|e| format!("Failed to execute command: {e:?}"))?;
 
     if !output.success() {
-        let msg = format!("Command exited with non-zero status: {}", output);
+        let msg = format!("Command exited with non-zero status: {output}");
         return Err(msg);
     }
 

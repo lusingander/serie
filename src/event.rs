@@ -248,7 +248,7 @@ impl<'de> Deserialize<'de> for UserEvent {
                     if let Some(num) = parse_user_command_number(value) {
                         Ok(UserEvent::UserCommand(num))
                     } else {
-                        let msg = format!("Invalid user_command_n format: {}", value);
+                        let msg = format!("Invalid user_command_n format: {value}",);
                         Err(de::Error::custom(msg))
                     }
                 } else {
@@ -287,7 +287,7 @@ impl<'de> Deserialize<'de> for UserEvent {
                         "short_copy" => Ok(UserEvent::ShortCopy),
                         "full_copy" => Ok(UserEvent::FullCopy),
                         _ => {
-                            let msg = format!("Unknown user event: {}", value);
+                            let msg = format!("Unknown user event: {value}");
                             Err(de::Error::custom(msg))
                         }
                     }
