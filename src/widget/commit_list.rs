@@ -88,8 +88,8 @@ struct SearchMatch {
 }
 
 impl SearchMatch {
-    fn new(c: &Commit, refs: &[&Ref], matcher: &SearchMatcher) -> Self {
-        let refs = refs
+    fn set(&mut self, c: &Commit, refs: &[&Ref], matcher: &SearchMatcher) {
+        self.refs = refs
             .iter()
             .filter(|r| !matches!(*r, Ref::Stash { .. }))
             .filter_map(|r| {
@@ -98,16 +98,10 @@ impl SearchMatch {
                     .map(|pos| (r.name().into(), pos))
             })
             .collect();
-        let subject = matcher.matched_position(&c.subject);
-        let author_name = matcher.matched_position(&c.author_name);
-        let commit_hash = matcher.matched_position(&c.commit_hash.as_short_hash());
-        Self {
-            refs,
-            subject,
-            author_name,
-            commit_hash,
-            match_index: 0,
-        }
+        self.subject = matcher.matched_position(&c.subject);
+        self.author_name = matcher.matched_position(&c.author_name);
+        self.commit_hash = matcher.matched_position(&c.commit_hash.as_short_hash());
+        self.match_index = 0;
     }
 
     fn matched(&self) -> bool {
@@ -596,12 +590,12 @@ impl<'a> CommitListState<'a> {
         let matcher = SearchMatcher::new(self.search_input.value(), ignore_case, fuzzy);
         let mut match_index = 1;
         for (i, commit_info) in self.commits.iter().enumerate() {
-            let mut m = SearchMatch::new(commit_info.commit, commit_info.refs.as_slice(), &matcher);
+            let m = &mut self.search_matches[i];
+            m.set(commit_info.commit, commit_info.refs.as_slice(), &matcher);
             if m.matched() {
                 m.match_index = match_index;
                 match_index += 1;
             }
-            self.search_matches[i] = m;
         }
     }
 
