@@ -88,8 +88,7 @@ struct SearchMatch {
 }
 
 impl SearchMatch {
-    fn new(c: &Commit, refs: &[&Ref], q: &str, ignore_case: bool, fuzzy: bool) -> Self {
-        let matcher = SearchMatcher::new(q, ignore_case, fuzzy);
+    fn new(c: &Commit, refs: &[&Ref], matcher: &SearchMatcher) -> Self {
         let refs = refs
             .iter()
             .filter(|r| !matches!(*r, Ref::Stash { .. }))
@@ -594,16 +593,10 @@ impl<'a> CommitListState<'a> {
     }
 
     fn update_search_matches(&mut self, ignore_case: bool, fuzzy: bool) {
-        let q = self.search_input.value();
+        let matcher = SearchMatcher::new(self.search_input.value(), ignore_case, fuzzy);
         let mut match_index = 1;
         for (i, commit_info) in self.commits.iter().enumerate() {
-            let mut m = SearchMatch::new(
-                commit_info.commit,
-                commit_info.refs.as_slice(),
-                q,
-                ignore_case,
-                fuzzy,
-            );
+            let mut m = SearchMatch::new(commit_info.commit, commit_info.refs.as_slice(), &matcher);
             if m.matched() {
                 m.match_index = match_index;
                 match_index += 1;
