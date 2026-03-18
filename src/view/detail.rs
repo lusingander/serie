@@ -197,7 +197,7 @@ impl<'a> DetailView<'a> {
 
     fn copy_commit_short_hash(&self) {
         let selected = &self.commit.commit_hash;
-        self.copy_to_clipboard("Commit SHA (short)".into(), selected.as_short_hash());
+        self.copy_to_clipboard("Commit SHA (short)".into(), selected.as_short_hash().into());
     }
 
     fn copy_commit_hash(&self) {

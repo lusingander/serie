@@ -100,7 +100,7 @@ impl SearchMatch {
             .collect();
         self.subject = matcher.matched_position(&c.subject);
         self.author_name = matcher.matched_position(&c.author_name);
-        self.commit_hash = matcher.matched_position(&c.commit_hash.as_short_hash());
+        self.commit_hash = matcher.matched_position(c.commit_hash.as_short_hash());
         self.match_index = 0;
     }
 
