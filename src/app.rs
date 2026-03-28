@@ -457,17 +457,18 @@ impl App<'_> {
             _ => return,
         };
         let (commit, _, refs) = selected_commit_details(self.repository, &commit_list_state);
-        match build_external_command_parameters(
+        let result = build_external_command_parameters_and_exec_command(
             &commit,
             &refs,
             user_command_number,
             self.app_status.view_area,
             &self.ctx,
-        ) {
-            Ok(params) => {
+        );
+        match result {
+            Ok(output) => {
                 self.view = View::of_user_command(
                     commit_list_state,
-                    params,
+                    output,
                     user_command_number,
                     self.ctx.clone(),
                     self.ec.sender(),
@@ -487,14 +488,13 @@ impl App<'_> {
             _ => return,
         };
         let (commit, _, refs) = selected_commit_details(self.repository, commit_list_state);
-        let result = build_external_command_parameters(
+        let result = build_external_command_parameters_and_exec_command(
             &commit,
             &refs,
             user_command_number,
             self.app_status.view_area,
             &self.ctx,
-        )
-        .and_then(exec_user_command);
+        );
         match result {
             Ok(_) => {
                 if extract_user_command_refresh_by_number(user_command_number, &self.ctx) {
@@ -591,7 +591,7 @@ impl App<'_> {
             view.select_older_commit(
                 self.repository,
                 self.app_status.view_area,
-                build_external_command_parameters,
+                build_external_command_parameters_and_exec_command,
             );
         }
     }
@@ -603,7 +603,7 @@ impl App<'_> {
             view.select_newer_commit(
                 self.repository,
                 self.app_status.view_area,
-                build_external_command_parameters,
+                build_external_command_parameters_and_exec_command,
             );
         }
     }
@@ -615,7 +615,7 @@ impl App<'_> {
             view.select_parent_commit(
                 self.repository,
                 self.app_status.view_area,
-                build_external_command_parameters,
+                build_external_command_parameters_and_exec_command,
             );
         }
     }
@@ -728,6 +728,17 @@ fn extract_user_command_refresh_by_number(user_command_number: usize, ctx: &AppC
     extract_user_command_by_number(user_command_number, ctx)
         .map(|c| c.refresh)
         .unwrap_or_default()
+}
+
+fn build_external_command_parameters_and_exec_command(
+    commit: &Commit,
+    refs: &[Ref],
+    user_command_number: usize,
+    view_area: Rect,
+    ctx: &AppContext,
+) -> Result<String, String> {
+    build_external_command_parameters(commit, refs, user_command_number, view_area, ctx)
+        .and_then(exec_user_command)
 }
 
 fn build_external_command_parameters(
