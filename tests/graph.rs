@@ -1420,7 +1420,7 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
         let commit = &graph.commits[i];
         let text = format!(
             "{} / {}",
-            &commit.commit_hash.as_short_hash(),
+            commit.commit_hash.as_short_hash(),
             commit.committer_date.naive_utc().format("%Y-%m-%d")
         );
         let text_png = text_renderer

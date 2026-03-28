@@ -14,8 +14,8 @@ use crate::Result;
 pub struct CommitHash(String);
 
 impl CommitHash {
-    pub fn as_short_hash(&self) -> String {
-        self.0.chars().take(7).collect()
+    pub fn as_short_hash(&self) -> &str {
+        &self.0[0..7]
     }
 
     pub fn as_str(&self) -> &str {
