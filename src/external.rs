@@ -70,14 +70,14 @@ fn copy_to_clipboard_auto(value: String) -> Result<(), String> {
     })
 }
 
-pub struct ExternalCommandParameters {
-    pub command: Vec<String>,
-    pub target_hash: String,
-    pub parent_hashes: Vec<String>,
-    pub all_refs: Vec<String>,
-    pub branches: Vec<String>,
-    pub remote_branches: Vec<String>,
-    pub tags: Vec<String>,
+pub struct ExternalCommandParameters<'a> {
+    pub command: &'a [String],
+    pub target_hash: &'a str,
+    pub parent_hashes: Vec<&'a str>,
+    pub all_refs: Vec<&'a str>,
+    pub branches: Vec<&'a str>,
+    pub remote_branches: Vec<&'a str>,
+    pub tags: Vec<&'a str>,
     pub area_width: u16,
     pub area_height: u16,
 }
@@ -119,16 +119,23 @@ pub fn exec_user_command_suspend(params: ExternalCommandParameters) -> Result<()
 }
 
 fn build_user_command(params: &ExternalCommandParameters) -> Vec<String> {
+    fn to_vec(ss: &[&str]) -> Vec<String> {
+        ss.iter().map(|s| s.to_string()).collect()
+    }
     let mut command = Vec::new();
-    for arg in &params.command {
+    for arg in params.command {
+        if !arg.contains(USER_COMMAND_MARKER_PREFIX) {
+            command.push(arg.clone());
+            continue;
+        }
         match arg.as_str() {
             // If the marker is used as a standalone argument, expand it into multiple arguments.
             // This allows the command to receive each item as a separate argument and correctly handle items that contain spaces.
-            USER_COMMAND_BRANCHES_MARKER => command.extend(params.branches.clone()),
-            USER_COMMAND_REMOTE_BRANCHES_MARKER => command.extend(params.remote_branches.clone()),
-            USER_COMMAND_TAGS_MARKER => command.extend(params.tags.clone()),
-            USER_COMMAND_REFS_MARKER => command.extend(params.all_refs.clone()),
-            USER_COMMAND_PARENT_HASHES_MARKER => command.extend(params.parent_hashes.clone()),
+            USER_COMMAND_BRANCHES_MARKER => command.extend(to_vec(&params.branches)),
+            USER_COMMAND_REMOTE_BRANCHES_MARKER => command.extend(to_vec(&params.remote_branches)),
+            USER_COMMAND_TAGS_MARKER => command.extend(to_vec(&params.tags)),
+            USER_COMMAND_REFS_MARKER => command.extend(to_vec(&params.all_refs)),
+            USER_COMMAND_PARENT_HASHES_MARKER => command.extend(to_vec(&params.parent_hashes)),
             // Otherwise, replace the marker within the single argument string.
             _ => command.push(replace_command_arg(arg, params)),
         }
@@ -137,12 +144,8 @@ fn build_user_command(params: &ExternalCommandParameters) -> Vec<String> {
 }
 
 fn replace_command_arg(s: &str, params: &ExternalCommandParameters) -> String {
-    if !s.contains(USER_COMMAND_MARKER_PREFIX) {
-        return s.to_string();
-    }
-
     let sep = " ";
-    let target_hash = &params.target_hash;
+    let target_hash = params.target_hash;
     let first_parent_hash = &params.parent_hashes.first().cloned().unwrap_or_default();
     let parent_hashes = &params.parent_hashes.join(sep);
     let all_refs = &params.all_refs.join(sep);

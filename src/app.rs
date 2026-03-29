@@ -457,17 +457,18 @@ impl App<'_> {
             _ => return,
         };
         let (commit, _, refs) = selected_commit_details(self.repository, &commit_list_state);
-        match build_external_command_parameters(
+        let result = build_external_command_parameters_and_exec_command(
             &commit,
             &refs,
             user_command_number,
             self.app_status.view_area,
             &self.ctx,
-        ) {
-            Ok(params) => {
+        );
+        match result {
+            Ok(output) => {
                 self.view = View::of_user_command(
                     commit_list_state,
-                    params,
+                    output,
                     user_command_number,
                     self.ctx.clone(),
                     self.ec.sender(),
@@ -487,14 +488,13 @@ impl App<'_> {
             _ => return,
         };
         let (commit, _, refs) = selected_commit_details(self.repository, commit_list_state);
-        let result = build_external_command_parameters(
+        let result = build_external_command_parameters_and_exec_command(
             &commit,
             &refs,
             user_command_number,
             self.app_status.view_area,
             &self.ctx,
-        )
-        .and_then(exec_user_command);
+        );
         match result {
             Ok(_) => {
                 if extract_user_command_refresh_by_number(user_command_number, &self.ctx) {
@@ -591,7 +591,7 @@ impl App<'_> {
             view.select_older_commit(
                 self.repository,
                 self.app_status.view_area,
-                build_external_command_parameters,
+                build_external_command_parameters_and_exec_command,
             );
         }
     }
@@ -603,7 +603,7 @@ impl App<'_> {
             view.select_newer_commit(
                 self.repository,
                 self.app_status.view_area,
-                build_external_command_parameters,
+                build_external_command_parameters_and_exec_command,
             );
         }
     }
@@ -615,7 +615,7 @@ impl App<'_> {
             view.select_parent_commit(
                 self.repository,
                 self.app_status.view_area,
-                build_external_command_parameters,
+                build_external_command_parameters_and_exec_command,
             );
         }
     }
@@ -730,23 +730,30 @@ fn extract_user_command_refresh_by_number(user_command_number: usize, ctx: &AppC
         .unwrap_or_default()
 }
 
-fn build_external_command_parameters(
+fn build_external_command_parameters_and_exec_command(
     commit: &Commit,
     refs: &[Ref],
     user_command_number: usize,
     view_area: Rect,
     ctx: &AppContext,
-) -> Result<ExternalCommandParameters, String> {
-    let command = extract_user_command_by_number(user_command_number, ctx)?
-        .commands
-        .iter()
-        .map(String::to_string)
-        .collect();
-    let target_hash = commit.commit_hash.as_str().to_string();
-    let parent_hashes: Vec<String> = commit
+) -> Result<String, String> {
+    build_external_command_parameters(commit, refs, user_command_number, view_area, ctx)
+        .and_then(exec_user_command)
+}
+
+fn build_external_command_parameters<'a>(
+    commit: &'a Commit,
+    refs: &'a [Ref],
+    user_command_number: usize,
+    view_area: Rect,
+    ctx: &'a AppContext,
+) -> Result<ExternalCommandParameters<'a>, String> {
+    let command = &extract_user_command_by_number(user_command_number, ctx)?.commands;
+    let target_hash = commit.commit_hash.as_str();
+    let parent_hashes = commit
         .parent_commit_hashes
         .iter()
-        .map(|c| c.as_str().to_string())
+        .map(|c| c.as_str())
         .collect();
 
     let mut all_refs = vec![];
@@ -755,12 +762,12 @@ fn build_external_command_parameters(
     let mut tags = vec![];
     for r in refs {
         match r {
-            Ref::Tag { .. } => tags.push(r.name().to_string()),
-            Ref::Branch { .. } => branches.push(r.name().to_string()),
-            Ref::RemoteBranch { .. } => remote_branches.push(r.name().to_string()),
+            Ref::Tag { .. } => tags.push(r.name()),
+            Ref::Branch { .. } => branches.push(r.name()),
+            Ref::RemoteBranch { .. } => remote_branches.push(r.name()),
             Ref::Stash { .. } => continue, // skip stashes
         }
-        all_refs.push(r.name().to_string());
+        all_refs.push(r.name());
     }
 
     let area_width = view_area.width.saturating_sub(4); // minus the left and right padding
