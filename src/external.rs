@@ -124,6 +124,10 @@ fn build_user_command(params: &ExternalCommandParameters) -> Vec<String> {
     }
     let mut command = Vec::new();
     for arg in params.command {
+        if !arg.contains(USER_COMMAND_MARKER_PREFIX) {
+            command.push(arg.clone());
+            continue;
+        }
         match arg.as_str() {
             // If the marker is used as a standalone argument, expand it into multiple arguments.
             // This allows the command to receive each item as a separate argument and correctly handle items that contain spaces.
@@ -140,10 +144,6 @@ fn build_user_command(params: &ExternalCommandParameters) -> Vec<String> {
 }
 
 fn replace_command_arg(s: &str, params: &ExternalCommandParameters) -> String {
-    if !s.contains(USER_COMMAND_MARKER_PREFIX) {
-        return s.to_string();
-    }
-
     let sep = " ";
     let target_hash = params.target_hash;
     let first_parent_hash = &params.parent_hashes.first().cloned().unwrap_or_default();
