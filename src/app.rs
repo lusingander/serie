@@ -741,23 +741,19 @@ fn build_external_command_parameters_and_exec_command(
         .and_then(exec_user_command)
 }
 
-fn build_external_command_parameters(
-    commit: &Commit,
-    refs: &[Ref],
+fn build_external_command_parameters<'a>(
+    commit: &'a Commit,
+    refs: &'a [Ref],
     user_command_number: usize,
     view_area: Rect,
-    ctx: &AppContext,
-) -> Result<ExternalCommandParameters, String> {
-    let command = extract_user_command_by_number(user_command_number, ctx)?
-        .commands
-        .iter()
-        .map(String::to_string)
-        .collect();
-    let target_hash = commit.commit_hash.as_str().to_string();
-    let parent_hashes: Vec<String> = commit
+    ctx: &'a AppContext,
+) -> Result<ExternalCommandParameters<'a>, String> {
+    let command = &extract_user_command_by_number(user_command_number, ctx)?.commands;
+    let target_hash = commit.commit_hash.as_str();
+    let parent_hashes = commit
         .parent_commit_hashes
         .iter()
-        .map(|c| c.as_str().to_string())
+        .map(|c| c.as_str())
         .collect();
 
     let mut all_refs = vec![];
@@ -766,12 +762,12 @@ fn build_external_command_parameters(
     let mut tags = vec![];
     for r in refs {
         match r {
-            Ref::Tag { .. } => tags.push(r.name().to_string()),
-            Ref::Branch { .. } => branches.push(r.name().to_string()),
-            Ref::RemoteBranch { .. } => remote_branches.push(r.name().to_string()),
+            Ref::Tag { .. } => tags.push(r.name()),
+            Ref::Branch { .. } => branches.push(r.name()),
+            Ref::RemoteBranch { .. } => remote_branches.push(r.name()),
             Ref::Stash { .. } => continue, // skip stashes
         }
-        all_refs.push(r.name().to_string());
+        all_refs.push(r.name());
     }
 
     let area_width = view_area.width.saturating_sub(4); // minus the left and right padding
