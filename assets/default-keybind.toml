@@ -1,6 +1,6 @@
 force_quit = ["ctrl-c"]
 quit = ["q"]
-help_toggle = ["?"]
+help_toggle = ["?","f1"]
 cancel = ["esc"]
 close = ["backspace"]
 
