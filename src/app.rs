@@ -451,12 +451,12 @@ impl App<'_> {
 
     fn open_user_command_inline(&mut self, user_command_number: usize) {
         let commit_list_state = match self.view {
-            View::List(ref mut view) => view.take_list_state(),
-            View::Detail(ref mut view) => view.take_list_state(),
-            View::UserCommand(ref mut view) => view.take_list_state(),
+            View::List(ref mut view) => view.as_list_state(),
+            View::Detail(ref mut view) => view.as_list_state(),
+            View::UserCommand(ref mut view) => view.as_list_state(),
             _ => return,
         };
-        let (commit, _, refs) = selected_commit_details(self.repository, &commit_list_state);
+        let (commit, _, refs) = selected_commit_details(self.repository, commit_list_state);
         let result = build_external_command_parameters_and_exec_command(
             &commit,
             &refs,
@@ -466,6 +466,13 @@ impl App<'_> {
         );
         match result {
             Ok(output) => {
+                // take list state only when the command execution is successful, to avoid losing the state when the command fails
+                let commit_list_state = match self.view {
+                    View::List(ref mut view) => view.take_list_state(),
+                    View::Detail(ref mut view) => view.take_list_state(),
+                    View::UserCommand(ref mut view) => view.take_list_state(),
+                    _ => return,
+                };
                 self.view = View::of_user_command(
                     commit_list_state,
                     output,
