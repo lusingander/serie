@@ -427,36 +427,44 @@ impl App<'_> {
         user_command_number: usize,
         terminal: Option<&mut DefaultTerminal>,
     ) {
-        match extract_user_command_by_number(user_command_number, &self.ctx).map(|c| &c.r#type) {
+        let clear = match extract_user_command_by_number(user_command_number, &self.ctx)
+            .map(|c| &c.r#type)
+        {
             Ok(UserCommandType::Inline) => {
                 self.open_user_command_inline(user_command_number);
+                false
             }
             Ok(UserCommandType::Silent) => {
                 self.open_user_command_silent(user_command_number);
+                true
             }
             Ok(UserCommandType::Suspend) => {
                 self.open_user_command_suspend(user_command_number);
+                true
             }
             Err(err) => {
                 self.ec.send(AppEvent::NotifyError(err));
+                false
             }
-        }
-        if let Some(t) = terminal {
-            if let Err(err) = t.clear() {
-                let msg = format!("Failed to clear terminal: {err:?}");
-                self.ec.send(AppEvent::NotifyError(msg));
+        };
+        if clear {
+            if let Some(t) = terminal {
+                if let Err(err) = t.clear() {
+                    let msg = format!("Failed to clear terminal: {err:?}");
+                    self.ec.send(AppEvent::NotifyError(msg));
+                }
             }
         }
     }
 
     fn open_user_command_inline(&mut self, user_command_number: usize) {
         let commit_list_state = match self.view {
-            View::List(ref mut view) => view.take_list_state(),
-            View::Detail(ref mut view) => view.take_list_state(),
-            View::UserCommand(ref mut view) => view.take_list_state(),
+            View::List(ref mut view) => view.as_list_state(),
+            View::Detail(ref mut view) => view.as_list_state(),
+            View::UserCommand(ref mut view) => view.as_list_state(),
             _ => return,
         };
-        let (commit, _, refs) = selected_commit_details(self.repository, &commit_list_state);
+        let (commit, _, refs) = selected_commit_details(self.repository, commit_list_state);
         let result = build_external_command_parameters_and_exec_command(
             &commit,
             &refs,
@@ -466,6 +474,13 @@ impl App<'_> {
         );
         match result {
             Ok(output) => {
+                // take list state only when the command execution is successful, to avoid losing the state when the command fails
+                let commit_list_state = match self.view {
+                    View::List(ref mut view) => view.take_list_state(),
+                    View::Detail(ref mut view) => view.take_list_state(),
+                    View::UserCommand(ref mut view) => view.take_list_state(),
+                    _ => return,
+                };
                 self.view = View::of_user_command(
                     commit_list_state,
                     output,
