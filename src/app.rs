@@ -427,24 +427,32 @@ impl App<'_> {
         user_command_number: usize,
         terminal: Option<&mut DefaultTerminal>,
     ) {
-        match extract_user_command_by_number(user_command_number, &self.ctx).map(|c| &c.r#type) {
+        let clear = match extract_user_command_by_number(user_command_number, &self.ctx)
+            .map(|c| &c.r#type)
+        {
             Ok(UserCommandType::Inline) => {
                 self.open_user_command_inline(user_command_number);
+                false
             }
             Ok(UserCommandType::Silent) => {
                 self.open_user_command_silent(user_command_number);
+                true
             }
             Ok(UserCommandType::Suspend) => {
                 self.open_user_command_suspend(user_command_number);
+                true
             }
             Err(err) => {
                 self.ec.send(AppEvent::NotifyError(err));
+                false
             }
-        }
-        if let Some(t) = terminal {
-            if let Err(err) = t.clear() {
-                let msg = format!("Failed to clear terminal: {err:?}");
-                self.ec.send(AppEvent::NotifyError(msg));
+        };
+        if clear {
+            if let Some(t) = terminal {
+                if let Err(err) = t.clear() {
+                    let msg = format!("Failed to clear terminal: {err:?}");
+                    self.ec.send(AppEvent::NotifyError(msg));
+                }
             }
         }
     }
