@@ -3,7 +3,6 @@ use std::rc::Rc;
 use ratatui::{
     crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
-    widgets::Clear,
     Frame,
 };
 
@@ -29,7 +28,6 @@ pub struct DetailView<'a> {
 
     ctx: Rc<AppContext>,
     tx: Sender,
-    clear: bool,
 }
 
 impl<'a> DetailView<'a> {
@@ -49,7 +47,6 @@ impl<'a> DetailView<'a> {
             refs,
             ctx,
             tx,
-            clear: false,
         }
     }
 
@@ -116,7 +113,6 @@ impl<'a> DetailView<'a> {
                 self.tx.send(AppEvent::OpenHelp);
             }
             UserEvent::Confirm | UserEvent::Cancel | UserEvent::Close => {
-                self.tx.send(AppEvent::ClearDetail); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseDetail);
             }
             UserEvent::Refresh => {
@@ -133,11 +129,6 @@ impl<'a> DetailView<'a> {
 
         let commit_list = CommitList::new(self.ctx.clone());
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
-
-        if self.clear {
-            f.render_widget(Clear, detail_area);
-            return;
-        }
 
         let commit_detail =
             CommitDetail::new(&self.commit, &self.changes, &self.refs, self.ctx.clone());
@@ -184,10 +175,6 @@ impl<'a> DetailView<'a> {
         self.refs = refs;
 
         self.commit_detail_state.select_first();
-    }
-
-    pub fn clear(&mut self) {
-        self.clear = true;
     }
 
     fn copy_commit_short_hash(&self) {

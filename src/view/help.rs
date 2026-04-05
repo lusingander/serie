@@ -5,7 +5,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Stylize},
     text::{Line, Span},
-    widgets::{Block, Clear, Padding, Paragraph},
+    widgets::{Block, Padding, Paragraph},
     Frame,
 };
 
@@ -30,7 +30,6 @@ pub struct HelpView<'a> {
     height: usize,
 
     tx: Sender,
-    clear: bool,
 }
 
 impl HelpView<'_> {
@@ -50,7 +49,6 @@ impl HelpView<'_> {
             offset: 0,
             height: 0,
             tx,
-            clear: false,
         }
     }
 
@@ -63,7 +61,6 @@ impl HelpView<'_> {
                 self.tx.send(AppEvent::Quit);
             }
             UserEvent::HelpToggle | UserEvent::Cancel | UserEvent::Close => {
-                self.tx.send(AppEvent::ClearHelp); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseHelp);
             }
             UserEvent::NavigateDown | UserEvent::SelectDown => {
@@ -107,11 +104,6 @@ impl HelpView<'_> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        if self.clear {
-            f.render_widget(Clear, area);
-            return;
-        }
-
         self.update_state(area);
 
         let [mut key_area, mut value_area] =
@@ -156,10 +148,6 @@ impl HelpView<'_> {
 impl<'a> HelpView<'a> {
     pub fn take_before_view(&mut self) -> View<'a> {
         std::mem::take(&mut self.before)
-    }
-
-    pub fn clear(&mut self) {
-        self.clear = true;
     }
 
     fn scroll_down(&mut self) {

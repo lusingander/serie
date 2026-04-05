@@ -221,20 +221,16 @@ impl App<'_> {
                     self.open_detail();
                 }
                 AppEvent::CloseDetail => {
+                    terminal.clear()?;
                     self.close_detail();
-                }
-                AppEvent::ClearDetail => {
-                    self.clear_detail();
                 }
                 AppEvent::OpenUserCommand(n) => {
                     self.clear_image(Some(terminal))?;
                     self.open_user_command(n, Some(terminal));
                 }
                 AppEvent::CloseUserCommand => {
+                    terminal.clear()?;
                     self.close_user_command();
-                }
-                AppEvent::ClearUserCommand => {
-                    self.clear_user_command();
                 }
                 AppEvent::OpenRefs => {
                     self.open_refs();
@@ -247,10 +243,8 @@ impl App<'_> {
                     self.open_help();
                 }
                 AppEvent::CloseHelp => {
+                    terminal.clear()?;
                     self.close_help();
-                }
-                AppEvent::ClearHelp => {
-                    self.clear_help();
                 }
                 AppEvent::SelectOlderCommit => {
                     self.select_older_commit();
@@ -411,12 +405,6 @@ impl App<'_> {
         }
     }
 
-    fn clear_detail(&mut self) {
-        if let View::Detail(ref mut view) = self.view {
-            view.clear();
-        }
-    }
-
     fn open_user_command(
         &mut self,
         user_command_number: usize,
@@ -556,12 +544,6 @@ impl App<'_> {
         }
     }
 
-    fn clear_user_command(&mut self) {
-        if let View::UserCommand(ref mut view) = self.view {
-            view.clear();
-        }
-    }
-
     fn open_refs(&mut self) {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
@@ -585,12 +567,6 @@ impl App<'_> {
     fn close_help(&mut self) {
         if let View::Help(ref mut view) = self.view {
             self.view = view.take_before_view();
-        }
-    }
-
-    fn clear_help(&mut self) {
-        if let View::Help(ref mut view) = self.view {
-            view.clear();
         }
     }
 
