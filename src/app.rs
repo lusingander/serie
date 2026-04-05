@@ -522,13 +522,16 @@ impl App<'_> {
         ) {
             Ok(params) => {
                 self.ec.suspend();
-                if let Err(err) = exec_user_command_suspend(params) {
-                    self.ec.send(AppEvent::NotifyError(err));
-                }
+                let exec_result = exec_user_command_suspend(params);
                 self.ec.resume();
 
                 if extract_user_command_refresh_by_number(user_command_number, &self.ctx) {
                     self.view.refresh();
+                }
+
+                // notify after resuming and refreshing
+                if let Err(err) = exec_result {
+                    self.ec.send(AppEvent::NotifyError(err));
                 }
             }
             Err(err) => {
