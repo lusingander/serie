@@ -315,9 +315,7 @@ impl App<'_> {
 impl App<'_> {
     fn render_clear(&mut self, f: &mut Frame, area: Rect) {
         f.render_widget(Clear, area);
-        for y in area.top()..area.bottom() {
-            self.ctx.image_protocol.clear_line(y);
-        }
+        self.ctx.image_protocol.clear();
     }
 
     fn render_status_line(&self, f: &mut Frame, area: Rect) {
