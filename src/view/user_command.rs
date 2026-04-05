@@ -153,12 +153,6 @@ impl<'a> UserCommandView<'a> {
 
         if self.clear {
             f.render_widget(Clear, user_command_area);
-            return;
-        }
-
-        // clear the image area if needed
-        for y in user_command_area.top()..user_command_area.bottom() {
-            self.ctx.image_protocol.clear_line(y);
         }
     }
 }

@@ -36,6 +36,13 @@ impl ImageProtocol {
             ImageProtocol::Kitty => kitty_clear_line(y),
         }
     }
+
+    pub fn clear(&self) {
+        match self {
+            ImageProtocol::Iterm2 => {}
+            ImageProtocol::Kitty => kitty_clear(),
+        }
+    }
 }
 
 fn to_base64_str(bytes: &[u8]) -> String {
@@ -84,4 +91,8 @@ fn kitty_encode(bytes: &[u8], cell_width: usize, cell_height: usize) -> String {
 fn kitty_clear_line(y: u16) {
     let y = y + 1; // 1-based
     print!("\x1b_Ga=d,d=Y,y={y};\x1b\\");
+}
+
+fn kitty_clear() {
+    print!("\x1b_Ga=d,d=A;\x1b\\");
 }

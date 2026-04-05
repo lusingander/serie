@@ -217,6 +217,7 @@ impl App<'_> {
                     self.clear();
                 }
                 AppEvent::OpenDetail => {
+                    self.clear_image(Some(terminal))?;
                     self.open_detail();
                 }
                 AppEvent::CloseDetail => {
@@ -226,6 +227,7 @@ impl App<'_> {
                     self.clear_detail();
                 }
                 AppEvent::OpenUserCommand(n) => {
+                    self.clear_image(Some(terminal))?;
                     self.open_user_command(n, Some(terminal));
                 }
                 AppEvent::CloseUserCommand => {
@@ -241,6 +243,7 @@ impl App<'_> {
                     self.close_refs();
                 }
                 AppEvent::OpenHelp => {
+                    self.clear_image(None)?;
                     self.open_help();
                 }
                 AppEvent::CloseHelp => {
@@ -382,6 +385,17 @@ impl App<'_> {
 impl App<'_> {
     fn update_state(&mut self, view_area: Rect) {
         self.app_status.view_area = view_area;
+    }
+
+    fn clear_image(&self, terminal: Option<&mut DefaultTerminal>) -> Result<(), std::io::Error> {
+        if let Some(t) = terminal {
+            for y in 1..t.size()?.height {
+                self.ctx.image_protocol.clear_line(y);
+            }
+        } else {
+            self.ctx.image_protocol.clear();
+        }
+        Ok(())
     }
 
     fn clear(&mut self) {

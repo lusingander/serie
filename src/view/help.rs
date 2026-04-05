@@ -29,7 +29,6 @@ pub struct HelpView<'a> {
     offset: usize,
     height: usize,
 
-    ctx: Rc<AppContext>,
     tx: Sender,
     clear: bool,
 }
@@ -50,7 +49,6 @@ impl HelpView<'_> {
             help_key_line_max_width,
             offset: 0,
             height: 0,
-            ctx,
             tx,
             clear: false,
         }
@@ -152,11 +150,6 @@ impl HelpView<'_> {
 
         f.render_widget(key_paragraph, key_area);
         f.render_widget(value_paragraph, value_area);
-
-        // clear the image area if needed
-        for y in area.top()..area.bottom() {
-            self.ctx.image_protocol.clear_line(y);
-        }
     }
 }
 

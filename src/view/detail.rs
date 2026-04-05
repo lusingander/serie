@@ -142,11 +142,6 @@ impl<'a> DetailView<'a> {
         let commit_detail =
             CommitDetail::new(&self.commit, &self.changes, &self.refs, self.ctx.clone());
         f.render_stateful_widget(commit_detail, detail_area, &mut self.commit_detail_state);
-
-        // clear the image area if needed
-        for y in detail_area.top()..detail_area.bottom() {
-            self.ctx.image_protocol.clear_line(y);
-        }
     }
 }
 
