@@ -388,6 +388,8 @@ impl App<'_> {
     }
 
     fn clear_image(&self, terminal: Option<&mut DefaultTerminal>) -> Result<(), std::io::Error> {
+        // Sometimes the first image fails to render after a full screen clear
+        // As a workaround, the first area is preserved when a full clear is not required
         if let Some(t) = terminal {
             for y in 1..t.size()?.height {
                 self.ctx.image_protocol.clear_line(y);
