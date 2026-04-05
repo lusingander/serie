@@ -5,7 +5,6 @@ use ratatui::{
     crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
     text::Line,
-    widgets::Clear,
     Frame,
 };
 
@@ -32,7 +31,6 @@ pub struct UserCommandView<'a> {
 
     ctx: Rc<AppContext>,
     tx: Sender,
-    clear: bool,
 }
 
 impl<'a> UserCommandView<'a> {
@@ -56,7 +54,6 @@ impl<'a> UserCommandView<'a> {
             user_command_output_lines,
             ctx,
             tx,
-            clear: false,
         }
     }
 
@@ -115,7 +112,7 @@ impl<'a> UserCommandView<'a> {
             }
             UserEvent::UserCommand(n) => {
                 if n == self.user_command_number {
-                    self.close();
+                    self.tx.send(AppEvent::CloseUserCommand);
                 } else {
                     // switch to another user command
                     self.tx.send(AppEvent::OpenUserCommand(n));
@@ -125,7 +122,7 @@ impl<'a> UserCommandView<'a> {
                 self.tx.send(AppEvent::OpenDetail);
             }
             UserEvent::Cancel | UserEvent::Close => {
-                self.close();
+                self.tx.send(AppEvent::CloseUserCommand);
             }
             UserEvent::Refresh => {
                 self.refresh();
@@ -150,16 +147,6 @@ impl<'a> UserCommandView<'a> {
             user_command_area,
             &mut self.commit_user_command_state,
         );
-
-        if self.clear {
-            f.render_widget(Clear, user_command_area);
-            return;
-        }
-
-        // clear the image area if needed
-        for y in user_command_area.top()..user_command_area.bottom() {
-            self.ctx.image_protocol.clear_line(y);
-        }
     }
 }
 
@@ -240,15 +227,6 @@ impl<'a> UserCommandView<'a> {
         self.commit_user_command_state.select_first();
     }
 
-    pub fn clear(&mut self) {
-        self.clear = true;
-    }
-
-    fn close(&self) {
-        self.tx.send(AppEvent::ClearUserCommand); // hack: reset the rendering of the image area
-        self.tx.send(AppEvent::CloseUserCommand);
-    }
-
     pub fn refresh(&self) {
         let list_state = self.as_list_state();
         let list_context = ListRefreshViewContext::from(list_state);
@@ -259,7 +237,6 @@ impl<'a> UserCommandView<'a> {
             list_context,
             user_command_context,
         };
-        self.tx.send(AppEvent::Clear); // hack: reset the rendering of the image area
         self.tx.send(AppEvent::Refresh(context));
     }
 }

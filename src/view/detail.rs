@@ -3,7 +3,6 @@ use std::rc::Rc;
 use ratatui::{
     crossterm::event::KeyEvent,
     layout::{Constraint, Layout, Rect},
-    widgets::Clear,
     Frame,
 };
 
@@ -29,7 +28,6 @@ pub struct DetailView<'a> {
 
     ctx: Rc<AppContext>,
     tx: Sender,
-    clear: bool,
 }
 
 impl<'a> DetailView<'a> {
@@ -49,7 +47,6 @@ impl<'a> DetailView<'a> {
             refs,
             ctx,
             tx,
-            clear: false,
         }
     }
 
@@ -116,7 +113,6 @@ impl<'a> DetailView<'a> {
                 self.tx.send(AppEvent::OpenHelp);
             }
             UserEvent::Confirm | UserEvent::Cancel | UserEvent::Close => {
-                self.tx.send(AppEvent::ClearDetail); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseDetail);
             }
             UserEvent::Refresh => {
@@ -134,19 +130,9 @@ impl<'a> DetailView<'a> {
         let commit_list = CommitList::new(self.ctx.clone());
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
 
-        if self.clear {
-            f.render_widget(Clear, detail_area);
-            return;
-        }
-
         let commit_detail =
             CommitDetail::new(&self.commit, &self.changes, &self.refs, self.ctx.clone());
         f.render_stateful_widget(commit_detail, detail_area, &mut self.commit_detail_state);
-
-        // clear the image area if needed
-        for y in detail_area.top()..detail_area.bottom() {
-            self.ctx.image_protocol.clear_line(y);
-        }
     }
 }
 
@@ -191,10 +177,6 @@ impl<'a> DetailView<'a> {
         self.commit_detail_state.select_first();
     }
 
-    pub fn clear(&mut self) {
-        self.clear = true;
-    }
-
     fn copy_commit_short_hash(&self) {
         let selected = &self.commit.commit_hash;
         self.copy_to_clipboard("Commit SHA (short)".into(), selected.as_short_hash().into());
@@ -213,7 +195,6 @@ impl<'a> DetailView<'a> {
         let list_state = self.as_list_state();
         let list_context = ListRefreshViewContext::from(list_state);
         let context = RefreshViewContext::Detail { list_context };
-        self.tx.send(AppEvent::Clear); // hack: reset the rendering of the image area
         self.tx.send(AppEvent::Refresh(context));
     }
 }

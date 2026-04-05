@@ -5,7 +5,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
     text::Line,
-    widgets::{Block, Borders, Clear, Padding, Paragraph},
+    widgets::{Block, Borders, Padding, Paragraph},
     DefaultTerminal, Frame,
 };
 use rustc_hash::FxHashMap;
@@ -65,7 +65,6 @@ struct AppStatus {
     status_line: StatusLine,
     numeric_prefix: String,
     view_area: Rect,
-    clear: bool,
 }
 
 #[derive(Debug)]
@@ -145,6 +144,10 @@ impl<'a> App<'a> {
 
 impl App<'_> {
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<Ret, std::io::Error> {
+        // Clearing the screen here, as it should be cleared upon refresh
+        self.clear_image(None)?;
+        terminal.clear()?;
+
         loop {
             terminal.draw(|f| self.render(f))?;
             match self.ec.recv() {
@@ -213,26 +216,21 @@ impl App<'_> {
                 AppEvent::Quit => {
                     return Ok(Ret::Quit);
                 }
-                AppEvent::Clear => {
-                    self.clear();
-                }
                 AppEvent::OpenDetail => {
+                    self.clear_image(Some(terminal))?;
                     self.open_detail();
                 }
                 AppEvent::CloseDetail => {
+                    terminal.clear()?;
                     self.close_detail();
                 }
-                AppEvent::ClearDetail => {
-                    self.clear_detail();
-                }
                 AppEvent::OpenUserCommand(n) => {
+                    self.clear_image(Some(terminal))?;
                     self.open_user_command(n, Some(terminal));
                 }
                 AppEvent::CloseUserCommand => {
+                    terminal.clear()?;
                     self.close_user_command();
-                }
-                AppEvent::ClearUserCommand => {
-                    self.clear_user_command();
                 }
                 AppEvent::OpenRefs => {
                     self.open_refs();
@@ -241,13 +239,12 @@ impl App<'_> {
                     self.close_refs();
                 }
                 AppEvent::OpenHelp => {
+                    self.clear_image(None)?;
                     self.open_help();
                 }
                 AppEvent::CloseHelp => {
+                    terminal.clear()?;
                     self.close_help();
-                }
-                AppEvent::ClearHelp => {
-                    self.clear_help();
                 }
                 AppEvent::SelectOlderCommit => {
                     self.select_older_commit();
@@ -296,12 +293,6 @@ impl App<'_> {
         let [view_area, status_line_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(f.area());
 
-        if self.app_status.clear {
-            self.render_clear(f, view_area);
-            self.reset_clear();
-            return;
-        }
-
         self.update_state(view_area);
 
         self.view.render(f, view_area);
@@ -310,13 +301,6 @@ impl App<'_> {
 }
 
 impl App<'_> {
-    fn render_clear(&mut self, f: &mut Frame, area: Rect) {
-        f.render_widget(Clear, area);
-        for y in area.top()..area.bottom() {
-            self.ctx.image_protocol.clear_line(y);
-        }
-    }
-
     fn render_status_line(&self, f: &mut Frame, area: Rect) {
         let text: Line = match &self.app_status.status_line {
             StatusLine::None => {
@@ -384,12 +368,17 @@ impl App<'_> {
         self.app_status.view_area = view_area;
     }
 
-    fn clear(&mut self) {
-        self.app_status.clear = true;
-    }
-
-    fn reset_clear(&mut self) {
-        self.app_status.clear = false;
+    fn clear_image(&self, terminal: Option<&mut DefaultTerminal>) -> Result<(), std::io::Error> {
+        // Sometimes the first image fails to render after a full screen clear
+        // As a workaround, the first area is preserved when a full clear is not required
+        if let Some(t) = terminal {
+            for y in 1..t.size()?.height {
+                self.ctx.image_protocol.clear_line(y);
+            }
+        } else {
+            self.ctx.image_protocol.clear();
+        }
+        Ok(())
     }
 
     fn open_detail(&mut self) {
@@ -413,12 +402,6 @@ impl App<'_> {
         if let View::Detail(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
             self.view = View::of_list(commit_list_state, self.ctx.clone(), self.ec.sender());
-        }
-    }
-
-    fn clear_detail(&mut self) {
-        if let View::Detail(ref mut view) = self.view {
-            view.clear();
         }
     }
 
@@ -539,13 +522,16 @@ impl App<'_> {
         ) {
             Ok(params) => {
                 self.ec.suspend();
-                if let Err(err) = exec_user_command_suspend(params) {
-                    self.ec.send(AppEvent::NotifyError(err));
-                }
+                let exec_result = exec_user_command_suspend(params);
                 self.ec.resume();
 
                 if extract_user_command_refresh_by_number(user_command_number, &self.ctx) {
                     self.view.refresh();
+                }
+
+                // notify after resuming and refreshing
+                if let Err(err) = exec_result {
+                    self.ec.send(AppEvent::NotifyError(err));
                 }
             }
             Err(err) => {
@@ -558,12 +544,6 @@ impl App<'_> {
         if let View::UserCommand(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
             self.view = View::of_list(commit_list_state, self.ctx.clone(), self.ec.sender());
-        }
-    }
-
-    fn clear_user_command(&mut self) {
-        if let View::UserCommand(ref mut view) = self.view {
-            view.clear();
         }
     }
 
@@ -590,12 +570,6 @@ impl App<'_> {
     fn close_help(&mut self) {
         if let View::Help(ref mut view) = self.view {
             self.view = view.take_before_view();
-        }
-    }
-
-    fn clear_help(&mut self) {
-        if let View::Help(ref mut view) = self.view {
-            view.clear();
         }
     }
 

@@ -5,7 +5,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Stylize},
     text::{Line, Span},
-    widgets::{Block, Clear, Padding, Paragraph},
+    widgets::{Block, Padding, Paragraph},
     Frame,
 };
 
@@ -29,9 +29,7 @@ pub struct HelpView<'a> {
     offset: usize,
     height: usize,
 
-    ctx: Rc<AppContext>,
     tx: Sender,
-    clear: bool,
 }
 
 impl HelpView<'_> {
@@ -50,9 +48,7 @@ impl HelpView<'_> {
             help_key_line_max_width,
             offset: 0,
             height: 0,
-            ctx,
             tx,
-            clear: false,
         }
     }
 
@@ -65,7 +61,6 @@ impl HelpView<'_> {
                 self.tx.send(AppEvent::Quit);
             }
             UserEvent::HelpToggle | UserEvent::Cancel | UserEvent::Close => {
-                self.tx.send(AppEvent::ClearHelp); // hack: reset the rendering of the image area
                 self.tx.send(AppEvent::CloseHelp);
             }
             UserEvent::NavigateDown | UserEvent::SelectDown => {
@@ -109,11 +104,6 @@ impl HelpView<'_> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        if self.clear {
-            f.render_widget(Clear, area);
-            return;
-        }
-
         self.update_state(area);
 
         let [mut key_area, mut value_area] =
@@ -152,21 +142,12 @@ impl HelpView<'_> {
 
         f.render_widget(key_paragraph, key_area);
         f.render_widget(value_paragraph, value_area);
-
-        // clear the image area if needed
-        for y in area.top()..area.bottom() {
-            self.ctx.image_protocol.clear_line(y);
-        }
     }
 }
 
 impl<'a> HelpView<'a> {
     pub fn take_before_view(&mut self) -> View<'a> {
         std::mem::take(&mut self.before)
-    }
-
-    pub fn clear(&mut self) {
-        self.clear = true;
     }
 
     fn scroll_down(&mut self) {
