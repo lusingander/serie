@@ -66,9 +66,3 @@ _Possible values:_ `latest`, `head`
 `latest` will select the latest commit.
 
 `head` will select the commit at HEAD.
-
-## --preload
-
-By default, graph images are generated and loaded lazily as needed.
-
-If `--preload` is specified, all graph images will be generated and loaded at startup. This can result in smoother scrolling, as the images are already available, and might reduce memory usage. However, this may lead to slower startup times, especially for large repositories.

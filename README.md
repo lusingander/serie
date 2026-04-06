@@ -75,7 +75,6 @@ Options:
   -g, --graph-width <TYPE>        Commit graph image cell width [default: auto] [possible values: auto, double, single]
   -s, --graph-style <TYPE>        Commit graph image edge style [default: rounded] [possible values: rounded, angular]
   -i, --initial-selection <TYPE>  Initial selection of commit [default: latest] [possible values: latest, head]
-      --preload                   Preload all graph images
   -h, --help                      Print help
   -V, --version                   Print version
 ```
