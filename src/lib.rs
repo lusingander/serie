@@ -46,10 +46,6 @@ struct Args {
     /// Initial selection of commit [default: latest]
     #[arg(short, long, value_name = "TYPE")]
     initial_selection: Option<InitialSelection>,
-
-    /// Preload all graph images
-    #[arg(long, default_value = "false")]
-    preload: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
@@ -174,7 +170,6 @@ pub fn run() -> Result<()> {
             cell_width_type,
             graph_style,
             image_protocol,
-            args.preload,
         );
 
         if terminal.is_none() {

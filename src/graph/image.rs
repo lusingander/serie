@@ -3,7 +3,6 @@ use std::{
     io::Cursor,
 };
 
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
@@ -41,12 +40,11 @@ impl<'a> GraphImageManager<'a> {
         cell_width_type: CellWidthType,
         graph_style: GraphStyle,
         image_protocol: ImageProtocol,
-        preload: bool,
     ) -> Self {
         let image_params = ImageParams::new(graph_color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
-        let mut m = GraphImageManager {
+        GraphImageManager {
             encoded_image_map: FxHashMap::default(),
             graph,
             cell_width_type,
@@ -54,36 +52,11 @@ impl<'a> GraphImageManager<'a> {
             image_params,
             drawing_pixels,
             image_protocol,
-        };
-        if preload {
-            m.load_all_encoded_image();
         }
-        m
     }
 
     pub fn encoded_image(&self, commit_hash: &CommitHash) -> &str {
         self.encoded_image_map.get(commit_hash).unwrap()
-    }
-
-    pub fn load_all_encoded_image(&mut self) {
-        let graph_image = build_graph_image(
-            self.graph,
-            &self.image_params,
-            &self.drawing_pixels,
-            self.graph_style,
-        );
-        self.encoded_image_map = self
-            .graph
-            .commits
-            .iter()
-            .enumerate()
-            .map(|(i, commit)| {
-                let edges = &self.graph.edges[i];
-                let image =
-                    graph_image.images[edges].encode(self.cell_width_type, self.image_protocol);
-                (commit.commit_hash.clone(), image)
-            })
-            .collect()
     }
 
     pub fn load_encoded_image(&mut self, commit_hash: &CommitHash) {
@@ -210,42 +183,6 @@ fn build_single_graph_row_image(
         drawing_pixels,
         graph_style,
     )
-}
-
-pub fn build_graph_image(
-    graph: &Graph<'_>,
-    image_params: &ImageParams,
-    drawing_pixels: &DrawingPixels,
-    graph_style: GraphStyle,
-) -> GraphImage {
-    let graph_row_sources: FxHashSet<(usize, &Vec<Edge>)> = graph
-        .commits
-        .iter()
-        .map(|commit| {
-            let (pos_x, pos_y) = graph.commit_pos_map[&commit.commit_hash];
-            let edges = &graph.edges[pos_y];
-            (pos_x, edges)
-        })
-        .collect();
-
-    let cell_count = graph.max_pos_x + 1;
-
-    let images = graph_row_sources
-        .into_par_iter()
-        .map(|(pos_x, edges)| {
-            let graph_row_image = calc_graph_row_image(
-                pos_x,
-                cell_count,
-                edges,
-                image_params,
-                drawing_pixels,
-                graph_style,
-            );
-            (edges.clone(), graph_row_image)
-        })
-        .collect();
-
-    GraphImage { images }
 }
 
 type Pixels = FxHashSet<(i32, i32)>;
@@ -604,7 +541,7 @@ fn calc_corner_edge_drawing_pixels(
     pixels
 }
 
-fn calc_graph_row_image(
+pub fn calc_graph_row_image(
     commit_pos_x: usize,
     cell_count: usize,
     edges: &[Edge],
