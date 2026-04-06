@@ -40,7 +40,6 @@ impl<'a> GraphImageManager<'a> {
         cell_width_type: CellWidthType,
         graph_style: GraphStyle,
         image_protocol: ImageProtocol,
-        _preload: bool,
     ) -> Self {
         let image_params = ImageParams::new(graph_color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
