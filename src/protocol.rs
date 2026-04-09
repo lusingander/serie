@@ -10,7 +10,9 @@ pub fn auto_detect() -> ImageProtocol {
         return ImageProtocol::Kitty;
     }
     // https://ghostty.org/docs/help/terminfo
-    if env::var("TERM").is_ok_and(|t| t == "xterm-ghostty") {
+    if env::var("TERM").is_ok_and(|t| t == "xterm-ghostty")
+        || env::var("GHOSTTY_RESOURCES_DIR").is_ok()
+    {
         return ImageProtocol::Kitty;
     }
     ImageProtocol::Iterm2
