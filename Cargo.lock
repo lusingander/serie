@@ -2064,7 +2064,7 @@ dependencies = [
 
 [[package]]
 name = "serie"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "ansi-to-tui",
  "arboard",
