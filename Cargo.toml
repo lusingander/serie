@@ -32,7 +32,7 @@ semver = "1.0.28"
 serde = { version = "1.0.228", features = ["derive"] }
 smart-default = "0.7.1"
 toml = "1.1.2"
-tui-input = "0.15.0"
+tui-input = "0.15.1"
 tui-tree-widget = "0.24.0"
 umbra = "0.4.0"
 
