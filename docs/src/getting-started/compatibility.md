@@ -31,3 +31,4 @@ The terminals on which each has been confirmed to work are listed below.
 
 - Sixel graphics is not supported.
 - Terminal multiplexers (screen, tmux, Zellij, etc.) are not supported.
+- Windows is not officially supported. Please refer to [the related issue](https://github.com/lusingander/serie/issues/147#issuecomment-4192875627).
