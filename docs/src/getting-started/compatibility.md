@@ -15,6 +15,7 @@ The terminals on which each has been confirmed to work are listed below.
 | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | [iTerm2](https://iterm2.com)                                                        | But slower than other terminals                                                                                                              |
 | [WezTerm](https://wezfurlong.org/wezterm/)                                          |                                                                                                                                              |
+| [Rio](https://rioterm.com)                                                          |                                                                                                                                              |
 | [VSCode integrated terminal](https://code.visualstudio.com/docs/terminal/basics) \* | Requires the [`terminal.integrated.enableImages` setting](https://code.visualstudio.com/docs/terminal/advanced#_image-support) to be enabled |
 
 \*Not only the VSCode integrated terminal, but any terminal emulator using [xterm.js](https://xtermjs.org) may basically work in the same way as long as [image display feature is enabled](https://github.com/xtermjs/xterm.js/tree/master/addons/addon-image).
@@ -30,3 +31,4 @@ The terminals on which each has been confirmed to work are listed below.
 
 - Sixel graphics is not supported.
 - Terminal multiplexers (screen, tmux, Zellij, etc.) are not supported.
+- Windows is not officially supported. Please refer to [the related issue](https://github.com/lusingander/serie/issues/147#issuecomment-4192875627).
