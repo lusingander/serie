@@ -293,8 +293,7 @@ impl App<'_> {
 
     fn prepare_render(&mut self, terminal: &mut DefaultTerminal) -> Result<(), std::io::Error> {
         let area: Rect = terminal.size()?.into();
-        let [view_area, _status_line_area] =
-            Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(area);
+        let [view_area, _] = split_app_areas(area);
         self.update_state(view_area);
         self.view.update_layout(view_area);
         self.view.prepare_graph_uploads();
@@ -325,8 +324,7 @@ impl App<'_> {
             .bg(self.ctx.color_theme.bg);
         f.render_widget(base, f.area());
 
-        let [view_area, status_line_area] =
-            Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(f.area());
+        let [view_area, status_line_area] = split_app_areas(f.area());
 
         self.update_state(view_area);
 
@@ -396,6 +394,10 @@ impl App<'_> {
             }
         }
     }
+}
+
+fn split_app_areas(area: Rect) -> [Rect; 2] {
+    Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(area)
 }
 
 impl App<'_> {

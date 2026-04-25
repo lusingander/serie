@@ -97,12 +97,7 @@ impl<'a> RefsView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        let graph_width = self.as_list_state().graph_area_cell_width() + 1; // graph area + marker
-        let refs_width =
-            (area.width.saturating_sub(graph_width)).min(self.ctx.ui_config.refs.width);
-
-        let [list_area, refs_area] =
-            Layout::horizontal([Constraint::Min(0), Constraint::Length(refs_width)]).areas(area);
+        let [list_area, refs_area] = self.split_areas(area);
 
         let commit_list = CommitList::new(self.ctx.clone());
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
@@ -112,11 +107,7 @@ impl<'a> RefsView<'a> {
     }
 
     pub fn update_layout(&mut self, area: Rect) {
-        let graph_width = self.as_list_state().graph_area_cell_width() + 1; // graph area + marker
-        let refs_width =
-            (area.width.saturating_sub(graph_width)).min(self.ctx.ui_config.refs.width);
-        let [list_area, _refs_area] =
-            Layout::horizontal([Constraint::Min(0), Constraint::Length(refs_width)]).areas(area);
+        let [list_area, _] = self.split_areas(area);
         self.as_mut_list_state()
             .update_height(list_area.height as usize);
     }
@@ -145,6 +136,13 @@ impl<'a> RefsView<'a> {
 
     pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
         self.as_list_state().graph_image_ids_sorted()
+    }
+
+    fn split_areas(&self, area: Rect) -> [Rect; 2] {
+        let graph_width = self.as_list_state().graph_area_cell_width() + 1; // graph area + marker
+        let refs_width =
+            (area.width.saturating_sub(graph_width)).min(self.ctx.ui_config.refs.width);
+        Layout::horizontal([Constraint::Min(0), Constraint::Length(refs_width)]).areas(area)
     }
 
     fn update_commit_list_selected(&mut self) {
