@@ -49,13 +49,11 @@ struct Args {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 pub enum ImageProtocolType {
     Auto,
     Iterm,
     Kitty,
-    #[serde(rename = "kitty-unicode")]
-    #[value(name = "kitty-unicode")]
     KittyUnicode,
 }
 
