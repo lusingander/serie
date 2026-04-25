@@ -1,9 +1,10 @@
-use std::env;
-use std::io::{self, Write};
+use std::{
+    env,
+    io::{self, Write},
+};
 
 use base64::Engine;
-use ratatui::style::Color;
-use ratatui::style::Style;
+use ratatui::style::{Color, Style};
 
 // By default assume the Iterm2 is the best protocol to use for all terminals *unless* an env
 // variable is set that suggests the terminal is probably Kitty.
