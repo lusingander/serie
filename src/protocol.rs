@@ -24,11 +24,42 @@ pub enum ImageProtocol {
     Kitty,
 }
 
+#[derive(Debug, Clone)]
+pub struct PreparedImageCell {
+    symbol: String,
+}
+
+impl PreparedImageCell {
+    pub fn symbol(&self) -> &str {
+        &self.symbol
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PreparedImage {
+    cells: Vec<PreparedImageCell>,
+    cell_width: usize,
+}
+
+impl PreparedImage {
+    pub fn cells(&self) -> &[PreparedImageCell] {
+        &self.cells
+    }
+
+    pub fn cell_width(&self) -> usize {
+        self.cell_width
+    }
+}
+
 impl ImageProtocol {
-    pub fn encode(&self, bytes: &[u8], cell_width: usize) -> String {
-        match self {
+    pub fn prepare_image(&self, bytes: &[u8], cell_width: usize) -> PreparedImage {
+        let symbol = match self {
             ImageProtocol::Iterm2 => iterm2_encode(bytes, cell_width, 1),
             ImageProtocol::Kitty => kitty_encode(bytes, cell_width, 1),
+        };
+        PreparedImage {
+            cells: vec![PreparedImageCell { symbol }],
+            cell_width,
         }
     }
 

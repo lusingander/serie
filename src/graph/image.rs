@@ -12,7 +12,7 @@ use crate::{
         geometry::{bounding_box_u32, Point},
         Edge, EdgeType, Graph,
     },
-    protocol::ImageProtocol,
+    protocol::{ImageProtocol, PreparedImage},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,7 +23,7 @@ pub enum GraphStyle {
 
 #[derive(Debug)]
 pub struct GraphImageManager<'a> {
-    encoded_image_map: FxHashMap<CommitHash, String>,
+    prepared_image_map: FxHashMap<CommitHash, PreparedImage>,
 
     graph: &'a Graph<'a>,
     cell_width_type: CellWidthType,
@@ -45,7 +45,7 @@ impl<'a> GraphImageManager<'a> {
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         GraphImageManager {
-            encoded_image_map: FxHashMap::default(),
+            prepared_image_map: FxHashMap::default(),
             graph,
             cell_width_type,
             graph_style,
@@ -55,12 +55,12 @@ impl<'a> GraphImageManager<'a> {
         }
     }
 
-    pub fn encoded_image(&self, commit_hash: &CommitHash) -> &str {
-        self.encoded_image_map.get(commit_hash).unwrap()
+    pub fn prepared_image(&self, commit_hash: &CommitHash) -> &PreparedImage {
+        self.prepared_image_map.get(commit_hash).unwrap()
     }
 
-    pub fn load_encoded_image(&mut self, commit_hash: &CommitHash) {
-        if self.encoded_image_map.contains_key(commit_hash) {
+    pub fn load_prepared_image(&mut self, commit_hash: &CommitHash) {
+        if self.prepared_image_map.contains_key(commit_hash) {
             return;
         }
         let graph_row_image = build_single_graph_row_image(
@@ -70,8 +70,8 @@ impl<'a> GraphImageManager<'a> {
             self.graph_style,
             commit_hash,
         );
-        let image = graph_row_image.encode(self.cell_width_type, self.image_protocol);
-        self.encoded_image_map.insert(commit_hash.clone(), image);
+        let image = graph_row_image.prepare(self.cell_width_type, self.image_protocol);
+        self.prepared_image_map.insert(commit_hash.clone(), image);
     }
 }
 
@@ -97,12 +97,16 @@ impl Debug for GraphRowImage {
 }
 
 impl GraphRowImage {
-    fn encode(&self, cell_width_type: CellWidthType, image_protocol: ImageProtocol) -> String {
+    fn prepare(
+        &self,
+        cell_width_type: CellWidthType,
+        image_protocol: ImageProtocol,
+    ) -> PreparedImage {
         let image_cell_width = match cell_width_type {
             CellWidthType::Double => self.cell_count * 2,
             CellWidthType::Single => self.cell_count,
         };
-        image_protocol.encode(&self.bytes, image_cell_width)
+        image_protocol.prepare_image(&self.bytes, image_cell_width)
     }
 }
 

@@ -20,6 +20,7 @@ use crate::{
     config::UserListColumnType,
     git::{Commit, CommitHash, Head, Ref},
     graph::GraphImageManager,
+    protocol::PreparedImage,
 };
 
 static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(|| SkimMatcherV2::default().respect_case());
@@ -647,9 +648,9 @@ impl<'a> CommitListState<'a> {
         }
     }
 
-    fn encoded_image(&self, commit_info: &'a CommitInfo) -> &str {
+    fn prepared_image(&self, commit_info: &'a CommitInfo) -> &PreparedImage {
         self.graph_image_manager
-            .encoded_image(&commit_info.commit.commit_hash)
+            .prepared_image(&commit_info.commit.commit_hash)
     }
 }
 
@@ -731,7 +732,7 @@ impl CommitList<'_> {
             .for_each(|commit_info| {
                 state
                     .graph_image_manager
-                    .load_encoded_image(&commit_info.commit.commit_hash);
+                    .load_prepared_image(&commit_info.commit.commit_hash);
             });
     }
 
@@ -741,11 +742,12 @@ impl CommitList<'_> {
         }
         self.rendering_commit_info_iter(state)
             .for_each(|(i, commit_info)| {
+                let prepared_image = state.prepared_image(commit_info);
                 buf[(area.left(), area.top() + i as u16)]
-                    .set_symbol(state.encoded_image(commit_info));
+                    .set_symbol(prepared_image.cells()[0].symbol());
 
                 // width - 1 for right pad
-                for w in 1..area.width - 1 {
+                for w in 1..prepared_image.cell_width() as u16 {
                     buf[(area.left() + w, area.top() + i as u16)].set_skip(true);
                 }
             });
