@@ -203,6 +203,10 @@ impl<'a> ListView<'a> {
         self.as_mut_list_state().drain_pending_graph_uploads()
     }
 
+    pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
+        self.as_list_state().graph_image_ids_sorted()
+    }
+
     fn update_search_query(&self) {
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
             let list_state = self.as_list_state();

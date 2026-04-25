@@ -262,6 +262,17 @@ impl<'a> CommitListState<'a> {
         self.graph_image_manager.drain_pending_uploads()
     }
 
+    pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
+        let mut image_ids: Vec<u32> = self
+            .graph_image_manager
+            .image_ids()
+            .iter()
+            .copied()
+            .collect();
+        image_ids.sort_unstable();
+        image_ids
+    }
+
     pub fn select_next(&mut self) {
         if self.selected < (self.total - 1).min(self.height - 1) {
             self.selected += 1;

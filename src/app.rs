@@ -219,6 +219,7 @@ impl App<'_> {
                     let _ = (w, h);
                 }
                 AppEvent::Quit => {
+                    self.cleanup_graph_images()?;
                     return Ok(Ret::Quit);
                 }
                 AppEvent::OpenDetail => {
@@ -264,6 +265,7 @@ impl App<'_> {
                     self.copy_to_clipboard(name, value);
                 }
                 AppEvent::Refresh(context) => {
+                    self.cleanup_graph_images()?;
                     let request = RefreshRequest { context };
                     return Ok(Ret::Refresh(request));
                 }
@@ -310,6 +312,11 @@ impl App<'_> {
             stdout.write_all(upload.as_bytes())?;
         }
         stdout.flush()
+    }
+
+    fn cleanup_graph_images(&self) -> Result<(), std::io::Error> {
+        let image_ids = self.view.graph_image_ids_sorted();
+        self.ctx.image_protocol.delete_images(&image_ids)
     }
 
     fn render(&mut self, f: &mut Frame) {

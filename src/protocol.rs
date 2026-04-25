@@ -1,4 +1,5 @@
 use std::env;
+use std::io::{self, Write};
 
 use base64::Engine;
 use ratatui::style::Color;
@@ -111,6 +112,13 @@ impl ImageProtocol {
             ImageProtocol::Iterm2 => {}
             ImageProtocol::Kitty => kitty_clear(),
             ImageProtocol::KittyUnicode => {}
+        }
+    }
+
+    pub fn delete_images(&self, image_ids: &[u32]) -> Result<(), std::io::Error> {
+        match self {
+            ImageProtocol::Iterm2 | ImageProtocol::Kitty => Ok(()),
+            ImageProtocol::KittyUnicode => kitty_unicode_delete_images(image_ids),
         }
     }
 }
@@ -537,4 +545,16 @@ fn kitty_clear_line(y: u16) {
 
 fn kitty_clear() {
     print!("\x1b_Ga=d,d=A;\x1b\\");
+}
+
+fn kitty_unicode_delete_images(image_ids: &[u32]) -> Result<(), io::Error> {
+    if image_ids.is_empty() {
+        return Ok(());
+    }
+
+    let mut stdout = io::stdout().lock();
+    for image_id in image_ids {
+        write!(stdout, "\x1b_Ga=d,d=I,i={image_id}\x1b\\")?;
+    }
+    stdout.flush()
 }

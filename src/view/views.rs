@@ -80,6 +80,17 @@ impl<'a> View<'a> {
         }
     }
 
+    pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
+        match self {
+            View::Default => Vec::new(),
+            View::List(view) => view.graph_image_ids_sorted(),
+            View::Detail(view) => view.graph_image_ids_sorted(),
+            View::UserCommand(view) => view.graph_image_ids_sorted(),
+            View::Refs(view) => view.graph_image_ids_sorted(),
+            View::Help(view) => view.graph_image_ids_sorted(),
+        }
+    }
+
     pub fn of_list(
         commit_list_state: CommitListState<'a>,
         ctx: Rc<AppContext>,

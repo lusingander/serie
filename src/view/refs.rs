@@ -143,6 +143,10 @@ impl<'a> RefsView<'a> {
         self.as_mut_list_state().drain_pending_graph_uploads()
     }
 
+    pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
+        self.as_list_state().graph_image_ids_sorted()
+    }
+
     fn update_commit_list_selected(&mut self) {
         if let Some(selected) = self.ref_list_state.selected_ref_name() {
             self.as_mut_list_state().select_ref(&selected)
