@@ -116,14 +116,18 @@ These image protocols are supported:
 
 - [Inline Images Protocol (iTerm2)](https://iterm2.com/documentation-images.html)
 - [Terminal graphics protocol (kitty)](https://sw.kovidgoyal.net/kitty/graphics-protocol/)
-  - Supports both the existing graphics protocol mode and [the Unicode placeholder](https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders) mode.
+  - Supports both the existing graphics protocol mode and the [Unicode placeholder](https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders) mode.
 
 For more information, see [Compatibility](https://lusingander.github.io/serie/getting-started/compatibility.html).
+
+### Partially supported environments
+
+- tmux is supported only when using the kitty Unicode placeholder protocol.
 
 ### Unsupported environments
 
 - Sixel graphics is not supported.
-- Terminal multiplexers (screen, tmux, Zellij, etc.) are not supported.
+- Other terminal multiplexers (screen, Zellij, etc.) other than those listed in [Partially supported environments](#partially-supported-environments) are not supported.
 - Windows is not officially supported. Please refer to [the related issue](https://github.com/lusingander/serie/issues/147#issuecomment-4192875627).
 
 ## Screenshots

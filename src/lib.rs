@@ -63,7 +63,9 @@ impl From<Option<ImageProtocolType>> for protocol::ImageProtocol {
             Some(ImageProtocolType::Auto) => protocol::auto_detect(),
             Some(ImageProtocolType::Iterm) => protocol::ImageProtocol::Iterm2,
             Some(ImageProtocolType::Kitty) => protocol::ImageProtocol::Kitty,
-            Some(ImageProtocolType::KittyUnicode) => protocol::ImageProtocol::KittyUnicode,
+            Some(ImageProtocolType::KittyUnicode) => protocol::ImageProtocol::KittyUnicode {
+                tmux: protocol::detect_tmux(),
+            },
             None => protocol::auto_detect(),
         }
     }

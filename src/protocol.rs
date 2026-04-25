@@ -9,24 +9,38 @@ use ratatui::style::{Color, Style};
 // By default assume the Iterm2 is the best protocol to use for all terminals *unless* an env
 // variable is set that suggests the terminal is probably Kitty.
 pub fn auto_detect() -> ImageProtocol {
+    if detect_kitty_graphics_protocol() {
+        if detect_tmux() {
+            ImageProtocol::KittyUnicode { tmux: true }
+        } else {
+            ImageProtocol::Kitty
+        }
+    } else {
+        ImageProtocol::Iterm2
+    }
+}
+
+fn detect_kitty_graphics_protocol() -> bool {
+    // kitty
     // https://sw.kovidgoyal.net/kitty/glossary/#envvar-KITTY_WINDOW_ID
-    if env::var("KITTY_WINDOW_ID").is_ok() {
-        return ImageProtocol::Kitty;
-    }
+    env::var("KITTY_WINDOW_ID").is_ok()
+    // ghostty
     // https://ghostty.org/docs/help/terminfo
-    if env::var("TERM").is_ok_and(|t| t == "xterm-ghostty")
-        || env::var("GHOSTTY_RESOURCES_DIR").is_ok()
-    {
-        return ImageProtocol::Kitty;
-    }
-    ImageProtocol::Iterm2
+    || env::var("TERM").ok().is_some_and(|t| t == "xterm-ghostty")
+    || env::var("GHOSTTY_RESOURCES_DIR").is_ok()
+}
+
+pub fn detect_tmux() -> bool {
+    env::var("TMUX").is_ok_and(|tmux| !tmux.is_empty())
+        || env::var("TERM").is_ok_and(|term| term.starts_with("tmux"))
+        || env::var("TERM_PROGRAM").is_ok_and(|term_program| term_program == "tmux")
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum ImageProtocol {
     Iterm2,
     Kitty,
-    KittyUnicode,
+    KittyUnicode { tmux: bool },
 }
 
 #[derive(Debug, Clone)]
@@ -76,8 +90,8 @@ impl ImageProtocol {
         let symbol = match self {
             ImageProtocol::Iterm2 => iterm2_encode(bytes, cell_width, 1),
             ImageProtocol::Kitty => kitty_encode(bytes, cell_width, 1),
-            ImageProtocol::KittyUnicode => {
-                return kitty_unicode_prepare(bytes, cell_width, image_id);
+            ImageProtocol::KittyUnicode { tmux } => {
+                return kitty_unicode_prepare(bytes, cell_width, image_id, *tmux);
             }
         };
         let mut cells = Vec::with_capacity(cell_width);
@@ -104,7 +118,7 @@ impl ImageProtocol {
         match self {
             ImageProtocol::Iterm2 => {}
             ImageProtocol::Kitty => kitty_clear_line(y),
-            ImageProtocol::KittyUnicode => {}
+            ImageProtocol::KittyUnicode { .. } => {}
         }
     }
 
@@ -112,14 +126,14 @@ impl ImageProtocol {
         match self {
             ImageProtocol::Iterm2 => {}
             ImageProtocol::Kitty => kitty_clear(),
-            ImageProtocol::KittyUnicode => {}
+            ImageProtocol::KittyUnicode { .. } => {}
         }
     }
 
     pub fn delete_images(&self, image_ids: &[u32]) -> Result<(), std::io::Error> {
         match self {
             ImageProtocol::Iterm2 | ImageProtocol::Kitty => Ok(()),
-            ImageProtocol::KittyUnicode => kitty_unicode_delete_images(image_ids),
+            ImageProtocol::KittyUnicode { tmux } => kitty_unicode_delete_images(image_ids, *tmux),
         }
     }
 }
@@ -468,9 +482,14 @@ fn kitty_encode(bytes: &[u8], cell_width: usize, cell_height: usize) -> String {
     s
 }
 
-fn kitty_unicode_prepare(bytes: &[u8], cell_width: usize, image_id: u32) -> PreparedImage {
+fn kitty_unicode_prepare(
+    bytes: &[u8],
+    cell_width: usize,
+    image_id: u32,
+    tmux: bool,
+) -> PreparedImage {
     let mut cells = Vec::with_capacity(cell_width);
-    let upload_symbol = kitty_unicode_encode(bytes, cell_width, 1, image_id);
+    let upload_symbol = kitty_unicode_encode(bytes, cell_width, 1, image_id, tmux);
     let foreground = Color::Rgb(
         ((image_id >> 16) & 0xff) as u8,
         ((image_id >> 8) & 0xff) as u8,
@@ -507,6 +526,7 @@ fn kitty_unicode_encode(
     cell_width: usize,
     cell_height: usize,
     image_id: u32,
+    tmux: bool,
 ) -> String {
     let base64_str = to_base64_str(bytes);
     let chunk_size = 4096;
@@ -516,8 +536,12 @@ fn kitty_unicode_encode(
     let chunks = base64_str.as_bytes().chunks(chunk_size);
     let total_chunks = chunks.len();
 
+    let (start, esc, end) = passthrough_escapes(tmux);
+
     for (i, chunk) in chunks.enumerate() {
-        s.push_str("\x1b_G");
+        s.push_str(start);
+        s.push_str(esc);
+        s.push_str("_G");
         if i == 0 {
             s.push_str(&format!(
                 "a=T,f=100,U=1,q=2,i={image_id},c={cell_width},r={cell_height},"
@@ -529,7 +553,9 @@ fn kitty_unicode_encode(
             s.push_str("m=0;");
         }
         s.push_str(std::str::from_utf8(chunk).unwrap());
-        s.push_str("\x1b\\");
+        s.push_str(esc);
+        s.push('\\');
+        s.push_str(end);
     }
 
     s
@@ -548,14 +574,31 @@ fn kitty_clear() {
     print!("\x1b_Ga=d,d=A;\x1b\\");
 }
 
-fn kitty_unicode_delete_images(image_ids: &[u32]) -> Result<(), io::Error> {
+fn kitty_unicode_delete_images(image_ids: &[u32], tmux: bool) -> Result<(), io::Error> {
     if image_ids.is_empty() {
         return Ok(());
     }
 
     let mut stdout = io::stdout().lock();
     for image_id in image_ids {
-        write!(stdout, "\x1b_Ga=d,d=I,i={image_id}\x1b\\")?;
+        write!(
+            stdout,
+            "{}",
+            kitty_unicode_delete_image_encode(*image_id, tmux)
+        )?;
     }
     stdout.flush()
+}
+
+fn kitty_unicode_delete_image_encode(image_id: u32, tmux: bool) -> String {
+    let (start, esc, end) = passthrough_escapes(tmux);
+    format!("{start}{esc}_Ga=d,d=I,i={image_id}{esc}\\{end}")
+}
+
+fn passthrough_escapes(tmux: bool) -> (&'static str, &'static str, &'static str) {
+    if tmux {
+        ("\x1bPtmux;", "\x1b\x1b", "\x1b\\")
+    } else {
+        ("", "\x1b", "")
+    }
 }

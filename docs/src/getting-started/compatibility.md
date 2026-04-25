@@ -30,8 +30,13 @@ The terminals on which each has been confirmed to work are listed below.
 
 Rendering using Unicode Placeholder is available by explicitly specifying `kitty-unicode` as `protocol` option or config.
 
-## Unsupported environments
+### Partially supported environments
+
+- tmux is supported only when using the kitty Unicode placeholder protocol.
+  - Requires `set -g allow-passthrough on` in tmux.conf (version 3.2+).
+
+### Unsupported environments
 
 - Sixel graphics is not supported.
-- Terminal multiplexers (screen, tmux, Zellij, etc.) are not supported.
+- Other terminal multiplexers (screen, Zellij, etc.) other than those listed in [Partially supported environments](#partially-supported-environments) are not supported.
 - Windows is not officially supported. Please refer to [the related issue](https://github.com/lusingander/serie/issues/147#issuecomment-4192875627).
