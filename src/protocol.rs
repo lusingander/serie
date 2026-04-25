@@ -1,6 +1,8 @@
 use std::env;
 
 use base64::Engine;
+use once_cell::sync::Lazy;
+use ratatui::style::Color;
 use ratatui::style::Style;
 
 // By default assume the Iterm2 is the best protocol to use for all terminals *unless* an env
@@ -23,6 +25,7 @@ pub fn auto_detect() -> ImageProtocol {
 pub enum ImageProtocol {
     Iterm2,
     Kitty,
+    KittyUnicode,
 }
 
 #[derive(Debug, Clone)]
@@ -63,10 +66,13 @@ impl PreparedImage {
 }
 
 impl ImageProtocol {
-    pub fn prepare_image(&self, bytes: &[u8], cell_width: usize) -> PreparedImage {
+    pub fn prepare_image(&self, bytes: &[u8], cell_width: usize, image_id: u32) -> PreparedImage {
         let symbol = match self {
             ImageProtocol::Iterm2 => iterm2_encode(bytes, cell_width, 1),
             ImageProtocol::Kitty => kitty_encode(bytes, cell_width, 1),
+            ImageProtocol::KittyUnicode => {
+                return kitty_unicode_prepare(bytes, cell_width, image_id);
+            }
         };
         let mut cells = Vec::with_capacity(cell_width);
         cells.push(PreparedImageCell {
@@ -88,6 +94,7 @@ impl ImageProtocol {
         match self {
             ImageProtocol::Iterm2 => {}
             ImageProtocol::Kitty => kitty_clear_line(y),
+            ImageProtocol::KittyUnicode => {}
         }
     }
 
@@ -95,9 +102,22 @@ impl ImageProtocol {
         match self {
             ImageProtocol::Iterm2 => {}
             ImageProtocol::Kitty => kitty_clear(),
+            ImageProtocol::KittyUnicode => {}
         }
     }
 }
+
+static ROW_COLUMN_DIACRITICS: Lazy<Vec<char>> = Lazy::new(|| {
+    include_str!("../assets/kitty/rowcolumn-diacritics.txt")
+        .lines()
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(|line| line.split(';').next().unwrap())
+        .map(|hex| u32::from_str_radix(hex, 16).unwrap())
+        .map(|codepoint| char::from_u32(codepoint).unwrap())
+        .collect()
+});
+
+const KITTY_PLACEHOLDER: char = '\u{10EEEE}';
 
 fn to_base64_str(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
@@ -140,6 +160,77 @@ fn kitty_encode(bytes: &[u8], cell_width: usize, cell_height: usize) -> String {
     }
 
     s
+}
+
+fn kitty_unicode_prepare(bytes: &[u8], cell_width: usize, image_id: u32) -> PreparedImage {
+    let mut cells = Vec::with_capacity(cell_width);
+    let upload_symbol = kitty_unicode_encode(bytes, cell_width, 1, image_id);
+    let foreground = Color::Rgb(
+        ((image_id >> 16) & 0xff) as u8,
+        ((image_id >> 8) & 0xff) as u8,
+        (image_id & 0xff) as u8,
+    );
+    let image_id_msb = ((image_id >> 24) & 0xff) as usize;
+
+    for column in 0..cell_width {
+        let symbol = [
+            KITTY_PLACEHOLDER,
+            row_column_diacritic(0),
+            row_column_diacritic(column),
+            row_column_diacritic(image_id_msb),
+        ]
+        .into_iter()
+        .collect();
+
+        cells.push(PreparedImageCell {
+            symbol,
+            style: Style::default().fg(foreground),
+            skip: false,
+        });
+    }
+
+    if let Some(first) = cells.first_mut() {
+        first.symbol = format!("{upload_symbol}{}", first.symbol);
+    }
+
+    PreparedImage { cells, cell_width }
+}
+
+fn kitty_unicode_encode(
+    bytes: &[u8],
+    cell_width: usize,
+    cell_height: usize,
+    image_id: u32,
+) -> String {
+    let base64_str = to_base64_str(bytes);
+    let chunk_size = 4096;
+
+    let mut s = String::new();
+
+    let chunks = base64_str.as_bytes().chunks(chunk_size);
+    let total_chunks = chunks.len();
+
+    for (i, chunk) in chunks.enumerate() {
+        s.push_str("\x1b_G");
+        if i == 0 {
+            s.push_str(&format!(
+                "a=T,f=100,U=1,q=2,i={image_id},c={cell_width},r={cell_height},"
+            ));
+        }
+        if i < total_chunks - 1 {
+            s.push_str("m=1;");
+        } else {
+            s.push_str("m=0;");
+        }
+        s.push_str(std::str::from_utf8(chunk).unwrap());
+        s.push_str("\x1b\\");
+    }
+
+    s
+}
+
+fn row_column_diacritic(index: usize) -> char {
+    ROW_COLUMN_DIACRITICS[index]
 }
 
 fn kitty_clear_line(y: u16) {
