@@ -116,6 +116,7 @@ These image protocols are supported:
 
 - [Inline Images Protocol (iTerm2)](https://iterm2.com/documentation-images.html)
 - [Terminal graphics protocol (kitty)](https://sw.kovidgoyal.net/kitty/graphics-protocol/)
+  - Supports both the existing graphics protocol mode and [the Unicode placeholder](https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders) mode.
 
 For more information, see [Compatibility](https://lusingander.github.io/serie/getting-started/compatibility.html).
 
