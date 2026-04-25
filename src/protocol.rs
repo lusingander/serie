@@ -52,6 +52,7 @@ impl PreparedImageCell {
 pub struct PreparedImage {
     cells: Vec<PreparedImageCell>,
     cell_width: usize,
+    upload_data: Option<String>,
 }
 
 impl PreparedImage {
@@ -61,6 +62,10 @@ impl PreparedImage {
 
     pub fn cell_width(&self) -> usize {
         self.cell_width
+    }
+
+    pub fn take_upload_data(&mut self) -> Option<String> {
+        self.upload_data.take()
     }
 }
 
@@ -86,7 +91,11 @@ impl ImageProtocol {
                 skip: true,
             });
         }
-        PreparedImage { cells, cell_width }
+        PreparedImage {
+            cells,
+            cell_width,
+            upload_data: None,
+        }
     }
 
     pub fn clear_line(&self, y: u16) {
@@ -477,11 +486,11 @@ fn kitty_unicode_prepare(bytes: &[u8], cell_width: usize, image_id: u32) -> Prep
         });
     }
 
-    if let Some(first) = cells.first_mut() {
-        first.symbol = format!("{upload_symbol}{}", first.symbol);
+    PreparedImage {
+        cells,
+        cell_width,
+        upload_data: Some(upload_symbol),
     }
-
-    PreparedImage { cells, cell_width }
 }
 
 fn kitty_unicode_encode(

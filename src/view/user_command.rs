@@ -148,6 +148,19 @@ impl<'a> UserCommandView<'a> {
             &mut self.commit_user_command_state,
         );
     }
+
+    pub fn update_layout(&mut self, area: Rect) {
+        let user_command_height = (area.height - 1).min(self.ctx.ui_config.user_command.height);
+        let [list_area, _user_command_area] =
+            Layout::vertical([Constraint::Min(0), Constraint::Length(user_command_height)])
+                .areas(area);
+        self.as_mut_list_state()
+            .update_height(list_area.height as usize);
+    }
+
+    pub fn prepare_graph_uploads(&mut self) {
+        self.as_mut_list_state().ensure_visible_graph_uploaded();
+    }
 }
 
 impl<'a> UserCommandView<'a> {
@@ -161,6 +174,10 @@ impl<'a> UserCommandView<'a> {
 
     pub fn as_list_state(&self) -> &CommitListState<'a> {
         self.commit_list_state.as_ref().unwrap()
+    }
+
+    pub fn drain_pending_graph_uploads(&mut self) -> Vec<String> {
+        self.as_mut_list_state().drain_pending_graph_uploads()
     }
 
     pub fn select_older_commit(

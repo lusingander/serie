@@ -134,6 +134,18 @@ impl<'a> DetailView<'a> {
             CommitDetail::new(&self.commit, &self.changes, &self.refs, self.ctx.clone());
         f.render_stateful_widget(commit_detail, detail_area, &mut self.commit_detail_state);
     }
+
+    pub fn update_layout(&mut self, area: Rect) {
+        let detail_height = (area.height - 1).min(self.ctx.ui_config.detail.height);
+        let [list_area, _detail_area] =
+            Layout::vertical([Constraint::Min(0), Constraint::Length(detail_height)]).areas(area);
+        self.as_mut_list_state()
+            .update_height(list_area.height as usize);
+    }
+
+    pub fn prepare_graph_uploads(&mut self) {
+        self.as_mut_list_state().ensure_visible_graph_uploaded();
+    }
 }
 
 impl<'a> DetailView<'a> {
@@ -147,6 +159,10 @@ impl<'a> DetailView<'a> {
 
     pub fn as_list_state(&self) -> &CommitListState<'a> {
         self.commit_list_state.as_ref().unwrap()
+    }
+
+    pub fn drain_pending_graph_uploads(&mut self) -> Vec<String> {
+        self.as_mut_list_state().drain_pending_graph_uploads()
     }
 
     pub fn select_older_commit(&mut self, repository: &Repository) {

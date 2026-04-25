@@ -28,6 +28,7 @@ pub enum GraphStyle {
 pub struct GraphImageManager<'a> {
     prepared_image_map: FxHashMap<CommitHash, PreparedImage>,
     image_ids: FxHashSet<u32>,
+    pending_uploads: Vec<String>,
 
     graph: &'a Graph<'a>,
     cell_width_type: CellWidthType,
@@ -52,6 +53,7 @@ impl<'a> GraphImageManager<'a> {
         GraphImageManager {
             prepared_image_map: FxHashMap::default(),
             image_ids: FxHashSet::default(),
+            pending_uploads: Vec::default(),
             graph,
             cell_width_type,
             graph_style,
@@ -70,7 +72,11 @@ impl<'a> GraphImageManager<'a> {
         &self.image_ids
     }
 
-    pub fn load_prepared_image(&mut self, commit_hash: &CommitHash) {
+    pub fn drain_pending_uploads(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.pending_uploads)
+    }
+
+    pub fn ensure_uploaded(&mut self, commit_hash: &CommitHash) {
         if self.prepared_image_map.contains_key(commit_hash) {
             return;
         }
@@ -82,7 +88,11 @@ impl<'a> GraphImageManager<'a> {
             self.graph_style,
             commit_hash,
         );
-        let image = graph_row_image.prepare(self.cell_width_type, self.image_protocol, image_id);
+        let mut image =
+            graph_row_image.prepare(self.cell_width_type, self.image_protocol, image_id);
+        if let Some(upload_data) = image.take_upload_data() {
+            self.pending_uploads.push(upload_data);
+        }
         self.prepared_image_map.insert(commit_hash.clone(), image);
         self.image_ids.insert(image_id);
     }

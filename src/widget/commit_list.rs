@@ -232,6 +232,36 @@ impl<'a> CommitListState<'a> {
         self.graph_cell_width + 1 // right pad
     }
 
+    pub fn update_height(&mut self, height: usize) {
+        self.height = height;
+
+        if self.total > self.height && self.total - self.height < self.offset {
+            let diff = self.offset - (self.total - self.height);
+            self.selected += diff;
+            self.offset -= diff;
+        }
+        if self.selected >= self.height {
+            let diff = self.selected - self.height + 1;
+            self.selected -= diff;
+            self.offset += diff;
+        }
+    }
+
+    pub fn ensure_visible_graph_uploaded(&mut self) {
+        self.commits
+            .iter()
+            .skip(self.offset)
+            .take(self.height)
+            .for_each(|commit_info| {
+                self.graph_image_manager
+                    .ensure_uploaded(&commit_info.commit.commit_hash);
+            });
+    }
+
+    pub fn drain_pending_graph_uploads(&mut self) -> Vec<String> {
+        self.graph_image_manager.drain_pending_uploads()
+    }
+
     pub fn select_next(&mut self) {
         if self.selected < (self.total - 1).min(self.height - 1) {
             self.selected += 1;
@@ -711,29 +741,7 @@ impl<'a> StatefulWidget for CommitList<'a> {
 
 impl CommitList<'_> {
     fn update_state(&self, area: Rect, state: &mut CommitListState) {
-        state.height = area.height as usize;
-
-        if state.total > state.height && state.total - state.height < state.offset {
-            let diff = state.offset - (state.total - state.height);
-            state.selected += diff;
-            state.offset -= diff;
-        }
-        if state.selected >= state.height {
-            let diff = state.selected - state.height + 1;
-            state.selected -= diff;
-            state.offset += diff;
-        }
-
-        state
-            .commits
-            .iter()
-            .skip(state.offset)
-            .take(state.height)
-            .for_each(|commit_info| {
-                state
-                    .graph_image_manager
-                    .load_prepared_image(&commit_info.commit.commit_hash);
-            });
+        state.update_height(area.height as usize);
     }
 
     fn render_graph(&self, buf: &mut Buffer, area: Rect, state: &CommitListState) {

@@ -110,6 +110,20 @@ impl<'a> RefsView<'a> {
         let ref_list = RefList::new(&self.refs, self.ctx.clone());
         f.render_stateful_widget(ref_list, refs_area, &mut self.ref_list_state);
     }
+
+    pub fn update_layout(&mut self, area: Rect) {
+        let graph_width = self.as_list_state().graph_area_cell_width() + 1; // graph area + marker
+        let refs_width =
+            (area.width.saturating_sub(graph_width)).min(self.ctx.ui_config.refs.width);
+        let [list_area, _refs_area] =
+            Layout::horizontal([Constraint::Min(0), Constraint::Length(refs_width)]).areas(area);
+        self.as_mut_list_state()
+            .update_height(list_area.height as usize);
+    }
+
+    pub fn prepare_graph_uploads(&mut self) {
+        self.as_mut_list_state().ensure_visible_graph_uploaded();
+    }
 }
 
 impl<'a> RefsView<'a> {
@@ -123,6 +137,10 @@ impl<'a> RefsView<'a> {
 
     fn as_list_state(&self) -> &CommitListState<'a> {
         self.commit_list_state.as_ref().unwrap()
+    }
+
+    pub fn drain_pending_graph_uploads(&mut self) -> Vec<String> {
+        self.as_mut_list_state().drain_pending_graph_uploads()
     }
 
     fn update_commit_list_selected(&mut self) {
