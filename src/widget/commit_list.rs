@@ -20,6 +20,7 @@ use crate::{
     config::UserListColumnType,
     git::{Commit, CommitHash, Head, Ref},
     graph::GraphImageManager,
+    protocol::PreparedImage,
 };
 
 static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(|| SkimMatcherV2::default().respect_case());
@@ -229,6 +230,47 @@ impl<'a> CommitListState<'a> {
 
     pub fn graph_area_cell_width(&self) -> u16 {
         self.graph_cell_width + 1 // right pad
+    }
+
+    pub fn update_height(&mut self, height: usize) {
+        self.height = height;
+
+        if self.total > self.height && self.total - self.height < self.offset {
+            let diff = self.offset - (self.total - self.height);
+            self.selected += diff;
+            self.offset -= diff;
+        }
+        if self.selected >= self.height {
+            let diff = self.selected - self.height + 1;
+            self.selected -= diff;
+            self.offset += diff;
+        }
+    }
+
+    pub fn ensure_visible_graph_uploaded(&mut self) {
+        self.commits
+            .iter()
+            .skip(self.offset)
+            .take(self.height)
+            .for_each(|commit_info| {
+                self.graph_image_manager
+                    .ensure_uploaded(&commit_info.commit.commit_hash);
+            });
+    }
+
+    pub fn drain_pending_graph_uploads(&mut self) -> Vec<String> {
+        self.graph_image_manager.drain_pending_uploads()
+    }
+
+    pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
+        let mut image_ids: Vec<u32> = self
+            .graph_image_manager
+            .image_ids()
+            .iter()
+            .copied()
+            .collect();
+        image_ids.sort_unstable();
+        image_ids
     }
 
     pub fn select_next(&mut self) {
@@ -647,9 +689,9 @@ impl<'a> CommitListState<'a> {
         }
     }
 
-    fn encoded_image(&self, commit_info: &'a CommitInfo) -> &str {
+    fn prepared_image(&self, commit_info: &'a CommitInfo) -> &PreparedImage {
         self.graph_image_manager
-            .encoded_image(&commit_info.commit.commit_hash)
+            .prepared_image(&commit_info.commit.commit_hash)
     }
 }
 
@@ -710,29 +752,7 @@ impl<'a> StatefulWidget for CommitList<'a> {
 
 impl CommitList<'_> {
     fn update_state(&self, area: Rect, state: &mut CommitListState) {
-        state.height = area.height as usize;
-
-        if state.total > state.height && state.total - state.height < state.offset {
-            let diff = state.offset - (state.total - state.height);
-            state.selected += diff;
-            state.offset -= diff;
-        }
-        if state.selected >= state.height {
-            let diff = state.selected - state.height + 1;
-            state.selected -= diff;
-            state.offset += diff;
-        }
-
-        state
-            .commits
-            .iter()
-            .skip(state.offset)
-            .take(state.height)
-            .for_each(|commit_info| {
-                state
-                    .graph_image_manager
-                    .load_encoded_image(&commit_info.commit.commit_hash);
-            });
+        state.update_height(area.height as usize);
     }
 
     fn render_graph(&self, buf: &mut Buffer, area: Rect, state: &CommitListState) {
@@ -741,12 +761,19 @@ impl CommitList<'_> {
         }
         self.rendering_commit_info_iter(state)
             .for_each(|(i, commit_info)| {
-                buf[(area.left(), area.top() + i as u16)]
-                    .set_symbol(state.encoded_image(commit_info));
-
-                // width - 1 for right pad
-                for w in 1..area.width - 1 {
-                    buf[(area.left() + w, area.top() + i as u16)].set_skip(true);
+                let prepared_image = state.prepared_image(commit_info);
+                let max_graph_width = area.width.saturating_sub(1) as usize;
+                let y = area.top() + i as u16;
+                for (x, image_cell) in prepared_image
+                    .cells()
+                    .iter()
+                    .take(max_graph_width)
+                    .enumerate()
+                {
+                    let cell = &mut buf[(area.left() + x as u16, y)];
+                    cell.set_symbol(image_cell.symbol());
+                    cell.set_style(image_cell.style());
+                    cell.set_skip(image_cell.skip());
                 }
             });
     }

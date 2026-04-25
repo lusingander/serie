@@ -132,10 +132,7 @@ impl<'a> UserCommandView<'a> {
     }
 
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        let user_command_height = (area.height - 1).min(self.ctx.ui_config.user_command.height);
-        let [list_area, user_command_area] =
-            Layout::vertical([Constraint::Min(0), Constraint::Length(user_command_height)])
-                .areas(area);
+        let [list_area, user_command_area] = self.split_areas(area);
 
         let commit_list = CommitList::new(self.ctx.clone());
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
@@ -147,6 +144,16 @@ impl<'a> UserCommandView<'a> {
             user_command_area,
             &mut self.commit_user_command_state,
         );
+    }
+
+    pub fn update_layout(&mut self, area: Rect) {
+        let [list_area, _] = self.split_areas(area);
+        self.as_mut_list_state()
+            .update_height(list_area.height as usize);
+    }
+
+    pub fn prepare_graph_uploads(&mut self) {
+        self.as_mut_list_state().ensure_visible_graph_uploaded();
     }
 }
 
@@ -161,6 +168,19 @@ impl<'a> UserCommandView<'a> {
 
     pub fn as_list_state(&self) -> &CommitListState<'a> {
         self.commit_list_state.as_ref().unwrap()
+    }
+
+    pub fn drain_pending_graph_uploads(&mut self) -> Vec<String> {
+        self.as_mut_list_state().drain_pending_graph_uploads()
+    }
+
+    pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
+        self.as_list_state().graph_image_ids_sorted()
+    }
+
+    fn split_areas(&self, area: Rect) -> [Rect; 2] {
+        let user_command_height = (area.height - 1).min(self.ctx.ui_config.user_command.height);
+        Layout::vertical([Constraint::Min(0), Constraint::Length(user_command_height)]).areas(area)
     }
 
     pub fn select_older_commit(

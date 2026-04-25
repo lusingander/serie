@@ -47,6 +47,50 @@ impl<'a> View<'a> {
         }
     }
 
+    pub fn update_layout(&mut self, area: Rect) {
+        match self {
+            View::Default => {}
+            View::List(view) => view.update_layout(area),
+            View::Detail(view) => view.update_layout(area),
+            View::UserCommand(view) => view.update_layout(area),
+            View::Refs(view) => view.update_layout(area),
+            View::Help(_) => {}
+        }
+    }
+
+    pub fn prepare_graph_uploads(&mut self) {
+        match self {
+            View::Default => {}
+            View::List(view) => view.prepare_graph_uploads(),
+            View::Detail(view) => view.prepare_graph_uploads(),
+            View::UserCommand(view) => view.prepare_graph_uploads(),
+            View::Refs(view) => view.prepare_graph_uploads(),
+            View::Help(_) => {}
+        }
+    }
+
+    pub fn drain_pending_graph_uploads(&mut self) -> Vec<String> {
+        match self {
+            View::Default => Vec::new(),
+            View::List(view) => view.drain_pending_graph_uploads(),
+            View::Detail(view) => view.drain_pending_graph_uploads(),
+            View::UserCommand(view) => view.drain_pending_graph_uploads(),
+            View::Refs(view) => view.drain_pending_graph_uploads(),
+            View::Help(_) => Vec::new(),
+        }
+    }
+
+    pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
+        match self {
+            View::Default => Vec::new(),
+            View::List(view) => view.graph_image_ids_sorted(),
+            View::Detail(view) => view.graph_image_ids_sorted(),
+            View::UserCommand(view) => view.graph_image_ids_sorted(),
+            View::Refs(view) => view.graph_image_ids_sorted(),
+            View::Help(view) => view.graph_image_ids_sorted(),
+        }
+    }
+
     pub fn of_list(
         commit_list_state: CommitListState<'a>,
         ctx: Rc<AppContext>,

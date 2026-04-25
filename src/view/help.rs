@@ -150,6 +150,10 @@ impl<'a> HelpView<'a> {
         std::mem::take(&mut self.before)
     }
 
+    pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
+        self.before.graph_image_ids_sorted()
+    }
+
     fn scroll_down(&mut self) {
         self.offset = self.offset.saturating_add(1);
     }

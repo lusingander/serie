@@ -1,4 +1,7 @@
-use std::rc::Rc;
+use std::{
+    io::{self, Write},
+    rc::Rc,
+};
 
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
@@ -149,6 +152,8 @@ impl App<'_> {
         terminal.clear()?;
 
         loop {
+            self.prepare_render(terminal)?;
+            self.flush_pending_graph_uploads()?;
             terminal.draw(|f| self.render(f))?;
             match self.ec.recv() {
                 AppEvent::Key(key) => {
@@ -214,6 +219,7 @@ impl App<'_> {
                     let _ = (w, h);
                 }
                 AppEvent::Quit => {
+                    self.cleanup_graph_images()?;
                     return Ok(Ret::Quit);
                 }
                 AppEvent::OpenDetail => {
@@ -259,6 +265,7 @@ impl App<'_> {
                     self.copy_to_clipboard(name, value);
                 }
                 AppEvent::Refresh(context) => {
+                    self.cleanup_graph_images()?;
                     let request = RefreshRequest { context };
                     return Ok(Ret::Refresh(request));
                 }
@@ -284,14 +291,40 @@ impl App<'_> {
         }
     }
 
+    fn prepare_render(&mut self, terminal: &mut DefaultTerminal) -> Result<(), std::io::Error> {
+        let area: Rect = terminal.size()?.into();
+        let [view_area, _] = split_app_areas(area);
+        self.update_state(view_area);
+        self.view.update_layout(view_area);
+        self.view.prepare_graph_uploads();
+        Ok(())
+    }
+
+    fn flush_pending_graph_uploads(&mut self) -> Result<(), std::io::Error> {
+        let uploads = self.view.drain_pending_graph_uploads();
+        if uploads.is_empty() {
+            return Ok(());
+        }
+
+        let mut stdout = io::stdout().lock();
+        for upload in uploads {
+            stdout.write_all(upload.as_bytes())?;
+        }
+        stdout.flush()
+    }
+
+    fn cleanup_graph_images(&self) -> Result<(), std::io::Error> {
+        let image_ids = self.view.graph_image_ids_sorted();
+        self.ctx.image_protocol.delete_images(&image_ids)
+    }
+
     fn render(&mut self, f: &mut Frame) {
         let base = Block::default()
             .fg(self.ctx.color_theme.fg)
             .bg(self.ctx.color_theme.bg);
         f.render_widget(base, f.area());
 
-        let [view_area, status_line_area] =
-            Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(f.area());
+        let [view_area, status_line_area] = split_app_areas(f.area());
 
         self.update_state(view_area);
 
@@ -361,6 +394,10 @@ impl App<'_> {
             }
         }
     }
+}
+
+fn split_app_areas(area: Rect) -> [Rect; 2] {
+    Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(area)
 }
 
 impl App<'_> {

@@ -70,7 +70,7 @@ Usage: serie [OPTIONS]
 
 Options:
   -n, --max-count <NUMBER>        Maximum number of commits to render
-  -p, --protocol <TYPE>           Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty]
+  -p, --protocol <TYPE>           Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty, kitty-unicode]
   -o, --order <TYPE>              Commit ordering algorithm [default: chrono] [possible values: chrono, topo]
   -g, --graph-width <TYPE>        Commit graph image cell width [default: auto] [possible values: auto, double, single]
   -s, --graph-style <TYPE>        Commit graph image edge style [default: rounded] [possible values: rounded, angular]
@@ -116,6 +116,7 @@ These image protocols are supported:
 
 - [Inline Images Protocol (iTerm2)](https://iterm2.com/documentation-images.html)
 - [Terminal graphics protocol (kitty)](https://sw.kovidgoyal.net/kitty/graphics-protocol/)
+  - Supports both the existing graphics protocol mode and [the Unicode placeholder](https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders) mode.
 
 For more information, see [Compatibility](https://lusingander.github.io/serie/getting-started/compatibility.html).
 

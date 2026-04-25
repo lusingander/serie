@@ -1,6 +1,9 @@
 use std::{
     fmt::{self, Debug, Formatter},
+    hash::{Hash, Hasher},
     io::Cursor,
+    process,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -12,7 +15,7 @@ use crate::{
         geometry::{bounding_box_u32, Point},
         Edge, EdgeType, Graph,
     },
-    protocol::ImageProtocol,
+    protocol::{ImageProtocol, PreparedImage},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,7 +26,9 @@ pub enum GraphStyle {
 
 #[derive(Debug)]
 pub struct GraphImageManager<'a> {
-    encoded_image_map: FxHashMap<CommitHash, String>,
+    prepared_image_map: FxHashMap<CommitHash, PreparedImage>,
+    image_ids: FxHashSet<u32>,
+    pending_uploads: Vec<String>,
 
     graph: &'a Graph<'a>,
     cell_width_type: CellWidthType,
@@ -31,6 +36,7 @@ pub struct GraphImageManager<'a> {
     image_params: ImageParams,
     drawing_pixels: DrawingPixels,
     image_protocol: ImageProtocol,
+    session_nonce: u32,
 }
 
 impl<'a> GraphImageManager<'a> {
@@ -45,24 +51,36 @@ impl<'a> GraphImageManager<'a> {
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         GraphImageManager {
-            encoded_image_map: FxHashMap::default(),
+            prepared_image_map: FxHashMap::default(),
+            image_ids: FxHashSet::default(),
+            pending_uploads: Vec::default(),
             graph,
             cell_width_type,
             graph_style,
             image_params,
             drawing_pixels,
             image_protocol,
+            session_nonce: create_session_nonce(),
         }
     }
 
-    pub fn encoded_image(&self, commit_hash: &CommitHash) -> &str {
-        self.encoded_image_map.get(commit_hash).unwrap()
+    pub fn prepared_image(&self, commit_hash: &CommitHash) -> &PreparedImage {
+        self.prepared_image_map.get(commit_hash).unwrap()
     }
 
-    pub fn load_encoded_image(&mut self, commit_hash: &CommitHash) {
-        if self.encoded_image_map.contains_key(commit_hash) {
+    pub fn image_ids(&self) -> &FxHashSet<u32> {
+        &self.image_ids
+    }
+
+    pub fn drain_pending_uploads(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.pending_uploads)
+    }
+
+    pub fn ensure_uploaded(&mut self, commit_hash: &CommitHash) {
+        if self.prepared_image_map.contains_key(commit_hash) {
             return;
         }
+        let image_id = graph_image_id(self.session_nonce, commit_hash);
         let graph_row_image = build_single_graph_row_image(
             self.graph,
             &self.image_params,
@@ -70,8 +88,13 @@ impl<'a> GraphImageManager<'a> {
             self.graph_style,
             commit_hash,
         );
-        let image = graph_row_image.encode(self.cell_width_type, self.image_protocol);
-        self.encoded_image_map.insert(commit_hash.clone(), image);
+        let mut image =
+            graph_row_image.prepare(self.cell_width_type, self.image_protocol, image_id);
+        if let Some(upload_data) = image.take_upload_data() {
+            self.pending_uploads.push(upload_data);
+        }
+        self.prepared_image_map.insert(commit_hash.clone(), image);
+        self.image_ids.insert(image_id);
     }
 }
 
@@ -97,13 +120,36 @@ impl Debug for GraphRowImage {
 }
 
 impl GraphRowImage {
-    fn encode(&self, cell_width_type: CellWidthType, image_protocol: ImageProtocol) -> String {
+    fn prepare(
+        &self,
+        cell_width_type: CellWidthType,
+        image_protocol: ImageProtocol,
+        image_id: u32,
+    ) -> PreparedImage {
         let image_cell_width = match cell_width_type {
             CellWidthType::Double => self.cell_count * 2,
             CellWidthType::Single => self.cell_count,
         };
-        image_protocol.encode(&self.bytes, image_cell_width)
+        image_protocol.prepare_image(&self.bytes, image_cell_width, image_id)
     }
+}
+
+fn create_session_nonce() -> u32 {
+    let mut hasher = rustc_hash::FxHasher::default();
+    process::id().hash(&mut hasher);
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos()
+        .hash(&mut hasher);
+    hasher.finish() as u32
+}
+
+fn graph_image_id(session_nonce: u32, commit_hash: &CommitHash) -> u32 {
+    let mut hasher = rustc_hash::FxHasher::default();
+    session_nonce.hash(&mut hasher);
+    commit_hash.hash(&mut hasher);
+    hasher.finish() as u32
 }
 
 #[derive(Debug)]

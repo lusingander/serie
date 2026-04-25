@@ -18,7 +18,8 @@
               "enum": [
                 "auto",
                 "iterm",
-                "kitty"
+                "kitty",
+                "kitty-unicode"
               ],
               "default": "auto"
             },

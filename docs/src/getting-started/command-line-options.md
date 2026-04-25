@@ -11,7 +11,7 @@ It behaves similarly to the `--max-count` option of `git log`.
 
 A protocol type for rendering images of commit graphs.
 
-_Possible values:_ `auto`, `iterm`, `kitty`
+_Possible values:_ `auto`, `iterm`, `kitty`, `kitty-unicode`
 
 By default `auto` will guess the best supported protocol for the current terminal (if listed in [Supported terminal emulators](./compatibility.md#supported-terminal-emulators)).
 

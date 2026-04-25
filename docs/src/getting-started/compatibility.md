@@ -6,6 +6,7 @@ These image protocols are supported:
 
 - [Inline Images Protocol (iTerm2)](https://iterm2.com/documentation-images.html)
 - [Terminal graphics protocol (kitty)](https://sw.kovidgoyal.net/kitty/graphics-protocol/)
+  - Supports both the existing graphics protocol mode and [the Unicode placeholder](https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders) mode.
 
 The terminals on which each has been confirmed to work are listed below.
 
@@ -22,10 +23,12 @@ The terminals on which each has been confirmed to work are listed below.
 
 ### Terminal graphics protocol
 
-| Terminal emulator                         | Note |
-| ----------------------------------------- | ---- |
-| [kitty](https://sw.kovidgoyal.net/kitty/) |      |
-| [Ghostty](https://ghostty.org)            |      |
+| Terminal emulator                         | Unicode placeholder | Note |
+| ----------------------------------------- | ------------------- | ---- |
+| [kitty](https://sw.kovidgoyal.net/kitty/) | ○                  |      |
+| [Ghostty](https://ghostty.org)            | ○                  |      |
+
+Rendering using Unicode Placeholder is available by explicitly specifying `kitty-unicode` as `protocol` option or config.
 
 ## Unsupported environments
 

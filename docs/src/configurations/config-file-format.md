@@ -114,6 +114,7 @@ The protocol type for rendering images of commit graphs.
   - `auto`
   - `iterm`
   - `kitty`
+  - `kitty-unicode`
 
 The value specified in the command line argument takes precedence.
 

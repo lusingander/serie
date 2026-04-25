@@ -176,6 +176,14 @@ impl<'a> ListView<'a> {
         let commit_list = CommitList::new(self.ctx.clone());
         f.render_stateful_widget(commit_list, area, self.as_mut_list_state());
     }
+
+    pub fn update_layout(&mut self, area: Rect) {
+        self.as_mut_list_state().update_height(area.height as usize);
+    }
+
+    pub fn prepare_graph_uploads(&mut self) {
+        self.as_mut_list_state().ensure_visible_graph_uploaded();
+    }
 }
 
 impl<'a> ListView<'a> {
@@ -189,6 +197,14 @@ impl<'a> ListView<'a> {
 
     pub fn as_list_state(&self) -> &CommitListState<'a> {
         self.commit_list_state.as_ref().unwrap()
+    }
+
+    pub fn drain_pending_graph_uploads(&mut self) -> Vec<String> {
+        self.as_mut_list_state().drain_pending_graph_uploads()
+    }
+
+    pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
+        self.as_list_state().graph_image_ids_sorted()
     }
 
     fn update_search_query(&self) {
