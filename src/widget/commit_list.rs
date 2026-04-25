@@ -743,12 +743,18 @@ impl CommitList<'_> {
         self.rendering_commit_info_iter(state)
             .for_each(|(i, commit_info)| {
                 let prepared_image = state.prepared_image(commit_info);
-                buf[(area.left(), area.top() + i as u16)]
-                    .set_symbol(prepared_image.cells()[0].symbol());
-
-                // width - 1 for right pad
-                for w in 1..prepared_image.cell_width() as u16 {
-                    buf[(area.left() + w, area.top() + i as u16)].set_skip(true);
+                let max_graph_width = area.width.saturating_sub(1) as usize;
+                let y = area.top() + i as u16;
+                for (x, image_cell) in prepared_image
+                    .cells()
+                    .iter()
+                    .take(max_graph_width)
+                    .enumerate()
+                {
+                    let cell = &mut buf[(area.left() + x as u16, y)];
+                    cell.set_symbol(image_cell.symbol());
+                    cell.set_style(image_cell.style());
+                    cell.set_skip(image_cell.skip());
                 }
             });
     }

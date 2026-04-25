@@ -1,6 +1,7 @@
 use std::env;
 
 use base64::Engine;
+use ratatui::style::Style;
 
 // By default assume the Iterm2 is the best protocol to use for all terminals *unless* an env
 // variable is set that suggests the terminal is probably Kitty.
@@ -27,11 +28,21 @@ pub enum ImageProtocol {
 #[derive(Debug, Clone)]
 pub struct PreparedImageCell {
     symbol: String,
+    style: Style,
+    skip: bool,
 }
 
 impl PreparedImageCell {
     pub fn symbol(&self) -> &str {
         &self.symbol
+    }
+
+    pub fn style(&self) -> Style {
+        self.style
+    }
+
+    pub fn skip(&self) -> bool {
+        self.skip
     }
 }
 
@@ -57,10 +68,20 @@ impl ImageProtocol {
             ImageProtocol::Iterm2 => iterm2_encode(bytes, cell_width, 1),
             ImageProtocol::Kitty => kitty_encode(bytes, cell_width, 1),
         };
-        PreparedImage {
-            cells: vec![PreparedImageCell { symbol }],
-            cell_width,
+        let mut cells = Vec::with_capacity(cell_width);
+        cells.push(PreparedImageCell {
+            symbol,
+            style: Style::default(),
+            skip: false,
+        });
+        for _ in 1..cell_width {
+            cells.push(PreparedImageCell {
+                symbol: String::new(),
+                style: Style::default(),
+                skip: true,
+            });
         }
+        PreparedImage { cells, cell_width }
     }
 
     pub fn clear_line(&self, y: u16) {
