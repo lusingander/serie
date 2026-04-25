@@ -503,7 +503,7 @@ mod tests {
     fn test_config_complete_toml() {
         let toml = r##"
             [core.option]
-            protocol = "kitty"
+            protocol = "kitty-unicode"
             order = "topo"
             graph_width = "single"
             graph_style = "angular"
@@ -543,7 +543,7 @@ mod tests {
         let expected = Config {
             core: CoreConfig {
                 option: CoreOptionConfig {
-                    protocol: Some(ImageProtocolType::Kitty),
+                    protocol: Some(ImageProtocolType::KittyUnicode),
                     order: Some(CommitOrderType::Topo),
                     graph_width: Some(GraphWidthType::Single),
                     graph_style: Some(GraphStyle::Angular),
