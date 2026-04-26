@@ -43,6 +43,9 @@ height = 20
 [ui.refs]
 width = 26
 
+[graph]
+row_image_width = "compact"
+
 [graph.color]
 branches = [
   "#E06C76",
@@ -166,6 +169,18 @@ The initial selection of commit when starting the application.
   - `head`
 
 The value specified in the command line argument takes precedence.
+
+### `graph.row_image_width`
+
+The width mode for each graph row image.
+
+- type: `string` (enum)
+- default: `compact`
+- possible values:
+  - `compact`: trim each row image to the minimum required graph width
+    - Reduces the file size for more lightweight operation. If you are using `kitty-unicode` protocol, it helps you avoid hitting [the image transfer size limit](https://sw.kovidgoyal.net/kitty/graphics-protocol/#image-persistence-and-storage-quotas).
+  - `fixed`: use the same full graph width for every row image
+    - This can be used when you want to set a background color for graphs in environments that cannot correctly handle transparent images, or in environments where rendering does not work well when there are images of various widths.
 
 ### `core.search.ignore_case`
 
