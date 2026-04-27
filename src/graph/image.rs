@@ -24,6 +24,13 @@ pub enum GraphStyle {
     Angular,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GraphImageWidthMode {
+    Compact,
+    Fixed,
+}
+
 #[derive(Debug)]
 pub struct GraphImageManager<'a> {
     prepared_image_map: FxHashMap<CommitHash, PreparedImage>,
@@ -33,6 +40,7 @@ pub struct GraphImageManager<'a> {
     graph: &'a Graph<'a>,
     cell_width_type: CellWidthType,
     graph_style: GraphStyle,
+    image_width_mode: GraphImageWidthMode,
     image_params: ImageParams,
     drawing_pixels: DrawingPixels,
     image_protocol: ImageProtocol,
@@ -45,6 +53,7 @@ impl<'a> GraphImageManager<'a> {
         graph_color_set: &GraphColorSet,
         cell_width_type: CellWidthType,
         graph_style: GraphStyle,
+        image_width_mode: GraphImageWidthMode,
         image_protocol: ImageProtocol,
     ) -> Self {
         let image_params = ImageParams::new(graph_color_set, cell_width_type);
@@ -57,6 +66,7 @@ impl<'a> GraphImageManager<'a> {
             graph,
             cell_width_type,
             graph_style,
+            image_width_mode,
             image_params,
             drawing_pixels,
             image_protocol,
@@ -86,6 +96,7 @@ impl<'a> GraphImageManager<'a> {
             &self.image_params,
             &self.drawing_pixels,
             self.graph_style,
+            self.image_width_mode,
             commit_hash,
         );
         let mut image =
@@ -214,12 +225,18 @@ fn build_single_graph_row_image(
     image_params: &ImageParams,
     drawing_pixels: &DrawingPixels,
     graph_style: GraphStyle,
+    image_width_mode: GraphImageWidthMode,
     commit_hash: &CommitHash,
 ) -> GraphRowImage {
     let (pos_x, pos_y) = graph.commit_pos_map[&commit_hash];
     let edges = &graph.edges[pos_y];
 
-    let cell_count = graph.max_pos_x + 1;
+    let max_pos_x = match image_width_mode {
+        GraphImageWidthMode::Compact => edges.iter().map(|e| e.pos_x).fold(pos_x, usize::max),
+        GraphImageWidthMode::Fixed => graph.max_pos_x,
+    };
+
+    let cell_count = max_pos_x + 1;
 
     calc_graph_row_image(
         pos_x,

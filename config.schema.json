@@ -313,6 +313,15 @@
       "type": "object",
       "description": "Commit graph rendering settings",
       "properties": {
+        "row_image_width": {
+          "type": "string",
+          "description": "The width mode for each graph row image.",
+          "enum": [
+            "compact",
+            "fixed"
+          ],
+          "default": "compact"
+        },
         "color": {
           "type": "object",
           "description": "Colors for the commit graph.",

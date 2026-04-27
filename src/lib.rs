@@ -142,6 +142,7 @@ pub fn run() -> Result<()> {
     let order = args.order.or(core_config.option.order).into();
     let graph_width = args.graph_width.or(core_config.option.graph_width);
     let graph_style = args.graph_style.or(core_config.option.graph_style).into();
+    let graph_image_width_mode = graph_config.row_image_width;
     let initial_selection = args
         .initial_selection
         .or(core_config.option.initial_selection)
@@ -173,6 +174,7 @@ pub fn run() -> Result<()> {
             &graph_color_set,
             cell_width_type,
             graph_style,
+            graph_image_width_mode,
             image_protocol,
         );
 
