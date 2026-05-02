@@ -19,7 +19,7 @@ ansi-to-tui = "8.0.1"
 arboard = { version = "3.6.1", features = ["wayland-data-control"] }
 base64 = "0.22.1"
 chrono = "0.4.44"
-clap = { version = "4.6.0", features = ["derive"] }
+clap = { version = "4.6.1", features = ["derive"] }
 console = "0.16.3"
 fuzzy-matcher = "0.3.7"
 garde = { version = "0.22.1", features = ["derive", "regex"] }
@@ -32,7 +32,7 @@ semver = "1.0.28"
 serde = { version = "1.0.228", features = ["derive"] }
 smart-default = "0.7.1"
 toml = "1.1.2"
-tui-input = "0.15.1"
+tui-input = "0.15.3"
 tui-tree-widget = "0.24.0"
 umbra = "0.4.0"
 
