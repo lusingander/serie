@@ -17,7 +17,7 @@ jobs:
     outputs:
       msrv: ${{ steps.get-msrv.outputs.msrv }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
       - name: Get MSRV
         id: get-msrv
         run: |
@@ -32,12 +32,12 @@ jobs:
           - ${{ needs.prepare.outputs.msrv }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.versions }}
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2.9.1
       - name: Version
         run: |
           rustc --version
@@ -71,11 +71,11 @@ jobs:
     runs-on: ${{ matrix.targets.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
       - name: Setup
         run: rustup target add ${{ matrix.targets.target }}
       - name: Build
-        uses: houseabsolute/actions-rust-cross@v1.0.0
+        uses: houseabsolute/actions-rust-cross@v1.0.6
         with:
           command: build
           target: ${{ matrix.targets.target }}
