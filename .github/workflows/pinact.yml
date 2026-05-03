@@ -1,0 +1,26 @@
+name: Pinact
+
+on:
+  push:
+    branches:
+      - '*'
+    paths:
+      - .github/**
+  pull_request:
+    branches:
+      - master
+    paths:
+      - .github/**
+
+jobs:
+  pinact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Pinact
+        uses: suzuki-shunsuke/pinact-action@cf51507d80d4d6522a07348e3d58790290eaf0b6 # v2.0.0
+        with:
+          skip_push: "true"
+          verify: "true"
