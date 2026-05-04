@@ -49,6 +49,7 @@ pub struct Commit {
     pub body: String,
     pub parent_commit_hashes: Vec<CommitHash>,
     pub commit_type: CommitType,
+    pub line_number: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -299,7 +300,7 @@ fn load_all_commits(
 
     let mut commits = Vec::new();
 
-    for bytes in reader.split(b'\0') {
+    for (i, bytes) in reader.split(b'\0').enumerate() {
         let bytes = bytes.unwrap();
         let s = String::from_utf8_lossy(&bytes);
 
@@ -320,6 +321,7 @@ fn load_all_commits(
             body: parts[8].into(),
             parent_commit_hashes: parse_parent_commit_hashes(parts[9]),
             commit_type: CommitType::Commit,
+            line_number: i,
         };
 
         commits.push(commit);
@@ -349,7 +351,7 @@ fn load_all_stashes(path: &Path) -> Vec<Commit> {
 
     let mut commits = Vec::new();
 
-    for bytes in reader.split(b'\0') {
+    for (i, bytes) in reader.split(b'\0').enumerate() {
         let bytes = bytes.unwrap();
         let s = String::from_utf8_lossy(&bytes);
 
@@ -370,6 +372,7 @@ fn load_all_stashes(path: &Path) -> Vec<Commit> {
             body: parts[8].into(),
             parent_commit_hashes: parse_parent_commit_hashes(parts[9]),
             commit_type: CommitType::Stash,
+            line_number: i,
         };
 
         commits.push(commit);
