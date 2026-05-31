@@ -12,6 +12,7 @@ const USER_COMMAND_REFS_MARKER: &str = "{{refs}}";
 const USER_COMMAND_BRANCHES_MARKER: &str = "{{branches}}";
 const USER_COMMAND_REMOTE_BRANCHES_MARKER: &str = "{{remote_branches}}";
 const USER_COMMAND_TAGS_MARKER: &str = "{{tags}}";
+const USER_COMMAND_STASH_MARKER: &str = "{{stash}}";
 const USER_COMMAND_AREA_WIDTH_MARKER: &str = "{{area_width}}";
 const USER_COMMAND_AREA_HEIGHT_MARKER: &str = "{{area_height}}";
 
@@ -78,6 +79,7 @@ pub struct ExternalCommandParameters<'a> {
     pub branches: Vec<&'a str>,
     pub remote_branches: Vec<&'a str>,
     pub tags: Vec<&'a str>,
+    pub stash: Option<&'a str>,
     pub area_width: u16,
     pub area_height: u16,
 }
@@ -152,6 +154,7 @@ fn replace_command_arg(s: &str, params: &ExternalCommandParameters) -> String {
     let branches = &params.branches.join(sep);
     let remote_branches = &params.remote_branches.join(sep);
     let tags = &params.tags.join(sep);
+    let stash = params.stash.unwrap_or_default();
     let area_width = &params.area_width.to_string();
     let area_height = &params.area_height.to_string();
 
@@ -162,6 +165,7 @@ fn replace_command_arg(s: &str, params: &ExternalCommandParameters) -> String {
         .replace(USER_COMMAND_BRANCHES_MARKER, branches)
         .replace(USER_COMMAND_REMOTE_BRANCHES_MARKER, remote_branches)
         .replace(USER_COMMAND_TAGS_MARKER, tags)
+        .replace(USER_COMMAND_STASH_MARKER, stash)
         .replace(USER_COMMAND_AREA_WIDTH_MARKER, area_width)
         .replace(USER_COMMAND_AREA_HEIGHT_MARKER, area_height)
 }

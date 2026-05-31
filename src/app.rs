@@ -786,12 +786,16 @@ fn build_external_command_parameters<'a>(
     let mut branches = vec![];
     let mut remote_branches = vec![];
     let mut tags = vec![];
+    let mut stash = None;
     for r in refs {
         match r {
             Ref::Tag { .. } => tags.push(r.name()),
             Ref::Branch { .. } => branches.push(r.name()),
             Ref::RemoteBranch { .. } => remote_branches.push(r.name()),
-            Ref::Stash { .. } => continue, // skip stashes
+            Ref::Stash { .. } => {
+                stash = Some(r.name());
+                continue; // skip stashes from {{refs}}
+            }
         }
         all_refs.push(r.name());
     }
@@ -808,6 +812,7 @@ fn build_external_command_parameters<'a>(
         branches,
         remote_branches,
         tags,
+        stash,
         area_width,
         area_height,
     })
