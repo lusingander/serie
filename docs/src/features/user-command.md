@@ -74,6 +74,9 @@ They will be replaced with their respective values command is executed.
 - `{{tags}}`
   - The names of all tags pointing to the selected commit, separated by a space.
   - example: `v1.0.0 v1.0.1`
+- `{{stash}}`
+  - The name of the stash when the selected commit is a stash commit. Otherwise, this is an empty string.
+  - example: `stash@{0}`
 - `{{area_width}}`
   - Width of the user command display area (number of cells).
   - example: `80`
