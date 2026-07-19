@@ -57,7 +57,16 @@ pub enum SearchState {
     Applied {
         match_index: usize,
         total_match: usize,
+        ignore_case: bool,
+        fuzzy: bool,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SearchRefreshContext {
+    query: String,
+    ignore_case: bool,
+    fuzzy: bool,
 }
 
 impl SearchState {
@@ -503,7 +512,13 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn apply_search(&mut self) {
-        if let SearchState::Searching { match_index, .. } = self.search_state {
+        if let SearchState::Searching {
+            match_index,
+            ignore_case,
+            fuzzy,
+            ..
+        } = self.search_state
+        {
             if self.search_input.value().is_empty() {
                 self.search_state = SearchState::Inactive;
             } else {
@@ -511,8 +526,42 @@ impl<'a> CommitListState<'a> {
                 self.search_state = SearchState::Applied {
                     match_index,
                     total_match,
+                    ignore_case,
+                    fuzzy,
                 };
             }
+        }
+    }
+
+    pub fn search_refresh_context(&self) -> Option<SearchRefreshContext> {
+        if let SearchState::Applied {
+            ignore_case, fuzzy, ..
+        } = self.search_state
+        {
+            Some(SearchRefreshContext {
+                query: self.search_input.value().into(),
+                ignore_case,
+                fuzzy,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn restore_search(&mut self, context: &SearchRefreshContext) {
+        self.search_input = Input::new(context.query.clone());
+        self.update_search_matches(context.ignore_case, context.fuzzy);
+
+        let total_match = self.search_matches.iter().filter(|m| m.matched()).count();
+        self.search_state = SearchState::Applied {
+            match_index: 0,
+            total_match,
+            ignore_case: context.ignore_case,
+            fuzzy: context.fuzzy,
+        };
+
+        if total_match > 0 {
+            self.select_current_or_next_match_index(self.current_selected_index());
         }
     }
 
@@ -1155,7 +1204,128 @@ fn calc_cell_widths(
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
+    use ratatui::crossterm::event::KeyCode;
+
+    use crate::{
+        color::GraphColorSet,
+        config::GraphColorConfig,
+        git::Repository,
+        graph::{calc_graph, CellWidthType, GraphImageWidthMode, GraphStyle},
+        protocol::ImageProtocol,
+    };
+
     use super::*;
+
+    fn with_commit_list_state<R>(
+        subjects: &[&str],
+        f: impl FnOnce(&mut CommitListState<'_>) -> R,
+    ) -> R {
+        let commits: Vec<Commit> = subjects
+            .iter()
+            .enumerate()
+            .map(|(i, subject)| Commit {
+                commit_hash: CommitHash::from(format!("{:040x}", i + 1).as_str()),
+                subject: (*subject).into(),
+                ..Commit::default()
+            })
+            .collect();
+        let commit_hashes = commits.iter().map(|c| c.commit_hash.clone()).collect();
+        let commit_map = commits
+            .into_iter()
+            .map(|c| (c.commit_hash.clone(), c))
+            .collect();
+        let repository = Repository::new(
+            PathBuf::new(),
+            commit_map,
+            FxHashMap::default(),
+            FxHashMap::default(),
+            FxHashMap::default(),
+            Head::None,
+            commit_hashes,
+        );
+        let graph = calc_graph(&repository);
+        let graph_color_set = GraphColorSet::new(&GraphColorConfig::default());
+        let graph_image_manager = GraphImageManager::new(
+            &graph,
+            &graph_color_set,
+            CellWidthType::Double,
+            GraphStyle::Rounded,
+            GraphImageWidthMode::Compact,
+            ImageProtocol::Iterm2,
+        );
+        let commit_infos = graph
+            .commits
+            .iter()
+            .map(|commit| {
+                CommitInfo::new(commit, repository.refs(&commit.commit_hash), Color::Reset)
+            })
+            .collect();
+        let mut state = CommitListState::new(
+            commit_infos,
+            graph_image_manager,
+            0,
+            repository.head(),
+            FxHashMap::default(),
+            false,
+            false,
+        );
+        state.reset_height(subjects.len());
+        f(&mut state)
+    }
+
+    fn input_search_query(state: &mut CommitListState<'_>, query: &str) {
+        state.start_search();
+        for c in query.chars() {
+            state.handle_search_input(KeyEvent::from(KeyCode::Char(c)));
+        }
+    }
+
+    #[test]
+    fn test_restore_search_recalculates_matches_with_applied_options() {
+        let context = with_commit_list_state(&["Fix parser", "other"], |state| {
+            input_search_query(state, "fx");
+            state.toggle_ignore_case();
+            state.toggle_fuzzy();
+            state.apply_search();
+
+            state.search_refresh_context().unwrap()
+        });
+
+        assert_eq!(
+            context,
+            SearchRefreshContext {
+                query: "fx".into(),
+                ignore_case: true,
+                fuzzy: true,
+            }
+        );
+
+        with_commit_list_state(&["unrelated", "FIX new", "fix parser"], |state| {
+            state.restore_search(&context);
+
+            assert_eq!(state.search_refresh_context(), Some(context.clone()));
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("Match 1 of 2 (query: \"fx\")".into(), true))
+            );
+            assert_eq!(
+                state.commits[state.current_selected_index()].commit.subject,
+                "FIX new"
+            );
+
+            state.select_next_match();
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("Match 2 of 2 (query: \"fx\")".into(), true))
+            );
+            assert_eq!(
+                state.commits[state.current_selected_index()].commit.subject,
+                "fix parser"
+            );
+        });
+    }
 
     #[test]
     fn test_calc_cell_widths_all_columns() {
