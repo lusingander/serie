@@ -561,7 +561,13 @@ impl<'a> CommitListState<'a> {
         };
 
         if total_match > 0 {
-            self.select_current_or_next_match_index(self.current_selected_index());
+            let current_index = self.current_selected_index();
+            if self.search_matches[current_index].matched() {
+                self.search_state
+                    .update_match_index(self.search_matches[current_index].match_index);
+            } else {
+                self.select_next_match_index(current_index);
+            }
         }
     }
 
@@ -1323,6 +1329,30 @@ mod tests {
             assert_eq!(
                 state.commits[state.current_selected_index()].commit.subject,
                 "fix parser"
+            );
+        });
+    }
+
+    #[test]
+    fn test_restore_search_keeps_selected_match_position() {
+        let context = with_commit_list_state(&["fix"], |state| {
+            input_search_query(state, "fix");
+            state.apply_search();
+            state.search_refresh_context().unwrap()
+        });
+
+        with_commit_list_state(&["first", "second", "fix", "last"], |state| {
+            state.reset_height(2);
+            state.select_index(2);
+            state.scroll_up();
+            assert_eq!(state.current_list_status(), (1, 1, 2));
+
+            state.restore_search(&context);
+
+            assert_eq!(state.current_list_status(), (1, 1, 2));
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("Match 1 of 1 (query: \"fix\")".into(), true))
             );
         });
     }
