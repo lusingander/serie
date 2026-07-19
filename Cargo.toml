@@ -18,20 +18,20 @@ exclude = ["/.github", "/img"]
 ansi-to-tui = "8.0.1"
 arboard = { version = "3.6.1", features = ["wayland-data-control"] }
 base64 = "0.22.1"
-chrono = "0.4.44"
-clap = { version = "4.6.1", features = ["derive"] }
-console = "0.16.3"
+chrono = "0.4.45"
+clap = { version = "4.6.2", features = ["derive"] }
+console = "0.16.4"
 fuzzy-matcher = "0.3.7"
-garde = { version = "0.22.1", features = ["derive", "regex"] }
+garde = { version = "0.23.0", features = ["derive", "regex"] }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 laurier = "0.3.0"
 once_cell = "1.21.4"
 ratatui = { version = "0.30.0", features = ["serde"] }
-rustc-hash = "2.1.2"
+rustc-hash = "2.1.3"
 semver = "1.0.28"
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { version = "1.0.229", features = ["derive"] }
 smart-default = "0.7.1"
-toml = "1.1.2"
+toml = "1.1.3"
 tui-input = "0.15.3"
 tui-tree-widget = "0.24.0"
 umbra = "0.4.0"
