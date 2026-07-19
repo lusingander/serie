@@ -265,6 +265,7 @@ impl<'a> ListView<'a> {
             selected,
             height,
             scroll_to_top,
+            search_context,
         } = list_context;
         let list_state = self.as_mut_list_state();
         list_state.reset_height(*height);
@@ -275,6 +276,9 @@ impl<'a> ListView<'a> {
             for _ in 0..*selected {
                 list_state.scroll_up();
             }
+        }
+        if let Some(search_context) = search_context {
+            list_state.restore_search(search_context);
         }
     }
 }
