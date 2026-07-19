@@ -565,8 +565,6 @@ impl<'a> CommitListState<'a> {
             if self.search_matches[current_index].matched() {
                 self.search_state
                     .update_match_index(self.search_matches[current_index].match_index);
-            } else {
-                self.select_next_match_index(current_index);
             }
         }
     }
@@ -1312,6 +1310,12 @@ mod tests {
             state.restore_search(&context);
 
             assert_eq!(state.search_refresh_context(), Some(context.clone()));
+            assert_eq!(
+                state.commits[state.current_selected_index()].commit.subject,
+                "unrelated"
+            );
+
+            state.select_next_match();
             assert_eq!(
                 state.matched_query_string(),
                 Some(("Match 1 of 2 (query: \"fx\")".into(), true))
