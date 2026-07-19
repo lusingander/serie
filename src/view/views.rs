@@ -10,7 +10,7 @@ use crate::{
         detail::DetailView, help::HelpView, list::ListView, refs::RefsView,
         user_command::UserCommandView,
     },
-    widget::commit_list::CommitListState,
+    widget::commit_list::{CommitListState, SearchRefreshContext},
 };
 
 #[derive(Debug, Default)]
@@ -193,6 +193,7 @@ pub struct ListRefreshViewContext {
     pub selected: usize,
     pub height: usize,
     pub scroll_to_top: bool,
+    pub search_context: Option<SearchRefreshContext>,
 }
 
 impl From<&CommitListState<'_>> for ListRefreshViewContext {
@@ -202,11 +203,13 @@ impl From<&CommitListState<'_>> for ListRefreshViewContext {
         // If the selected commit is the top one and there is no offset, it means the list is already scrolled to the top.
         // In this case, we set scroll_to_top to true to indicate that the view should be scrolled to the top after refresh.
         let scroll_to_top = selected == 0 && offset == 0;
+        let search_context = list_state.search_refresh_context();
         ListRefreshViewContext {
             commit_hash,
             selected,
             height,
             scroll_to_top,
+            search_context,
         }
     }
 }
