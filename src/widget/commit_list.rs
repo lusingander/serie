@@ -554,6 +554,7 @@ impl<'a> CommitListState<'a> {
 
         let total_match = self.search_matches.iter().filter(|m| m.matched()).count();
         self.search_state = SearchState::Applied {
+            // The selected commit may not match after refresh; next/previous updates this value.
             match_index: 0,
             total_match,
             ignore_case: context.ignore_case,
