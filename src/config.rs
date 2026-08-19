@@ -110,6 +110,9 @@ pub struct CoreConfig {
     pub option: CoreOptionConfig,
     #[garde(skip)]
     #[nested]
+    pub git: CoreGitConfig,
+    #[garde(skip)]
+    #[nested]
     pub search: CoreSearchConfig,
     #[garde(dive)]
     #[nested]
@@ -127,7 +130,12 @@ pub struct CoreOptionConfig {
     pub graph_width: Option<GraphWidthType>,
     pub graph_style: Option<GraphStyle>,
     pub initial_selection: Option<InitialSelection>,
-    #[default = true]
+}
+
+#[optional(derives = [Deserialize])]
+#[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
+pub struct CoreGitConfig {
+    #[default = false]
     pub mailmap: bool,
 }
 
@@ -430,8 +438,8 @@ mod tests {
                     graph_width: None,
                     graph_style: None,
                     initial_selection: None,
-                    mailmap: true,
                 },
+                git: CoreGitConfig { mailmap: false },
                 search: CoreSearchConfig {
                     ignore_case: false,
                     fuzzy: false,
@@ -516,7 +524,8 @@ mod tests {
             graph_width = "single"
             graph_style = "angular"
             initial_selection = "head"
-            mailmap = false
+            [core.git]
+            mailmap = true
             [core.search]
             ignore_case = true
             fuzzy = true
@@ -559,8 +568,8 @@ mod tests {
                     graph_width: Some(GraphWidthType::Single),
                     graph_style: Some(GraphStyle::Angular),
                     initial_selection: Some(InitialSelection::Head),
-                    mailmap: false,
                 },
+                git: CoreGitConfig { mailmap: true },
                 search: CoreSearchConfig {
                     ignore_case: true,
                     fuzzy: true,
@@ -669,8 +678,8 @@ mod tests {
                     graph_width: None,
                     graph_style: None,
                     initial_selection: None,
-                    mailmap: true,
                 },
+                git: CoreGitConfig { mailmap: false },
                 search: CoreSearchConfig {
                     ignore_case: false,
                     fuzzy: false,

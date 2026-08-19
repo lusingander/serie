@@ -9,7 +9,9 @@ order = "chrono"
 graph_width = "auto"
 graph_style = "rounded"
 initial_selection = "latest"
-mailmap = true
+
+[core.git]
+mailmap = false
 
 [core.search]
 ignore_case = false
@@ -171,12 +173,12 @@ The initial selection of commit when starting the application.
 
 The value specified in the command line argument takes precedence.
 
-### `core.option.mailmap`
+### `core.git.mailmap`
 
 Whether to resolve author and committer identities through the repository's [`.mailmap`](https://git-scm.com/docs/gitmailmap) file.
 
 - type: `boolean`
-- default: `true`
+- default: `false`
 
 When enabled, names and emails are displayed as mapped by `.mailmap`, in the same way as `git log` and `git shortlog`. Repositories without a `.mailmap` file are unaffected.
 

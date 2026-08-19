@@ -147,7 +147,7 @@ pub fn run() -> Result<()> {
         .initial_selection
         .or(core_config.option.initial_selection)
         .into();
-    let mailmap = core_config.option.mailmap;
+    let mailmap = core_config.git.mailmap;
 
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 
