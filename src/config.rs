@@ -127,6 +127,8 @@ pub struct CoreOptionConfig {
     pub graph_width: Option<GraphWidthType>,
     pub graph_style: Option<GraphStyle>,
     pub initial_selection: Option<InitialSelection>,
+    #[default = true]
+    pub mailmap: bool,
 }
 
 #[optional(derives = [Deserialize])]
@@ -428,6 +430,7 @@ mod tests {
                     graph_width: None,
                     graph_style: None,
                     initial_selection: None,
+                    mailmap: true,
                 },
                 search: CoreSearchConfig {
                     ignore_case: false,
@@ -513,6 +516,7 @@ mod tests {
             graph_width = "single"
             graph_style = "angular"
             initial_selection = "head"
+            mailmap = false
             [core.search]
             ignore_case = true
             fuzzy = true
@@ -555,6 +559,7 @@ mod tests {
                     graph_width: Some(GraphWidthType::Single),
                     graph_style: Some(GraphStyle::Angular),
                     initial_selection: Some(InitialSelection::Head),
+                    mailmap: false,
                 },
                 search: CoreSearchConfig {
                     ignore_case: true,
@@ -664,6 +669,7 @@ mod tests {
                     graph_width: None,
                     graph_style: None,
                     initial_selection: None,
+                    mailmap: true,
                 },
                 search: CoreSearchConfig {
                     ignore_case: false,

@@ -59,6 +59,11 @@
                 "head"
               ],
               "default": "latest"
+            },
+            "mailmap": {
+              "type": "boolean",
+              "description": "Whether to resolve author and committer identities through the repository's .mailmap file.",
+              "default": true
             }
           },
           "additionalProperties": false
