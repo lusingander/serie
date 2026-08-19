@@ -125,13 +125,18 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn load(path: &Path, sort: SortCommit, max_count: Option<usize>) -> Result<Self> {
+    pub fn load(
+        path: &Path,
+        sort: SortCommit,
+        max_count: Option<usize>,
+        mailmap: bool,
+    ) -> Result<Self> {
         check_git_repository(path)?;
 
         let (mut ref_map, head) = load_refs(path);
 
-        let stashes = load_all_stashes(path);
-        let commits = load_all_commits(path, sort, &head, &stashes, max_count);
+        let stashes = load_all_stashes(path, mailmap);
+        let commits = load_all_commits(path, sort, &head, &stashes, max_count, mailmap);
         if commits.is_empty() {
             return Err("no commits in the repository".into());
         }
@@ -261,6 +266,7 @@ fn load_all_commits(
     head: &Head,
     stashes: &[Commit],
     max_count: Option<usize>,
+    mailmap: bool,
 ) -> Vec<Commit> {
     let mut cmd = Command::new("git");
     cmd.arg("log");
@@ -269,7 +275,7 @@ fn load_all_commits(
         SortCommit::Chronological => "--date-order",
         SortCommit::Topological => "--topo-order",
     })
-    .arg(format!("--pretty={}", load_commits_format()))
+    .arg(format!("--pretty={}", load_commits_format(mailmap)))
     .arg("--date=iso-strict")
     .arg("-z"); // use NUL as a delimiter
 
@@ -330,11 +336,11 @@ fn load_all_commits(
     commits
 }
 
-fn load_all_stashes(path: &Path) -> Vec<Commit> {
+fn load_all_stashes(path: &Path, mailmap: bool) -> Vec<Commit> {
     let mut cmd = Command::new("git")
         .arg("stash")
         .arg("list")
-        .arg(format!("--pretty={}", load_commits_format()))
+        .arg(format!("--pretty={}", load_commits_format(mailmap)))
         .arg("--date=iso-strict")
         .arg("-z") // use NUL as a delimiter
         .current_dir(path)
@@ -380,11 +386,20 @@ fn load_all_stashes(path: &Path) -> Vec<Commit> {
     commits
 }
 
-fn load_commits_format() -> String {
-    [
-        "%H", "%an", "%ae", "%ad", "%cn", "%ce", "%cd", "%s", "%b", "%P",
-    ]
-    .join("%x1f") // use Unit Separator as a delimiter
+fn load_commits_format(mailmap: bool) -> String {
+    // The uppercase name/email placeholders (`%aN`, `%aE`, `%cN`, `%cE`) resolve
+    // identities through the repository's .mailmap, while the lowercase variants
+    // use the raw values recorded in each commit.
+    let format = if mailmap {
+        [
+            "%H", "%aN", "%aE", "%ad", "%cN", "%cE", "%cd", "%s", "%b", "%P",
+        ]
+    } else {
+        [
+            "%H", "%an", "%ae", "%ad", "%cn", "%ce", "%cd", "%s", "%b", "%P",
+        ]
+    };
+    format.join("%x1f") // use Unit Separator as a delimiter
 }
 
 fn parse_iso_date(s: &str) -> DateTime<FixedOffset> {

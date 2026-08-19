@@ -147,6 +147,7 @@ pub fn run() -> Result<()> {
         .initial_selection
         .or(core_config.option.initial_selection)
         .into();
+    let mailmap = core_config.git.mailmap;
 
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 
@@ -163,7 +164,7 @@ pub fn run() -> Result<()> {
     let mut terminal = None;
 
     let ret = loop {
-        let repository = git::Repository::load(Path::new("."), order, max_count)?;
+        let repository = git::Repository::load(Path::new("."), order, max_count, mailmap)?;
 
         let graph = graph::calc_graph(&repository);
 

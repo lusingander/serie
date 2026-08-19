@@ -63,6 +63,18 @@
           },
           "additionalProperties": false
         },
+        "git": {
+          "type": "object",
+          "description": "Git integration settings",
+          "properties": {
+            "mailmap": {
+              "type": "boolean",
+              "description": "Whether to resolve author and committer identities through the repository's .mailmap file.",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        },
         "search": {
           "type": "object",
           "description": "Default search settings",
