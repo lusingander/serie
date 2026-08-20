@@ -52,7 +52,7 @@ We use [GitHub Actions](https://github.com/lusingander/serie/blob/master/.github
 
 Improvements to the commit graph are welcome.
 
-Tests for the commit graph are conducted in [./tests/graph.rs](./tests/graph.rs).
+Tests for the commit graph are conducted in [./src/tests/graph.rs](./src/tests/graph.rs).
 
 Running the tests will output images and the test repository to `./out/graph`.
 If you add new test cases, please add these images under `./tests/graph/`.
