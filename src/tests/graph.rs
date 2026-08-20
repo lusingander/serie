@@ -1,9 +1,9 @@
 use std::{path::Path, process::Command};
 
+use crate::{color, config, git, graph};
 use chrono::{DateTime, Days, NaiveDate, TimeZone, Utc};
 use image::{GenericImage, GenericImageView};
 use rustc_hash::FxHashSet;
-use serie::{color, config, git, graph};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -1400,13 +1400,13 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
 
     // Create concatenated image
     let (width, height) = (50, 50);
-    let image_width = ((width * (graph.max_pos_x as usize + 1)) + (width * 7)) as u32;
+    let image_width = ((width * (graph.max_pos_x + 1)) + (width * 7)) as u32;
     let image_height = (height * graph.commits.len()) as u32;
     let mut img_buf: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
         image::ImageBuffer::new(image_width, image_height);
 
     let text_renderer = text_to_png::TextRenderer::default();
-    let text_x = (width * (graph.max_pos_x as usize + 1)) as u32;
+    let text_x = (width * (graph.max_pos_x + 1)) as u32;
 
     for (i, edges) in graph.edges.iter().enumerate() {
         let y = (height * i) as u32;

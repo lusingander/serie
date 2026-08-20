@@ -1,6 +1,6 @@
 use std::{fs, path::Path, process::Command};
 
-use serie::git::{self, Repository};
+use crate::git::{self, Repository};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
