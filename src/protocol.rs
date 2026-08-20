@@ -67,17 +67,12 @@ impl PreparedImageCell {
 #[derive(Debug, Clone)]
 pub struct PreparedImage {
     cells: Vec<PreparedImageCell>,
-    cell_width: usize,
     upload_data: Option<String>,
 }
 
 impl PreparedImage {
     pub fn cells(&self) -> &[PreparedImageCell] {
         &self.cells
-    }
-
-    pub fn cell_width(&self) -> usize {
-        self.cell_width
     }
 
     pub fn take_upload_data(&mut self) -> Option<String> {
@@ -109,7 +104,6 @@ impl ImageProtocol {
         }
         PreparedImage {
             cells,
-            cell_width,
             upload_data: None,
         }
     }
@@ -516,7 +510,6 @@ fn kitty_unicode_prepare(
 
     PreparedImage {
         cells,
-        cell_width,
         upload_data: Some(upload_symbol),
     }
 }

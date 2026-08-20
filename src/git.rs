@@ -30,13 +30,6 @@ impl From<&str> for CommitHash {
 }
 
 #[derive(Debug, Default, Clone)]
-pub enum CommitType {
-    #[default]
-    Commit,
-    Stash,
-}
-
-#[derive(Debug, Default, Clone)]
 pub struct Commit {
     pub commit_hash: CommitHash,
     pub author_name: String,
@@ -48,7 +41,6 @@ pub struct Commit {
     pub subject: String,
     pub body: String,
     pub parent_commit_hashes: Vec<CommitHash>,
-    pub commit_type: CommitType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -325,7 +317,6 @@ fn load_all_commits(
             subject: parts[7].into(),
             body: parts[8].into(),
             parent_commit_hashes: parse_parent_commit_hashes(parts[9]),
-            commit_type: CommitType::Commit,
         };
 
         commits.push(commit);
@@ -375,7 +366,6 @@ fn load_all_stashes(path: &Path, mailmap: bool) -> Vec<Commit> {
             subject: parts[7].into(),
             body: parts[8].into(),
             parent_commit_hashes: parse_parent_commit_hashes(parts[9]),
-            commit_type: CommitType::Stash,
         };
 
         commits.push(commit);

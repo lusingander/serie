@@ -1,8 +1,8 @@
-pub mod color;
-pub mod config;
-pub mod git;
-pub mod graph;
-pub mod protocol;
+mod color;
+mod config;
+mod git;
+mod graph;
+mod protocol;
 
 mod app;
 mod check;
@@ -58,7 +58,7 @@ struct Args {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum ImageProtocolType {
+enum ImageProtocolType {
     Auto,
     Iterm,
     Kitty,
@@ -81,7 +81,7 @@ impl From<Option<ImageProtocolType>> for protocol::ImageProtocol {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum CommitOrderType {
+enum CommitOrderType {
     Chrono,
     Topo,
 }
@@ -98,7 +98,7 @@ impl From<Option<CommitOrderType>> for git::SortCommit {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum GraphWidthType {
+enum GraphWidthType {
     Auto,
     Double,
     Single,
@@ -106,7 +106,7 @@ pub enum GraphWidthType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum GraphStyle {
+enum GraphStyle {
     Rounded,
     Angular,
 }
@@ -123,7 +123,7 @@ impl From<Option<GraphStyle>> for graph::GraphStyle {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum InitialSelection {
+enum InitialSelection {
     Latest,
     Head,
 }

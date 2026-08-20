@@ -109,6 +109,7 @@ impl<'a> GraphImageManager<'a> {
     }
 }
 
+#[cfg(test)]
 #[derive(Debug, Default)]
 pub struct GraphImage {
     pub images: FxHashMap<Vec<Edge>, GraphRowImage>,
