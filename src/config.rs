@@ -296,16 +296,24 @@ pub struct UiCommonConfig {
     pub cursor_type: CursorType,
 }
 
+// Config values are lowercase; PascalCase aliases are kept for backward compatibility.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum CursorType {
+    #[serde(alias = "Native")]
     Native,
+    #[serde(alias = "Virtual")]
     Virtual(String),
 }
 
+// Config values are lowercase; PascalCase aliases are kept for backward compatibility.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default, Validate)]
+#[serde(rename_all = "lowercase")]
 pub enum ClipboardConfig {
     #[default]
+    #[serde(alias = "Auto")]
     Auto,
+    #[serde(alias = "Custom")]
     Custom {
         #[garde(length(min = 1), inner(length(min = 1)))]
         commands: Vec<String>,
@@ -536,7 +544,7 @@ mod tests {
             commands_3 = { name = "open vim", type = "suspend", commands = ["vim"] }
             tab_width = 2
             [ui.common]
-            cursor_type = { Virtual = "|" }
+            cursor_type = { virtual = "|" }
             [ui.list]
             columns = ["date", "subject", "hash", "graph"]
             subject_min_width = 40
@@ -666,6 +674,8 @@ mod tests {
     #[test]
     fn test_config_partial_toml() {
         let toml = r#"
+            [ui.common]
+            cursor_type = "native"
             [ui.list]
             date_format = "%Y/%m/%d"
         "#;
@@ -759,7 +769,7 @@ mod tests {
     fn test_config_clipboard_auto() {
         let toml = r#"
             [core.external]
-            clipboard = "Auto"
+            clipboard = "auto"
         "#;
         let config: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
         assert_eq!(config.core.external.clipboard, ClipboardConfig::Auto);
@@ -769,7 +779,7 @@ mod tests {
     fn test_config_clipboard_custom_single_command() {
         let toml = r#"
             [core.external]
-            clipboard = { Custom = { commands = ["wl-copy"] } }
+            clipboard = { custom = { commands = ["wl-copy"] } }
         "#;
         let config: Config = toml::from_str::<OptionalConfig>(toml).unwrap().into();
         assert_eq!(

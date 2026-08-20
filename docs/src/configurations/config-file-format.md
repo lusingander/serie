@@ -22,10 +22,10 @@ commands_1 = { name = "git diff", commands = ["git", "--no-pager", "diff", "--co
 tab_width = 4
 
 [core.external]
-clipboard = "Auto"
+clipboard = "auto"
 
 [ui.common]
-cursor_type = "Native"
+cursor_type = "native"
 
 [ui.list]
 columns = ["graph", "marker", "subject", "name", "hash", "date"]
@@ -244,25 +244,25 @@ The number of spaces to replace tabs in the user command output.
 The clipboard command to use for copy operations.
 
 - type: `object` (enum)
-- default: `Auto`
+- default: `auto`
 - possible values:
-  - `Auto`: Use the default clipboard library
-  - `{ Custom = { commands = ["..."] } }`: Use a custom command that receives text via stdin
+  - `auto`: Use the default clipboard library
+  - `{ custom = { commands = ["..."] } }`: Use a custom command that receives text via stdin
     - `commands`: `array of strings` - The command and its arguments.
 - examples:
-    - `clipboard = "Auto"`
-    - `clipboard = { Custom = { commands = ["wl-copy"] } }`
-    - `clipboard = { Custom = { commands = ["xclip", "-selection", "clipboard"] } }`
+    - `clipboard = "auto"`
+    - `clipboard = { custom = { commands = ["wl-copy"] } }`
+    - `clipboard = { custom = { commands = ["xclip", "-selection", "clipboard"] } }`
 
 ### `ui.common.cursor_type`
 
 The type of a cursor to display in the input.
 
 - type: `object` (enum)
-- default: `Native`
+- default: `native`
 - possible values:
-  - `Native`: Use the terminal native cursor.
-  - `{ Virtual = "|" }`: Use a virtual cursor with the specified string.
+  - `native`: Use the terminal native cursor.
+  - `{ virtual = "|" }`: Use a virtual cursor with the specified string.
     - value: `string` - The string to display as the virtual cursor.
 
 ### `ui.list.columns`
