@@ -269,6 +269,14 @@ impl App<'_> {
                     let request = RefreshRequest { context };
                     return Ok(Ret::Refresh(request));
                 }
+                AppEvent::AutoRefresh => {
+                    // Skip ticks that arrive while the user is typing in the status line
+                    // (e.g. a search query) so we don't tear down their input.
+                    if matches!(self.app_status.status_line, StatusLine::Input(_, _, _)) {
+                        continue;
+                    }
+                    self.view.refresh();
+                }
                 AppEvent::ClearStatusLine => {
                     self.clear_status_line();
                 }

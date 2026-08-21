@@ -75,6 +75,8 @@ Options:
   -g, --graph-width <TYPE>        Commit graph image cell width [default: auto] [possible values: auto, double, single]
   -s, --graph-style <TYPE>        Commit graph image edge style [default: rounded] [possible values: rounded, angular]
   -i, --initial-selection <TYPE>  Initial selection of commit [default: latest] [possible values: latest, head]
+      --watch [<SECONDS>]         Auto-refresh the view on an interval (seconds) [default: 30]
+      --fetch                     Run `git fetch --all` before each auto-refresh (implies --watch)
   -h, --help                      Print help
   -V, --version                   Print version
 ```

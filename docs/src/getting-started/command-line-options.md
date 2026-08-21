@@ -66,3 +66,29 @@ _Possible values:_ `latest`, `head`
 `latest` will select the latest commit.
 
 `head` will select the commit at HEAD.
+
+## --watch \[\<SECONDS\>\]
+
+Enable automatic refresh of the view on a fixed interval.
+
+If passed without a value, the interval defaults to 30 seconds.
+Values below 5 seconds are clamped to 5.
+
+The refresh only re-reads local git state — it does not contact any remote.
+External git activity (commits made in another terminal, fetches done by
+another tool) is picked up automatically as soon as it lands on disk.
+
+The current cursor / scroll position is preserved across refreshes.
+Ticks that arrive while you are typing in the search prompt are silently
+skipped so they do not interrupt input.
+
+## --fetch
+
+Run `git fetch --all --quiet` before each auto-refresh tick.
+
+Implies `--watch`: if `--watch` is not specified, the interval defaults
+to 30 seconds. Combine with `--watch <SECONDS>` to override.
+
+Fetch errors (network unreachable, authentication failures, etc.) are
+silently ignored so the refresh tick still fires with whatever local
+state is available.

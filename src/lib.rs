@@ -46,6 +46,14 @@ struct Args {
     /// Initial selection of commit [default: latest]
     #[arg(short, long, value_name = "TYPE")]
     initial_selection: Option<InitialSelection>,
+
+    /// Auto-refresh the view on an interval (seconds) [default: 30]
+    #[arg(long, value_name = "SECONDS", num_args = 0..=1, default_missing_value = "30")]
+    watch: Option<u64>,
+
+    /// Run `git fetch --all` before each auto-refresh (implies --watch)
+    #[arg(long)]
+    fetch: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
@@ -159,7 +167,9 @@ pub fn run() -> Result<()> {
         image_protocol,
     });
 
-    let ec = event::EventController::init();
+    let watch_seconds = args.watch.or(if args.fetch { Some(30) } else { None });
+    let watch_interval = watch_seconds.map(|s| std::time::Duration::from_secs(s.max(5)));
+    let ec = event::EventController::init(watch_interval, args.fetch);
     let mut refresh_view_context = None;
     let mut terminal = None;
 

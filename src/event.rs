@@ -1,10 +1,12 @@
 use std::{
     fmt::{self, Debug, Formatter},
+    process::{Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc, Arc, Mutex,
     },
     thread,
+    time::Duration,
 };
 
 use ratatui::crossterm::event::KeyEvent;
@@ -33,6 +35,7 @@ pub enum AppEvent {
     SelectParentCommit,
     CopyToClipboard { name: String, value: String },
     Refresh(RefreshViewContext),
+    AutoRefresh,
     ClearStatusLine,
     UpdateStatusInput(String, Option<u16>, Option<String>),
     NotifyInfo(String),
@@ -80,10 +83,14 @@ pub struct EventController {
     rx: Receiver,
     stop: Arc<AtomicBool>,
     handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
+    watch_interval: Option<Duration>,
+    watch_fetch: bool,
+    watch_stop: Arc<AtomicBool>,
+    watch_handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
 }
 
 impl EventController {
-    pub fn init() -> Self {
+    pub fn init(watch_interval: Option<Duration>, watch_fetch: bool) -> Self {
         let (tx, rx) = mpsc::channel();
         let tx = Sender { tx };
         let rx = Receiver { rx };
@@ -93,6 +100,10 @@ impl EventController {
             rx,
             stop: Arc::new(AtomicBool::new(false)),
             handle: Arc::new(Mutex::new(None)),
+            watch_interval,
+            watch_fetch,
+            watch_stop: Arc::new(AtomicBool::new(false)),
+            watch_handle: Arc::new(Mutex::new(None)),
         };
         controller.start();
 
@@ -131,6 +142,46 @@ impl EventController {
             }
         });
         *self.handle.lock().unwrap() = Some(handle);
+
+        if let Some(interval) = self.watch_interval {
+            self.watch_stop.store(false, Ordering::Relaxed);
+            let stop = self.watch_stop.clone();
+            let tx = self.tx.clone();
+            let fetch = self.watch_fetch;
+            let handle = thread::spawn(move || loop {
+                // Sleep in small slices so we react to stop within ~100ms.
+                let mut remaining = interval;
+                while remaining > Duration::ZERO {
+                    if stop.load(Ordering::Relaxed) {
+                        return;
+                    }
+                    let slice = remaining.min(Duration::from_millis(100));
+                    thread::sleep(slice);
+                    remaining = remaining.saturating_sub(slice);
+                }
+                if stop.load(Ordering::Relaxed) {
+                    return;
+                }
+                if fetch {
+                    // Best-effort: ignore network / auth failures so the
+                    // refresh tick still fires. Force non-interactive so
+                    // the fetch can't hang on a prompt the user can't see
+                    // (TUI owns the terminal).
+                    let _ = Command::new("git")
+                        .args(["fetch", "--all", "--quiet"])
+                        .env("GIT_TERMINAL_PROMPT", "0")
+                        .stdin(Stdio::null())
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .status();
+                }
+                if stop.load(Ordering::Relaxed) {
+                    return;
+                }
+                tx.send(AppEvent::AutoRefresh);
+            });
+            *self.watch_handle.lock().unwrap() = Some(handle);
+        }
     }
 
     pub fn resume(&self) {
@@ -159,6 +210,10 @@ impl EventController {
     fn stop(&self) {
         self.stop.store(true, Ordering::Relaxed);
         if let Some(handle) = self.handle.lock().unwrap().take() {
+            handle.join().unwrap();
+        }
+        self.watch_stop.store(true, Ordering::Relaxed);
+        if let Some(handle) = self.watch_handle.lock().unwrap().take() {
             handle.join().unwrap();
         }
     }
