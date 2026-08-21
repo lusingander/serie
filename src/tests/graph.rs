@@ -1,9 +1,13 @@
 use std::{path::Path, process::Command};
 
-use crate::{color, config, git, graph};
 use chrono::{DateTime, Days, NaiveDate, TimeZone, Utc};
 use image::{GenericImage, GenericImageView};
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
+
+use crate::{
+    color, config, git,
+    graph::{self, Edge, GraphRowImage},
+};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -1455,12 +1459,17 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     .unwrap();
 }
 
+#[derive(Debug, Default)]
+pub struct GraphImage {
+    pub images: FxHashMap<Vec<Edge>, GraphRowImage>,
+}
+
 fn build_graph_image(
     graph: &graph::Graph<'_>,
     image_params: &graph::ImageParams,
     drawing_pixels: &graph::DrawingPixels,
     graph_style: graph::GraphStyle,
-) -> graph::GraphImage {
+) -> GraphImage {
     let graph_row_sources: FxHashSet<(usize, &Vec<graph::Edge>)> = graph
         .commits
         .iter()
@@ -1488,7 +1497,7 @@ fn build_graph_image(
         })
         .collect();
 
-    graph::GraphImage { images }
+    GraphImage { images }
 }
 
 fn create_output_dirs(path: &str) {
