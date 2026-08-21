@@ -6,17 +6,31 @@ use std::{
 use base64::Engine;
 use ratatui::style::{Color, Style};
 
-// By default assume the Iterm2 is the best protocol to use for all terminals *unless* an env
-// variable is set that suggests the terminal is probably Kitty.
+// Detect the best image protocol for the current terminal. Falls back to a plain
+// ASCII renderer when no graphics-capable terminal can be identified, so the tool
+// still works in terminals like gnome-terminal, alacritty, xterm, etc.
 pub fn auto_detect() -> ImageProtocol {
-    if detect_kitty_graphics_protocol() {
-        if detect_tmux() {
+    decide_protocol(
+        detect_kitty_graphics_protocol(),
+        detect_iterm2_graphics_protocol(),
+        detect_tmux(),
+    )
+}
+
+fn decide_protocol(kitty: bool, iterm: bool, tmux: bool) -> ImageProtocol {
+    if kitty {
+        if tmux {
             ImageProtocol::KittyUnicode { tmux: true }
         } else {
             ImageProtocol::Kitty
         }
-    } else {
+    } else if iterm && !tmux {
+        // The iTerm2 inline-image OSC sequence has no tmux-passthrough variant in
+        // this code path, so tmux would swallow it. Fall through to ASCII instead
+        // — this also matches what the compatibility docs promise for tmux users.
         ImageProtocol::Iterm2
+    } else {
+        ImageProtocol::Ascii
     }
 }
 
@@ -30,6 +44,16 @@ fn detect_kitty_graphics_protocol() -> bool {
     || env::var("GHOSTTY_RESOURCES_DIR").is_ok()
 }
 
+fn detect_iterm2_graphics_protocol() -> bool {
+    // Only enable the iTerm2 inline-image protocol when we can identify a terminal
+    // that actually supports it. Otherwise the escape sequence is printed as garbage.
+    let term_program = env::var("TERM_PROGRAM").ok();
+    matches!(
+        term_program.as_deref(),
+        Some("iTerm.app") | Some("WezTerm") | Some("mintty") | Some("vscode")
+    ) || env::var("LC_TERMINAL").ok().as_deref() == Some("iTerm2")
+}
+
 pub fn detect_tmux() -> bool {
     env::var("TMUX").is_ok_and(|tmux| !tmux.is_empty())
         || env::var("TERM").is_ok_and(|term| term.starts_with("tmux"))
@@ -41,6 +65,7 @@ pub enum ImageProtocol {
     Iterm2,
     Kitty,
     KittyUnicode { tmux: bool },
+    Ascii,
 }
 
 #[derive(Debug, Clone)]
@@ -51,6 +76,14 @@ pub struct PreparedImageCell {
 }
 
 impl PreparedImageCell {
+    pub fn new(symbol: String, style: Style) -> Self {
+        Self {
+            symbol,
+            style,
+            skip: false,
+        }
+    }
+
     pub fn symbol(&self) -> &str {
         &self.symbol
     }
@@ -83,6 +116,15 @@ impl PreparedImage {
     pub fn take_upload_data(&mut self) -> Option<String> {
         self.upload_data.take()
     }
+
+    pub fn from_cells(cells: Vec<PreparedImageCell>) -> Self {
+        let cell_width = cells.len();
+        Self {
+            cells,
+            cell_width,
+            upload_data: None,
+        }
+    }
 }
 
 impl ImageProtocol {
@@ -93,6 +135,9 @@ impl ImageProtocol {
             ImageProtocol::KittyUnicode { tmux } => {
                 return kitty_unicode_prepare(bytes, cell_width, image_id, *tmux);
             }
+            // The ASCII renderer doesn't go through PNG bytes — callers build the
+            // PreparedImage directly from the graph edges via PreparedImage::from_cells.
+            ImageProtocol::Ascii => unreachable!("ASCII protocol uses PreparedImage::from_cells"),
         };
         let mut cells = Vec::with_capacity(cell_width);
         cells.push(PreparedImageCell {
@@ -119,6 +164,7 @@ impl ImageProtocol {
             ImageProtocol::Iterm2 => {}
             ImageProtocol::Kitty => kitty_clear_line(y),
             ImageProtocol::KittyUnicode { .. } => {}
+            ImageProtocol::Ascii => {}
         }
     }
 
@@ -127,12 +173,13 @@ impl ImageProtocol {
             ImageProtocol::Iterm2 => {}
             ImageProtocol::Kitty => kitty_clear(),
             ImageProtocol::KittyUnicode { .. } => {}
+            ImageProtocol::Ascii => {}
         }
     }
 
     pub fn delete_images(&self, image_ids: &[u32]) -> Result<(), std::io::Error> {
         match self {
-            ImageProtocol::Iterm2 | ImageProtocol::Kitty => Ok(()),
+            ImageProtocol::Iterm2 | ImageProtocol::Kitty | ImageProtocol::Ascii => Ok(()),
             ImageProtocol::KittyUnicode { tmux } => kitty_unicode_delete_images(image_ids, *tmux),
         }
     }
@@ -600,5 +647,68 @@ fn passthrough_escapes(tmux: bool) -> (&'static str, &'static str, &'static str)
         ("\x1bPtmux;", "\x1b\x1b", "\x1b\\")
     } else {
         ("", "\x1b", "")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_proto(actual: ImageProtocol, expected: ImageProtocol) {
+        match (actual, expected) {
+            (ImageProtocol::Kitty, ImageProtocol::Kitty)
+            | (ImageProtocol::Iterm2, ImageProtocol::Iterm2)
+            | (ImageProtocol::Ascii, ImageProtocol::Ascii) => {}
+            (
+                ImageProtocol::KittyUnicode { tmux: a },
+                ImageProtocol::KittyUnicode { tmux: b },
+            ) if a == b => {}
+            (a, b) => panic!("expected {b:?}, got {a:?}"),
+        }
+    }
+
+    #[test]
+    fn auto_detect_kitty_no_tmux_uses_plain_kitty() {
+        assert_proto(decide_protocol(true, false, false), ImageProtocol::Kitty);
+    }
+
+    #[test]
+    fn auto_detect_kitty_in_tmux_uses_unicode_placeholder() {
+        // Kitty has a tmux-passthrough variant — use it.
+        assert_proto(
+            decide_protocol(true, false, true),
+            ImageProtocol::KittyUnicode { tmux: true },
+        );
+    }
+
+    #[test]
+    fn auto_detect_kitty_takes_precedence_over_iterm() {
+        // If both signals fire, Kitty wins because its detection is more specific
+        // (KITTY_WINDOW_ID / Ghostty env vars) than iTerm's TERM_PROGRAM check.
+        assert_proto(decide_protocol(true, true, false), ImageProtocol::Kitty);
+        assert_proto(
+            decide_protocol(true, true, true),
+            ImageProtocol::KittyUnicode { tmux: true },
+        );
+    }
+
+    #[test]
+    fn auto_detect_iterm_no_tmux_uses_iterm() {
+        assert_proto(decide_protocol(false, true, false), ImageProtocol::Iterm2);
+    }
+
+    #[test]
+    fn auto_detect_iterm_in_tmux_falls_back_to_ascii() {
+        // The plain iTerm2 OSC has no tmux-passthrough wrapping in this codebase,
+        // so tmux would swallow the escape. Falling back to ASCII keeps the graph
+        // visible and matches what compatibility.md promises for tmux users.
+        assert_proto(decide_protocol(false, true, true), ImageProtocol::Ascii);
+    }
+
+    #[test]
+    fn auto_detect_no_signals_uses_ascii() {
+        assert_proto(decide_protocol(false, false, false), ImageProtocol::Ascii);
+        // Tmux on its own doesn't change the answer when no image protocol fires.
+        assert_proto(decide_protocol(false, false, true), ImageProtocol::Ascii);
     }
 }

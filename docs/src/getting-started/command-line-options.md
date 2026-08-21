@@ -9,11 +9,17 @@ It behaves similarly to the `--max-count` option of `git log`.
 
 ## -p, --protocol \<TYPE\>
 
-A protocol type for rendering images of commit graphs.
+The protocol used to render commit graphs.
 
-_Possible values:_ `auto`, `iterm`, `kitty`, `kitty-unicode`
+_Possible values:_ `auto`, `iterm`, `kitty`, `kitty-unicode`, `ascii`
 
-By default `auto` will guess the best supported protocol for the current terminal (if listed in [Supported terminal emulators](./compatibility.md#supported-terminal-emulators)).
+By default `auto` will pick the best supported mode for the current terminal:
+
+1. Kitty graphics protocol if `KITTY_WINDOW_ID`, `GHOSTTY_RESOURCES_DIR`, or `TERM=xterm-ghostty` is set (uses the Unicode-placeholder variant under tmux).
+2. iTerm2 inline images if `TERM_PROGRAM` is `iTerm.app`, `WezTerm`, `mintty`, or `vscode`, or if `LC_TERMINAL=iTerm2`.
+3. Otherwise the `ascii` fallback, which uses Unicode box-drawing characters and works in any terminal.
+
+The `ascii` value can also be selected explicitly — useful if `auto` misidentifies your terminal or if you just want plain text. ASCII rendering honors `--graph-style rounded|angular` (corner glyphs) and `--graph-width single|double` (single character per branch column, or two characters with `●`/`○` and arrow markers on merge commits).
 
 ## -o, --order \<TYPE\>
 

@@ -11,7 +11,7 @@ A rich git commit graph in your terminal, like magic 📚
 
 ## About
 
-Serie ([`/zéːriə/`](https://lusingander.github.io/serie/faq/index.html#how-do-i-pronounce-serie)) is a TUI application that uses the terminal emulators' image display protocol to render commit graphs like `git log --graph --all`.
+Serie ([`/zéːriə/`](https://lusingander.github.io/serie/faq/index.html#how-do-i-pronounce-serie)) is a TUI application that renders commit graphs like `git log --graph --all`, using a terminal emulator's image-display protocol for high-quality output where available and a Unicode box-drawing fallback in any other terminal.
 
 ### Why?
 
@@ -70,7 +70,7 @@ Usage: serie [OPTIONS]
 
 Options:
   -n, --max-count <NUMBER>        Maximum number of commits to render
-  -p, --protocol <TYPE>           Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty, kitty-unicode]
+  -p, --protocol <TYPE>           Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty, kitty-unicode, ascii]
   -o, --order <TYPE>              Commit ordering algorithm [default: chrono] [possible values: chrono, topo]
   -g, --graph-width <TYPE>        Commit graph image cell width [default: auto] [possible values: auto, double, single]
   -s, --graph-style <TYPE>        Commit graph image edge style [default: rounded] [possible values: rounded, angular]
@@ -112,17 +112,19 @@ For details on how to set commands, see [User Command](https://lusingander.githu
 
 ### Supported terminals
 
-These image protocols are supported:
+These rendering modes are supported:
 
 - [Inline Images Protocol (iTerm2)](https://iterm2.com/documentation-images.html)
 - [Terminal graphics protocol (kitty)](https://sw.kovidgoyal.net/kitty/graphics-protocol/)
   - Supports both the existing graphics protocol mode and the [Unicode placeholder](https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders) mode.
+- ASCII / Unicode box-drawing fallback (works in any terminal)
+  - Used automatically when `auto` cannot identify a graphics-capable terminal, or selected explicitly with `--protocol ascii`.
 
 For more information, see [Compatibility](https://lusingander.github.io/serie/getting-started/compatibility.html).
 
 ### Partially supported environments
 
-- tmux is supported only when using the kitty Unicode placeholder protocol.
+- tmux is supported only when using the kitty Unicode placeholder protocol (image rendering) or the ASCII fallback.
 
 ### Unsupported environments
 

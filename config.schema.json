@@ -14,12 +14,13 @@
           "properties": {
             "protocol": {
               "type": "string",
-              "description": "The protocol type for rendering images of commit graphs. The value specified in the command line argument takes precedence.",
+              "description": "The protocol used to render commit graphs. 'auto' autodetects the best available mode for the current terminal and falls back to 'ascii' when no graphics protocol is detected. The value specified in the command line argument takes precedence.",
               "enum": [
                 "auto",
                 "iterm",
                 "kitty",
-                "kitty-unicode"
+                "kitty-unicode",
+                "ascii"
               ],
               "default": "auto"
             },
