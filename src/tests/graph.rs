@@ -2,8 +2,12 @@ use std::{path::Path, process::Command};
 
 use chrono::{DateTime, Days, NaiveDate, TimeZone, Utc};
 use image::{GenericImage, GenericImageView};
-use rustc_hash::FxHashSet;
-use serie::{color, config, git, graph};
+use rustc_hash::{FxHashMap, FxHashSet};
+
+use crate::{
+    color, config, git,
+    graph::{self, Edge, GraphRowImage},
+};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -1400,13 +1404,13 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
 
     // Create concatenated image
     let (width, height) = (50, 50);
-    let image_width = ((width * (graph.max_pos_x as usize + 1)) + (width * 7)) as u32;
+    let image_width = ((width * (graph.max_pos_x + 1)) + (width * 7)) as u32;
     let image_height = (height * graph.commits.len()) as u32;
     let mut img_buf: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
         image::ImageBuffer::new(image_width, image_height);
 
     let text_renderer = text_to_png::TextRenderer::default();
-    let text_x = (width * (graph.max_pos_x as usize + 1)) as u32;
+    let text_x = (width * (graph.max_pos_x + 1)) as u32;
 
     for (i, edges) in graph.edges.iter().enumerate() {
         let y = (height * i) as u32;
@@ -1455,12 +1459,17 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     .unwrap();
 }
 
+#[derive(Debug, Default)]
+pub struct GraphImage {
+    pub images: FxHashMap<Vec<Edge>, GraphRowImage>,
+}
+
 fn build_graph_image(
     graph: &graph::Graph<'_>,
     image_params: &graph::ImageParams,
     drawing_pixels: &graph::DrawingPixels,
     graph_style: graph::GraphStyle,
-) -> graph::GraphImage {
+) -> GraphImage {
     let graph_row_sources: FxHashSet<(usize, &Vec<graph::Edge>)> = graph
         .commits
         .iter()
@@ -1488,7 +1497,7 @@ fn build_graph_image(
         })
         .collect();
 
-    graph::GraphImage { images }
+    GraphImage { images }
 }
 
 fn create_output_dirs(path: &str) {

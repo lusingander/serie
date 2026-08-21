@@ -109,11 +109,6 @@ impl<'a> GraphImageManager<'a> {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct GraphImage {
-    pub images: FxHashMap<Vec<Edge>, GraphRowImage>,
-}
-
 pub struct GraphRowImage {
     pub bytes: Vec<u8>,
     pub cell_count: usize,
