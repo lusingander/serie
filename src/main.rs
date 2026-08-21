@@ -1,14 +1,13 @@
-mod color;
-mod config;
-mod git;
-mod graph;
-mod protocol;
-
 mod app;
 mod check;
+mod color;
+mod config;
 mod event;
 mod external;
+mod git;
+mod graph;
 mod keybind;
+mod protocol;
 mod view;
 mod widget;
 
