@@ -50,7 +50,6 @@ pub enum SearchState {
     Searching {
         start_index: usize,
         match_index: usize,
-        transient_message: TransientMessage,
     },
     Applied {
         match_index: usize,
@@ -75,27 +74,6 @@ impl SearchState {
             SearchState::Searching { match_index, .. } => *match_index = index,
             SearchState::Applied { match_index, .. } => *match_index = index,
             _ => {}
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TransientMessage {
-    None,
-    IgnoreCaseOff,
-    IgnoreCaseOn,
-    FuzzyOff,
-    FuzzyOn,
-}
-
-impl TransientMessage {
-    fn message(self) -> Option<&'static str> {
-        match self {
-            TransientMessage::None => None,
-            TransientMessage::IgnoreCaseOn => Some("Ignore case: ON "),
-            TransientMessage::IgnoreCaseOff => Some("Ignore case: OFF"),
-            TransientMessage::FuzzyOn => Some("Fuzzy match: ON "),
-            TransientMessage::FuzzyOff => Some("Fuzzy match: OFF"),
         }
     }
 }
@@ -501,7 +479,6 @@ impl<'a> CommitListState<'a> {
             self.search_state = SearchState::Searching {
                 start_index: self.current_selected_index(),
                 match_index: 0,
-                transient_message: TransientMessage::None,
             };
             self.search_input.reset();
             self.clear_search_matches();
@@ -509,13 +486,6 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn handle_search_input(&mut self, key: KeyEvent) {
-        if let SearchState::Searching {
-            transient_message, ..
-        } = &mut self.search_state
-        {
-            *transient_message = TransientMessage::None;
-        }
-
         if let SearchState::Searching { start_index, .. } = self.search_state {
             self.search_input.handle_event(&Event::Key(key));
             self.update_search_matches();
@@ -578,39 +548,25 @@ impl<'a> CommitListState<'a> {
     pub fn toggle_ignore_case(&mut self) -> String {
         self.search_options.ignore_case = !self.search_options.ignore_case;
         let message = if self.search_options.ignore_case {
-            TransientMessage::IgnoreCaseOn
+            "Ignore case: ON "
         } else {
-            TransientMessage::IgnoreCaseOff
+            "Ignore case: OFF"
         };
 
-        if let SearchState::Searching {
-            transient_message, ..
-        } = &mut self.search_state
-        {
-            *transient_message = message;
-        }
-
         self.update_search_after_options_change();
-        message.message().unwrap().into()
+        message.into()
     }
 
     pub fn toggle_fuzzy(&mut self) -> String {
         self.search_options.fuzzy = !self.search_options.fuzzy;
         let message = if self.search_options.fuzzy {
-            TransientMessage::FuzzyOn
+            "Fuzzy match: ON "
         } else {
-            TransientMessage::FuzzyOff
+            "Fuzzy match: OFF"
         };
 
-        if let SearchState::Searching {
-            transient_message, ..
-        } = &mut self.search_state
-        {
-            *transient_message = message;
-        }
-
         self.update_search_after_options_change();
-        message.message().unwrap().into()
+        message.into()
     }
 
     pub fn search_query_string(&self) -> Option<String> {
@@ -644,17 +600,6 @@ impl<'a> CommitListState<'a> {
 
     pub fn search_query_cursor_position(&self) -> u16 {
         self.search_input.visual_cursor() as u16 + 1 // add 1 for "/"
-    }
-
-    pub fn transient_message_string(&self) -> Option<String> {
-        if let SearchState::Searching {
-            transient_message, ..
-        } = self.search_state
-        {
-            transient_message.message().map(Into::into)
-        } else {
-            None
-        }
     }
 
     fn update_search_matches(&mut self) {
@@ -1425,13 +1370,6 @@ mod tests {
             assert_eq!(state.toggle_ignore_case(), "Ignore case: OFF");
             assert_eq!(state.toggle_fuzzy(), "Fuzzy match: ON ");
             assert_eq!(state.toggle_fuzzy(), "Fuzzy match: OFF");
-
-            state.start_search();
-            state.toggle_ignore_case();
-            assert_eq!(
-                state.transient_message_string(),
-                Some("Ignore case: ON ".into())
-            );
         });
     }
 

@@ -45,16 +45,16 @@ impl<'a> ListView<'a> {
                     self.clear_search_query();
                 }
                 UserEvent::IgnoreCaseToggle => {
-                    self.as_mut_list_state().toggle_ignore_case();
-                    self.update_search_query();
+                    let message = self.as_mut_list_state().toggle_ignore_case();
+                    self.update_search_status(Some(message));
                 }
                 UserEvent::FuzzyToggle => {
-                    self.as_mut_list_state().toggle_fuzzy();
-                    self.update_search_query();
+                    let message = self.as_mut_list_state().toggle_fuzzy();
+                    self.update_search_status(Some(message));
                 }
                 _ => {
                     self.as_mut_list_state().handle_search_input(key);
-                    self.update_search_query();
+                    self.update_search_status(None);
                 }
             }
             return;
@@ -131,7 +131,7 @@ impl<'a> ListView<'a> {
                 }
                 UserEvent::Search => {
                     self.as_mut_list_state().start_search();
-                    self.update_search_query();
+                    self.update_search_status(None);
                 }
                 UserEvent::IgnoreCaseToggle => {
                     let message = self.as_mut_list_state().toggle_ignore_case();
@@ -215,16 +215,15 @@ impl<'a> ListView<'a> {
         self.as_list_state().graph_image_ids_sorted()
     }
 
-    fn update_search_query(&self) {
+    fn update_search_status(&self, transient_message: Option<String>) {
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
             let list_state = self.as_list_state();
             if let Some(query) = list_state.search_query_string() {
                 let cursor_pos = list_state.search_query_cursor_position();
-                let transient_msg = list_state.transient_message_string();
                 self.tx.send(AppEvent::UpdateStatusInput(
                     query,
                     Some(cursor_pos),
-                    transient_msg,
+                    transient_message,
                 ));
             }
         }
