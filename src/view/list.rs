@@ -273,9 +273,11 @@ impl<'a> ListView<'a> {
             selected,
             height,
             scroll_to_top,
+            search_options,
             search_context,
         } = list_context;
         let list_state = self.as_mut_list_state();
+        list_state.restore_search_options(*search_options);
         list_state.reset_height(*height);
         if *scroll_to_top {
             list_state.select_first();

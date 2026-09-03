@@ -67,8 +67,6 @@ pub struct SearchOptions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SearchRefreshContext {
     query: String,
-    ignore_case: bool,
-    fuzzy: bool,
 }
 
 impl SearchState {
@@ -490,6 +488,14 @@ impl<'a> CommitListState<'a> {
         self.search_state
     }
 
+    pub fn search_options(&self) -> SearchOptions {
+        self.search_options
+    }
+
+    pub fn restore_search_options(&mut self, options: SearchOptions) {
+        self.search_options = options;
+    }
+
     pub fn start_search(&mut self) {
         if let SearchState::Inactive | SearchState::Applied { .. } = self.search_state {
             self.search_state = SearchState::Searching {
@@ -535,8 +541,6 @@ impl<'a> CommitListState<'a> {
         if let SearchState::Applied { .. } = self.search_state {
             Some(SearchRefreshContext {
                 query: self.search_input.value().into(),
-                ignore_case: self.search_options.ignore_case,
-                fuzzy: self.search_options.fuzzy,
             })
         } else {
             None
@@ -545,10 +549,6 @@ impl<'a> CommitListState<'a> {
 
     pub fn restore_search(&mut self, context: &SearchRefreshContext) {
         self.search_input = Input::new(context.query.clone());
-        self.search_options = SearchOptions {
-            ignore_case: context.ignore_case,
-            fuzzy: context.fuzzy,
-        };
         self.update_search_matches();
 
         let total_match = self.search_matches.iter().filter(|m| m.matched()).count();
@@ -1290,25 +1290,29 @@ mod tests {
 
     #[test]
     fn test_restore_search_recalculates_matches_with_applied_options() {
-        let context = with_commit_list_state(&["Fix parser", "other"], |state| {
+        let (context, options) = with_commit_list_state(&["Fix parser", "other"], |state| {
             input_search_query(state, "fx");
             state.toggle_ignore_case();
             state.toggle_fuzzy();
             state.apply_search();
 
-            state.search_refresh_context().unwrap()
+            (
+                state.search_refresh_context().unwrap(),
+                state.search_options(),
+            )
         });
 
+        assert_eq!(context, SearchRefreshContext { query: "fx".into() });
         assert_eq!(
-            context,
-            SearchRefreshContext {
-                query: "fx".into(),
+            options,
+            SearchOptions {
                 ignore_case: true,
                 fuzzy: true,
             }
         );
 
         with_commit_list_state(&["unrelated", "FIX new", "fix parser"], |state| {
+            state.restore_search_options(options);
             state.restore_search(&context);
 
             assert_eq!(state.search_refresh_context(), Some(context.clone()));
@@ -1335,6 +1339,25 @@ mod tests {
             assert_eq!(
                 state.commits[state.current_selected_index()].commit.subject,
                 "fix parser"
+            );
+        });
+    }
+
+    #[test]
+    fn test_restore_search_options_without_applied_search() {
+        let options = with_commit_list_state(&["FIX"], |state| {
+            state.toggle_ignore_case();
+            state.search_options()
+        });
+
+        with_commit_list_state(&["FIX"], |state| {
+            state.restore_search_options(options);
+            input_search_query(state, "fix");
+            state.apply_search();
+
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("Match 1 of 1 (query: \"fix\")".into(), true))
             );
         });
     }
