@@ -50,16 +50,18 @@ pub enum SearchState {
     Searching {
         start_index: usize,
         match_index: usize,
-        ignore_case: bool,
-        fuzzy: bool,
         transient_message: TransientMessage,
     },
     Applied {
         match_index: usize,
         total_match: usize,
-        ignore_case: bool,
-        fuzzy: bool,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SearchOptions {
+    pub ignore_case: bool,
+    pub fuzzy: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -194,6 +196,7 @@ pub struct CommitListState<'a> {
     ref_name_to_commit_index_map: FxHashMap<&'a str, usize>,
 
     search_state: SearchState,
+    search_options: SearchOptions,
     search_input: Input,
     search_matches: Vec<SearchMatch>,
 
@@ -201,9 +204,6 @@ pub struct CommitListState<'a> {
     offset: usize,
     total: usize,
     height: usize,
-
-    default_ignore_case: bool,
-    default_fuzzy: bool,
 }
 
 impl<'a> CommitListState<'a> {
@@ -226,14 +226,16 @@ impl<'a> CommitListState<'a> {
             head,
             ref_name_to_commit_index_map,
             search_state: SearchState::Inactive,
+            search_options: SearchOptions {
+                ignore_case: default_ignore_case,
+                fuzzy: default_fuzzy,
+            },
             search_input: Input::default(),
             search_matches: vec![SearchMatch::default(); total],
             selected: 0,
             offset: 0,
             total,
             height: 0,
-            default_ignore_case,
-            default_fuzzy,
         }
     }
 
@@ -481,8 +483,6 @@ impl<'a> CommitListState<'a> {
             self.search_state = SearchState::Searching {
                 start_index: self.current_selected_index(),
                 match_index: 0,
-                ignore_case: self.default_ignore_case,
-                fuzzy: self.default_fuzzy,
                 transient_message: TransientMessage::None,
             };
             self.search_input.reset();
@@ -498,27 +498,15 @@ impl<'a> CommitListState<'a> {
             *transient_message = TransientMessage::None;
         }
 
-        if let SearchState::Searching {
-            start_index,
-            ignore_case,
-            fuzzy,
-            ..
-        } = self.search_state
-        {
+        if let SearchState::Searching { start_index, .. } = self.search_state {
             self.search_input.handle_event(&Event::Key(key));
-            self.update_search_matches(ignore_case, fuzzy);
+            self.update_search_matches();
             self.select_current_or_next_match_index(start_index);
         }
     }
 
     pub fn apply_search(&mut self) {
-        if let SearchState::Searching {
-            match_index,
-            ignore_case,
-            fuzzy,
-            ..
-        } = self.search_state
-        {
+        if let SearchState::Searching { match_index, .. } = self.search_state {
             if self.search_input.value().is_empty() {
                 self.search_state = SearchState::Inactive;
             } else {
@@ -526,22 +514,17 @@ impl<'a> CommitListState<'a> {
                 self.search_state = SearchState::Applied {
                     match_index,
                     total_match,
-                    ignore_case,
-                    fuzzy,
                 };
             }
         }
     }
 
     pub fn search_refresh_context(&self) -> Option<SearchRefreshContext> {
-        if let SearchState::Applied {
-            ignore_case, fuzzy, ..
-        } = self.search_state
-        {
+        if let SearchState::Applied { .. } = self.search_state {
             Some(SearchRefreshContext {
                 query: self.search_input.value().into(),
-                ignore_case,
-                fuzzy,
+                ignore_case: self.search_options.ignore_case,
+                fuzzy: self.search_options.fuzzy,
             })
         } else {
             None
@@ -550,15 +533,17 @@ impl<'a> CommitListState<'a> {
 
     pub fn restore_search(&mut self, context: &SearchRefreshContext) {
         self.search_input = Input::new(context.query.clone());
-        self.update_search_matches(context.ignore_case, context.fuzzy);
+        self.search_options = SearchOptions {
+            ignore_case: context.ignore_case,
+            fuzzy: context.fuzzy,
+        };
+        self.update_search_matches();
 
         let total_match = self.search_matches.iter().filter(|m| m.matched()).count();
         self.search_state = SearchState::Applied {
             // The selected commit may not match after refresh; next/previous updates this value.
             match_index: 0,
             total_match,
-            ignore_case: context.ignore_case,
-            fuzzy: context.fuzzy,
         };
 
         if total_match > 0 {
@@ -580,54 +565,38 @@ impl<'a> CommitListState<'a> {
 
     pub fn toggle_ignore_case(&mut self) {
         if let SearchState::Searching {
-            ignore_case,
-            transient_message,
-            ..
+            transient_message, ..
         } = &mut self.search_state
         {
-            *ignore_case = !*ignore_case;
-            *transient_message = if *ignore_case {
+            self.search_options.ignore_case = !self.search_options.ignore_case;
+            *transient_message = if self.search_options.ignore_case {
                 TransientMessage::IgnoreCaseOn
             } else {
                 TransientMessage::IgnoreCaseOff
             };
         }
 
-        if let SearchState::Searching {
-            start_index,
-            ignore_case,
-            fuzzy,
-            ..
-        } = self.search_state
-        {
-            self.update_search_matches(ignore_case, fuzzy);
+        if let SearchState::Searching { start_index, .. } = self.search_state {
+            self.update_search_matches();
             self.select_current_or_next_match_index(start_index);
         }
     }
 
     pub fn toggle_fuzzy(&mut self) {
         if let SearchState::Searching {
-            fuzzy,
-            transient_message,
-            ..
+            transient_message, ..
         } = &mut self.search_state
         {
-            *fuzzy = !*fuzzy;
-            *transient_message = if *fuzzy {
+            self.search_options.fuzzy = !self.search_options.fuzzy;
+            *transient_message = if self.search_options.fuzzy {
                 TransientMessage::FuzzyOn
             } else {
                 TransientMessage::FuzzyOff
             };
         }
 
-        if let SearchState::Searching {
-            start_index,
-            ignore_case,
-            fuzzy,
-            ..
-        } = self.search_state
-        {
-            self.update_search_matches(ignore_case, fuzzy);
+        if let SearchState::Searching { start_index, .. } = self.search_state {
+            self.update_search_matches();
             self.select_current_or_next_match_index(start_index);
         }
     }
@@ -682,8 +651,12 @@ impl<'a> CommitListState<'a> {
         }
     }
 
-    fn update_search_matches(&mut self, ignore_case: bool, fuzzy: bool) {
-        let matcher = SearchMatcher::new(self.search_input.value(), ignore_case, fuzzy);
+    fn update_search_matches(&mut self) {
+        let matcher = SearchMatcher::new(
+            self.search_input.value(),
+            self.search_options.ignore_case,
+            self.search_options.fuzzy,
+        );
         let mut match_index = 1;
         for (i, commit_info) in self.commits.iter().enumerate() {
             let m = &mut self.search_matches[i];
@@ -1355,6 +1328,24 @@ mod tests {
             state.restore_search(&context);
 
             assert_eq!(state.current_list_status(), (1, 1, 2));
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("Match 1 of 1 (query: \"fix\")".into(), true))
+            );
+        });
+    }
+
+    #[test]
+    fn test_search_options_are_reused_for_next_search() {
+        with_commit_list_state(&["FIX"], |state| {
+            input_search_query(state, "fix");
+            state.toggle_ignore_case();
+            state.apply_search();
+            state.cancel_search();
+
+            input_search_query(state, "fix");
+            state.apply_search();
+
             assert_eq!(
                 state.matched_query_string(),
                 Some(("Match 1 of 1 (query: \"fix\")".into(), true))
