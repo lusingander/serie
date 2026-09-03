@@ -196,16 +196,14 @@ The width mode for each graph row image.
 
 ### `core.search.ignore_case`
 
-Whether to enable ignore case when the application starts. The option can be
-toggled while the commit list is displayed.
+Whether to enable ignore case when the application starts. The option can be toggled while the commit list is displayed.
 
 - type: `boolean`
 - default: `false`
 
 ### `core.search.fuzzy`
 
-Whether to enable fuzzy matching when the application starts. The option can be
-toggled while the commit list is displayed.
+Whether to enable fuzzy matching when the application starts. The option can be toggled while the commit list is displayed.
 
 - type: `boolean`
 - default: `false`
