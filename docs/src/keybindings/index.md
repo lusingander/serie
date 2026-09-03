@@ -30,8 +30,8 @@ The default key bindings can be overridden.
 | <kbd>/</kbd>                         | Start search                                       | `search`                                     |
 | <kbd>Esc</kbd>                       | Cancel search                                      | `cancel`                                     |
 | <kbd>n/N</kbd>                       | Go to next/previous search match                   | `go_to_next` `go_to_previous`                |
-| <kbd>Ctrl-g</kbd>                    | Toggle ignore case (if searching)                  | `ignore_case_toggle`                         |
-| <kbd>Ctrl-x</kbd>                    | Toggle fuzzy match (if searching)                  | `fuzzy_toggle`                               |
+| <kbd>Ctrl-g</kbd>                    | Toggle ignore case                                 | `ignore_case_toggle`                         |
+| <kbd>Ctrl-x</kbd>                    | Toggle fuzzy match                                 | `fuzzy_toggle`                               |
 | <kbd>R</kbd>                         | Refresh                                            | `refresh`                                    |
 | <kbd>c/C</kbd>                       | Copy commit short/full hash                        | `short_copy` `full_copy`                     |
 | <kbd>d</kbd>                         | Toggle custom user command view                    | `user_command_1`                             |
