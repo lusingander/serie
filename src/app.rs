@@ -33,6 +33,7 @@ enum StatusLine {
     #[default]
     None,
     Input(String, Option<u16>, Option<String>),
+    Transient(String),
     NotificationInfo(String),
     NotificationSuccess(String),
     NotificationWarn(String),
@@ -161,7 +162,8 @@ impl App<'_> {
                         StatusLine::None | StatusLine::Input(_, _, _) => {
                             // do nothing
                         }
-                        StatusLine::NotificationInfo(_)
+                        StatusLine::Transient(_)
+                        | StatusLine::NotificationInfo(_)
                         | StatusLine::NotificationSuccess(_)
                         | StatusLine::NotificationWarn(_) => {
                             // Clear message and pass key input as is
@@ -275,6 +277,9 @@ impl App<'_> {
                 AppEvent::UpdateStatusInput(msg, cursor_pos, msg_r) => {
                     self.update_status_input(msg, cursor_pos, msg_r);
                 }
+                AppEvent::UpdateStatusTransient(msg) => {
+                    self.update_status_transient(msg);
+                }
                 AppEvent::NotifyInfo(msg) => {
                     self.info_notification(msg);
                 }
@@ -348,7 +353,8 @@ impl App<'_> {
                 let msg_w = console::measure_text_width(msg.as_str());
                 if let Some(t_msg) = transient_msg {
                     let t_msg_w = console::measure_text_width(t_msg.as_str());
-                    let pad_w = area.width as usize - msg_w - t_msg_w - 2 /* pad */;
+                    let pad_w =
+                        (area.width as usize).saturating_sub(msg_w + t_msg_w + 2 /* pad */);
                     Line::from(vec![
                         msg.as_str().fg(self.ctx.color_theme.status_input_fg),
                         " ".repeat(pad_w).into(),
@@ -359,6 +365,15 @@ impl App<'_> {
                 } else {
                     Line::raw(msg).fg(self.ctx.color_theme.status_input_fg)
                 }
+            }
+            StatusLine::Transient(msg) => {
+                let msg_w = console::measure_text_width(msg.as_str());
+                let pad_w = (area.width as usize).saturating_sub(msg_w + 2 /* pad */);
+                Line::from(vec![
+                    " ".repeat(pad_w).into(),
+                    msg.as_str()
+                        .fg(self.ctx.color_theme.status_input_transient_fg),
+                ])
             }
             StatusLine::NotificationInfo(msg) => {
                 Line::raw(msg).fg(self.ctx.color_theme.status_info_fg)
@@ -681,6 +696,10 @@ impl App<'_> {
         transient_msg: Option<String>,
     ) {
         self.app_status.status_line = StatusLine::Input(msg, cursor_pos, transient_msg);
+    }
+
+    fn update_status_transient(&mut self, msg: String) {
+        self.app_status.status_line = StatusLine::Transient(msg);
     }
 
     fn info_notification(&mut self, msg: String) {

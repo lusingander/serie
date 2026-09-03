@@ -135,11 +135,11 @@ impl<'a> ListView<'a> {
                 }
                 UserEvent::IgnoreCaseToggle => {
                     let message = self.as_mut_list_state().toggle_ignore_case();
-                    self.tx.send(AppEvent::NotifyInfo(message));
+                    self.tx.send(AppEvent::UpdateStatusTransient(message));
                 }
                 UserEvent::FuzzyToggle => {
                     let message = self.as_mut_list_state().toggle_fuzzy();
-                    self.tx.send(AppEvent::NotifyInfo(message));
+                    self.tx.send(AppEvent::UpdateStatusTransient(message));
                 }
                 UserEvent::UserCommand(n) => {
                     self.tx.send(AppEvent::OpenUserCommand(n));

@@ -35,6 +35,7 @@ pub enum AppEvent {
     Refresh(RefreshViewContext),
     ClearStatusLine,
     UpdateStatusInput(String, Option<u16>, Option<String>),
+    UpdateStatusTransient(String),
     NotifyInfo(String),
     NotifySuccess(String),
     NotifyWarn(String),
