@@ -90,6 +90,18 @@ pub enum TransientMessage {
     FuzzyOn,
 }
 
+impl TransientMessage {
+    fn message(self) -> Option<&'static str> {
+        match self {
+            TransientMessage::None => None,
+            TransientMessage::IgnoreCaseOn => Some("Ignore case: ON "),
+            TransientMessage::IgnoreCaseOff => Some("Ignore case: OFF"),
+            TransientMessage::FuzzyOn => Some("Fuzzy match: ON "),
+            TransientMessage::FuzzyOff => Some("Fuzzy match: OFF"),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 struct SearchMatch {
     refs: FxHashMap<String, SearchMatchPosition>,
@@ -563,38 +575,42 @@ impl<'a> CommitListState<'a> {
         }
     }
 
-    pub fn toggle_ignore_case(&mut self) {
+    pub fn toggle_ignore_case(&mut self) -> String {
         self.search_options.ignore_case = !self.search_options.ignore_case;
+        let message = if self.search_options.ignore_case {
+            TransientMessage::IgnoreCaseOn
+        } else {
+            TransientMessage::IgnoreCaseOff
+        };
 
         if let SearchState::Searching {
             transient_message, ..
         } = &mut self.search_state
         {
-            *transient_message = if self.search_options.ignore_case {
-                TransientMessage::IgnoreCaseOn
-            } else {
-                TransientMessage::IgnoreCaseOff
-            };
+            *transient_message = message;
         }
 
         self.update_search_after_options_change();
+        message.message().unwrap().into()
     }
 
-    pub fn toggle_fuzzy(&mut self) {
+    pub fn toggle_fuzzy(&mut self) -> String {
         self.search_options.fuzzy = !self.search_options.fuzzy;
+        let message = if self.search_options.fuzzy {
+            TransientMessage::FuzzyOn
+        } else {
+            TransientMessage::FuzzyOff
+        };
 
         if let SearchState::Searching {
             transient_message, ..
         } = &mut self.search_state
         {
-            *transient_message = if self.search_options.fuzzy {
-                TransientMessage::FuzzyOn
-            } else {
-                TransientMessage::FuzzyOff
-            };
+            *transient_message = message;
         }
 
         self.update_search_after_options_change();
+        message.message().unwrap().into()
     }
 
     pub fn search_query_string(&self) -> Option<String> {
@@ -635,13 +651,7 @@ impl<'a> CommitListState<'a> {
             transient_message, ..
         } = self.search_state
         {
-            match transient_message {
-                TransientMessage::None => None,
-                TransientMessage::IgnoreCaseOn => Some("Ignore case: ON ".to_string()),
-                TransientMessage::IgnoreCaseOff => Some("Ignore case: OFF".to_string()),
-                TransientMessage::FuzzyOn => Some("Fuzzy match: ON ".to_string()),
-                TransientMessage::FuzzyOff => Some("Fuzzy match: OFF".to_string()),
-            }
+            transient_message.message().map(Into::into)
         } else {
             None
         }
@@ -1381,6 +1391,23 @@ mod tests {
             assert_eq!(
                 state.matched_query_string(),
                 Some(("Match 1 of 1 (query: \"fix\")".into(), true))
+            );
+        });
+    }
+
+    #[test]
+    fn test_search_option_toggle_messages() {
+        with_commit_list_state(&["fix"], |state| {
+            assert_eq!(state.toggle_ignore_case(), "Ignore case: ON ");
+            assert_eq!(state.toggle_ignore_case(), "Ignore case: OFF");
+            assert_eq!(state.toggle_fuzzy(), "Fuzzy match: ON ");
+            assert_eq!(state.toggle_fuzzy(), "Fuzzy match: OFF");
+
+            state.start_search();
+            state.toggle_ignore_case();
+            assert_eq!(
+                state.transient_message_string(),
+                Some("Ignore case: ON ".into())
             );
         });
     }

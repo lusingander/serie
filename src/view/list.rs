@@ -134,10 +134,12 @@ impl<'a> ListView<'a> {
                     self.update_search_query();
                 }
                 UserEvent::IgnoreCaseToggle => {
-                    self.as_mut_list_state().toggle_ignore_case();
+                    let message = self.as_mut_list_state().toggle_ignore_case();
+                    self.tx.send(AppEvent::NotifyInfo(message));
                 }
                 UserEvent::FuzzyToggle => {
-                    self.as_mut_list_state().toggle_fuzzy();
+                    let message = self.as_mut_list_state().toggle_fuzzy();
+                    self.tx.send(AppEvent::NotifyInfo(message));
                 }
                 UserEvent::UserCommand(n) => {
                     self.tx.send(AppEvent::OpenUserCommand(n));
