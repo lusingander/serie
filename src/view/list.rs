@@ -133,6 +133,12 @@ impl<'a> ListView<'a> {
                     self.as_mut_list_state().start_search();
                     self.update_search_query();
                 }
+                UserEvent::IgnoreCaseToggle => {
+                    self.as_mut_list_state().toggle_ignore_case();
+                }
+                UserEvent::FuzzyToggle => {
+                    self.as_mut_list_state().toggle_fuzzy();
+                }
                 UserEvent::UserCommand(n) => {
                     self.tx.send(AppEvent::OpenUserCommand(n));
                 }

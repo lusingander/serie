@@ -564,11 +564,12 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn toggle_ignore_case(&mut self) {
+        self.search_options.ignore_case = !self.search_options.ignore_case;
+
         if let SearchState::Searching {
             transient_message, ..
         } = &mut self.search_state
         {
-            self.search_options.ignore_case = !self.search_options.ignore_case;
             *transient_message = if self.search_options.ignore_case {
                 TransientMessage::IgnoreCaseOn
             } else {
@@ -576,18 +577,16 @@ impl<'a> CommitListState<'a> {
             };
         }
 
-        if let SearchState::Searching { start_index, .. } = self.search_state {
-            self.update_search_matches();
-            self.select_current_or_next_match_index(start_index);
-        }
+        self.update_search_after_options_change();
     }
 
     pub fn toggle_fuzzy(&mut self) {
+        self.search_options.fuzzy = !self.search_options.fuzzy;
+
         if let SearchState::Searching {
             transient_message, ..
         } = &mut self.search_state
         {
-            self.search_options.fuzzy = !self.search_options.fuzzy;
             *transient_message = if self.search_options.fuzzy {
                 TransientMessage::FuzzyOn
             } else {
@@ -595,10 +594,7 @@ impl<'a> CommitListState<'a> {
             };
         }
 
-        if let SearchState::Searching { start_index, .. } = self.search_state {
-            self.update_search_matches();
-            self.select_current_or_next_match_index(start_index);
-        }
+        self.update_search_after_options_change();
     }
 
     pub fn search_query_string(&self) -> Option<String> {
@@ -664,6 +660,28 @@ impl<'a> CommitListState<'a> {
             if m.matched() {
                 m.match_index = match_index;
                 match_index += 1;
+            }
+        }
+    }
+
+    fn update_search_after_options_change(&mut self) {
+        match self.search_state {
+            SearchState::Inactive => {}
+            SearchState::Searching { start_index, .. } => {
+                self.update_search_matches();
+                self.select_current_or_next_match_index(start_index);
+            }
+            SearchState::Applied { .. } => {
+                let current_index = self.current_selected_index();
+                self.update_search_matches();
+                let total_match = self.search_matches.iter().filter(|m| m.matched()).count();
+                self.search_state = SearchState::Applied {
+                    match_index: 0,
+                    total_match,
+                };
+                if total_match > 0 {
+                    self.select_current_or_next_match_index(current_index);
+                }
             }
         }
     }
@@ -1349,6 +1367,75 @@ mod tests {
             assert_eq!(
                 state.matched_query_string(),
                 Some(("Match 1 of 1 (query: \"fix\")".into(), true))
+            );
+        });
+    }
+
+    #[test]
+    fn test_search_options_can_be_changed_before_search() {
+        with_commit_list_state(&["FIX"], |state| {
+            state.toggle_ignore_case();
+            input_search_query(state, "fix");
+            state.apply_search();
+
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("Match 1 of 1 (query: \"fix\")".into(), true))
+            );
+        });
+    }
+
+    #[test]
+    fn test_applied_search_options_keep_selected_match() {
+        with_commit_list_state(&["FIX", "fix"], |state| {
+            input_search_query(state, "fix");
+            state.apply_search();
+            state.toggle_ignore_case();
+
+            assert_eq!(
+                state.commits[state.current_selected_index()].commit.subject,
+                "fix"
+            );
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("Match 2 of 2 (query: \"fix\")".into(), true))
+            );
+        });
+    }
+
+    #[test]
+    fn test_applied_search_options_select_next_match() {
+        with_commit_list_state(&["FIX", "fix"], |state| {
+            state.toggle_ignore_case();
+            input_search_query(state, "fix");
+            state.apply_search();
+            state.toggle_ignore_case();
+
+            assert_eq!(
+                state.commits[state.current_selected_index()].commit.subject,
+                "fix"
+            );
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("Match 1 of 1 (query: \"fix\")".into(), true))
+            );
+        });
+    }
+
+    #[test]
+    fn test_applied_search_options_keep_selection_when_no_matches() {
+        with_commit_list_state(&["fix", "other"], |state| {
+            state.toggle_fuzzy();
+            input_search_query(state, "fx");
+            state.apply_search();
+            let selected = state.current_selected_index();
+
+            state.toggle_fuzzy();
+
+            assert_eq!(state.current_selected_index(), selected);
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("No matches found (query: \"fx\")".into(), false))
             );
         });
     }
