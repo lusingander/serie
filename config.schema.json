@@ -661,6 +661,9 @@
         "search": {
           "$ref": "#/definitions/keybindArray"
         },
+        "search_target_toggle": {
+          "$ref": "#/definitions/keybindArray"
+        },
         "ignore_case_toggle": {
           "$ref": "#/definitions/keybindArray"
         },

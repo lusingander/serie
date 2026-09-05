@@ -44,6 +44,10 @@ impl<'a> ListView<'a> {
                     self.as_mut_list_state().cancel_search();
                     self.clear_search_query();
                 }
+                UserEvent::SearchTargetToggle => {
+                    self.as_mut_list_state().toggle_search_target();
+                    self.update_search_status();
+                }
                 UserEvent::IgnoreCaseToggle => {
                     self.as_mut_list_state().toggle_ignore_case();
                     self.update_search_status();
@@ -132,6 +136,10 @@ impl<'a> ListView<'a> {
                 UserEvent::Search => {
                     self.as_mut_list_state().start_search();
                     self.update_search_status();
+                }
+                UserEvent::SearchTargetToggle => {
+                    self.as_mut_list_state().toggle_search_target();
+                    self.update_search_options_message();
                 }
                 UserEvent::IgnoreCaseToggle => {
                     self.as_mut_list_state().toggle_ignore_case();

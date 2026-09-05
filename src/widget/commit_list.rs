@@ -561,6 +561,11 @@ impl<'a> CommitListState<'a> {
         self.update_search_after_options_change();
     }
 
+    pub fn toggle_search_target(&mut self) {
+        self.search_options.target = self.search_options.target.next();
+        self.update_search_after_options_change();
+    }
+
     pub fn search_query_string(&self) -> Option<String> {
         if let SearchState::Searching { .. } = self.search_state {
             let query = self.search_input.value();
@@ -1383,6 +1388,11 @@ mod tests {
                 state.search_options().status_string(),
                 "[all] [case-sensitive] [substring]"
             );
+            state.toggle_search_target();
+            assert_eq!(
+                state.search_options().status_string(),
+                "[subject] [case-sensitive] [substring]"
+            );
         });
     }
 
@@ -1447,6 +1457,28 @@ mod tests {
         assert!(search_match.refs.is_empty());
         assert!(search_match.subject.is_none());
         assert!(search_match.author_name.is_none());
+    }
+
+    #[test]
+    fn test_applied_search_target_toggle_recalculates_matches() {
+        with_commit_list_state(&["fix", "other"], |state| {
+            input_search_query(state, "fix");
+            state.apply_search();
+
+            state.toggle_search_target();
+            assert_eq!(state.search_options().target, SearchTarget::Subject);
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("Match 1 of 1 (query: \"fix\")".into(), true))
+            );
+
+            state.toggle_search_target();
+            assert_eq!(state.search_options().target, SearchTarget::Author);
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("No matches found (query: \"fix\")".into(), false))
+            );
+        });
     }
 
     #[test]
