@@ -79,6 +79,18 @@
           "type": "object",
           "description": "Default search settings",
           "properties": {
+            "target": {
+              "type": "string",
+              "description": "The field to search by default.",
+              "enum": [
+                "all",
+                "subject",
+                "author",
+                "ref",
+                "hash"
+              ],
+              "default": "all"
+            },
             "ignore_case": {
               "type": "boolean",
               "description": "Whether to enable ignore case by default.",

@@ -1,4 +1,7 @@
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+use serde::Deserialize;
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum SearchTarget {
     #[default]
     All,

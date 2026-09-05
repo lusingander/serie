@@ -24,7 +24,7 @@ use crate::{
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
-    search::{SearchOptions, SearchTarget},
+    search::SearchOptions,
     view::{RefreshViewContext, View},
     widget::commit_list::{CommitInfo, CommitListState},
 };
@@ -129,7 +129,7 @@ impl<'a> App<'a> {
             head,
             ref_name_to_commit_index_map,
             SearchOptions {
-                target: SearchTarget::All,
+                target: ctx.core_config.search.target,
                 ignore_case: ctx.core_config.search.ignore_case,
                 fuzzy: ctx.core_config.search.fuzzy,
             },
