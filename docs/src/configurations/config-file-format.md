@@ -14,6 +14,7 @@ initial_selection = "latest"
 mailmap = false
 
 [core.search]
+target = "all"
 ignore_case = false
 fuzzy = false
 
@@ -193,6 +194,19 @@ The width mode for each graph row image.
     - Reduces the file size for more lightweight operation. If you are using `kitty-unicode` protocol, it helps you avoid hitting [the image transfer size limit](https://sw.kovidgoyal.net/kitty/graphics-protocol/#image-persistence-and-storage-quotas).
   - `fixed`: use the same full graph width for every row image
     - This can be used when you want to set a background color for graphs in environments that cannot correctly handle transparent images, or in environments where rendering does not work well when there are images of various widths.
+
+### `core.search.target`
+
+The field to search when the application starts. The target can be toggled while the commit list is displayed.
+
+- type: `string` (enum)
+- default: `all`
+- possible values:
+  - `all`: Search refs, commit subjects, author names, and short commit hashes
+  - `subject`: Search commit subjects
+  - `author`: Search author names
+  - `ref`: Search branch, remote branch, and tag names
+  - `hash`: Search short commit hashes
 
 ### `core.search.ignore_case`
 
