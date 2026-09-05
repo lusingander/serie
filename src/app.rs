@@ -32,7 +32,11 @@ use crate::{
 enum StatusLine {
     #[default]
     None,
-    Input(String, Option<u16>, Option<String>),
+    Input {
+        message: String,
+        cursor_position: u16,
+        metadata: String,
+    },
     Transient(String),
     SearchResult {
         message: String,
@@ -164,7 +168,7 @@ impl App<'_> {
             match self.ec.recv() {
                 AppEvent::Key(key) => {
                     match self.app_status.status_line {
-                        StatusLine::None | StatusLine::Input(_, _, _) => {
+                        StatusLine::None | StatusLine::Input { .. } => {
                             // do nothing
                         }
                         StatusLine::Transient(_)
@@ -203,7 +207,7 @@ impl App<'_> {
                             self.app_status.numeric_prefix.clear();
                         }
                         None => {
-                            if let StatusLine::Input(_, _, _) = self.app_status.status_line {
+                            if let StatusLine::Input { .. } = self.app_status.status_line {
                                 // In input mode, pass all key events to the view
                                 // fixme: currently, the only thing that processes key_event is searching the list,
                                 //        so this probably works, but it's not the right process...
@@ -280,8 +284,12 @@ impl App<'_> {
                 AppEvent::ClearStatusLine => {
                     self.clear_status_line();
                 }
-                AppEvent::UpdateStatusInput(msg, cursor_pos, msg_r) => {
-                    self.update_status_input(msg, cursor_pos, msg_r);
+                AppEvent::UpdateStatusInput {
+                    message,
+                    cursor_position,
+                    metadata,
+                } => {
+                    self.update_status_input(message, cursor_position, metadata);
                 }
                 AppEvent::UpdateStatusTransient(msg) => {
                     self.update_status_transient(msg);
@@ -362,19 +370,15 @@ impl App<'_> {
                         .fg(self.ctx.color_theme.status_input_transient_fg)
                 }
             }
-            StatusLine::Input(msg, _, metadata) => {
-                if let Some(metadata) = metadata {
-                    status_line_with_metadata(
-                        msg,
-                        metadata,
-                        Style::default().fg(self.ctx.color_theme.status_input_fg),
-                        Style::default().fg(self.ctx.color_theme.status_input_transient_fg),
-                        area.width,
-                    )
-                } else {
-                    Line::raw(msg).fg(self.ctx.color_theme.status_input_fg)
-                }
-            }
+            StatusLine::Input {
+                message, metadata, ..
+            } => status_line_with_metadata(
+                message,
+                metadata,
+                Style::default().fg(self.ctx.color_theme.status_input_fg),
+                Style::default().fg(self.ctx.color_theme.status_input_transient_fg),
+                area.width,
+            ),
             StatusLine::Transient(msg) => {
                 let msg_w = console::measure_text_width(msg.as_str());
                 let pad_w = (area.width as usize).saturating_sub(msg_w + 2 /* pad */);
@@ -425,8 +429,11 @@ impl App<'_> {
         );
         f.render_widget(paragraph, area);
 
-        if let StatusLine::Input(_, Some(cursor_pos), _) = &self.app_status.status_line {
-            let (x, y) = (area.x + cursor_pos + 1, area.y + 1);
+        if let StatusLine::Input {
+            cursor_position, ..
+        } = &self.app_status.status_line
+        {
+            let (x, y) = (area.x + cursor_position + 1, area.y + 1);
             match &self.ctx.ui_config.common.cursor_type {
                 CursorType::Native => {
                     f.set_cursor_position((x, y));
@@ -718,13 +725,12 @@ impl App<'_> {
         self.app_status.status_line = StatusLine::None;
     }
 
-    fn update_status_input(
-        &mut self,
-        msg: String,
-        cursor_pos: Option<u16>,
-        transient_msg: Option<String>,
-    ) {
-        self.app_status.status_line = StatusLine::Input(msg, cursor_pos, transient_msg);
+    fn update_status_input(&mut self, message: String, cursor_position: u16, metadata: String) {
+        self.app_status.status_line = StatusLine::Input {
+            message,
+            cursor_position,
+            metadata,
+        };
     }
 
     fn update_status_transient(&mut self, msg: String) {

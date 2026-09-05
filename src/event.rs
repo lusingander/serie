@@ -37,7 +37,11 @@ pub enum AppEvent {
     },
     Refresh(RefreshViewContext),
     ClearStatusLine,
-    UpdateStatusInput(String, Option<u16>, Option<String>),
+    UpdateStatusInput {
+        message: String,
+        cursor_position: u16,
+        metadata: String,
+    },
     UpdateStatusTransient(String),
     UpdateSearchResult {
         message: String,

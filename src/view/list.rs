@@ -219,13 +219,13 @@ impl<'a> ListView<'a> {
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
             let list_state = self.as_list_state();
             if let Some(query) = list_state.search_query_string() {
-                let cursor_pos = list_state.search_query_cursor_position();
+                let cursor_position = list_state.search_query_cursor_position();
                 let options = list_state.search_options().status_string();
-                self.tx.send(AppEvent::UpdateStatusInput(
-                    query,
-                    Some(cursor_pos),
-                    Some(options),
-                ));
+                self.tx.send(AppEvent::UpdateStatusInput {
+                    message: query,
+                    cursor_position,
+                    metadata: options,
+                });
             }
         }
     }
