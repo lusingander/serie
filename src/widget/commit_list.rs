@@ -21,6 +21,7 @@ use crate::{
     git::{Commit, CommitHash, Head, Ref},
     graph::GraphImageManager,
     protocol::PreparedImage,
+    search::{SearchOptions, SearchTarget},
 };
 
 static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(|| SkimMatcherV2::default().respect_case());
@@ -57,24 +58,6 @@ pub enum SearchState {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SearchOptions {
-    pub ignore_case: bool,
-    pub fuzzy: bool,
-}
-
-impl SearchOptions {
-    pub fn status_string(&self) -> String {
-        let case = if self.ignore_case {
-            "ignore-case"
-        } else {
-            "case-sensitive"
-        };
-        let matcher = if self.fuzzy { "fuzzy" } else { "substring" };
-        format!("[{case}] [{matcher}]")
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SearchRefreshContext {
     query: String,
@@ -100,19 +83,34 @@ struct SearchMatch {
 }
 
 impl SearchMatch {
-    fn set(&mut self, c: &Commit, refs: &[&Ref], matcher: &SearchMatcher) {
-        self.refs = refs
-            .iter()
-            .filter(|r| !matches!(*r, Ref::Stash { .. }))
-            .filter_map(|r| {
-                matcher
-                    .matched_position(r.name())
-                    .map(|pos| (r.name().into(), pos))
-            })
-            .collect();
-        self.subject = matcher.matched_position(&c.subject);
-        self.author_name = matcher.matched_position(&c.author_name);
-        self.commit_hash = matcher.matched_position(c.commit_hash.as_short_hash());
+    fn set(&mut self, c: &Commit, refs: &[&Ref], matcher: &SearchMatcher, target: SearchTarget) {
+        self.refs = if matches!(target, SearchTarget::All | SearchTarget::Ref) {
+            refs.iter()
+                .filter(|r| !matches!(*r, Ref::Stash { .. }))
+                .filter_map(|r| {
+                    matcher
+                        .matched_position(r.name())
+                        .map(|pos| (r.name().into(), pos))
+                })
+                .collect()
+        } else {
+            FxHashMap::default()
+        };
+        self.subject = if matches!(target, SearchTarget::All | SearchTarget::Subject) {
+            matcher.matched_position(&c.subject)
+        } else {
+            None
+        };
+        self.author_name = if matches!(target, SearchTarget::All | SearchTarget::Author) {
+            matcher.matched_position(&c.author_name)
+        } else {
+            None
+        };
+        self.commit_hash = if matches!(target, SearchTarget::All | SearchTarget::Hash) {
+            matcher.matched_position(c.commit_hash.as_short_hash())
+        } else {
+            None
+        };
         self.match_index = 0;
     }
 
@@ -213,8 +211,7 @@ impl<'a> CommitListState<'a> {
         graph_cell_width: u16,
         head: &'a Head,
         ref_name_to_commit_index_map: FxHashMap<&'a str, usize>,
-        default_ignore_case: bool,
-        default_fuzzy: bool,
+        search_options: SearchOptions,
     ) -> CommitListState<'a> {
         let total = commits.len();
         let commit_hash_set = commits.iter().map(|c| &c.commit.commit_hash).collect();
@@ -226,10 +223,7 @@ impl<'a> CommitListState<'a> {
             head,
             ref_name_to_commit_index_map,
             search_state: SearchState::Inactive,
-            search_options: SearchOptions {
-                ignore_case: default_ignore_case,
-                fuzzy: default_fuzzy,
-            },
+            search_options,
             search_input: Input::default(),
             search_matches: vec![SearchMatch::default(); total],
             selected: 0,
@@ -609,7 +603,12 @@ impl<'a> CommitListState<'a> {
         let mut match_index = 1;
         for (i, commit_info) in self.commits.iter().enumerate() {
             let m = &mut self.search_matches[i];
-            m.set(commit_info.commit, commit_info.refs.as_slice(), &matcher);
+            m.set(
+                commit_info.commit,
+                commit_info.refs.as_slice(),
+                &matcher,
+                self.search_options.target,
+            );
             if m.matched() {
                 m.match_index = match_index;
                 match_index += 1;
@@ -1217,8 +1216,7 @@ mod tests {
             0,
             repository.head(),
             FxHashMap::default(),
-            false,
-            false,
+            SearchOptions::default(),
         );
         state.reset_height(subjects.len());
         f(&mut state)
@@ -1249,6 +1247,7 @@ mod tests {
         assert_eq!(
             options,
             SearchOptions {
+                target: SearchTarget::All,
                 ignore_case: true,
                 fuzzy: true,
             }
@@ -1367,24 +1366,87 @@ mod tests {
             state.toggle_ignore_case();
             assert_eq!(
                 state.search_options().status_string(),
-                "[ignore-case] [substring]"
+                "[all] [ignore-case] [substring]"
             );
             state.toggle_ignore_case();
             assert_eq!(
                 state.search_options().status_string(),
-                "[case-sensitive] [substring]"
+                "[all] [case-sensitive] [substring]"
             );
             state.toggle_fuzzy();
             assert_eq!(
                 state.search_options().status_string(),
-                "[case-sensitive] [fuzzy]"
+                "[all] [case-sensitive] [fuzzy]"
             );
             state.toggle_fuzzy();
             assert_eq!(
                 state.search_options().status_string(),
-                "[case-sensitive] [substring]"
+                "[all] [case-sensitive] [substring]"
             );
         });
+    }
+
+    #[test]
+    fn test_search_target_matches_only_the_selected_field() {
+        let commit = Commit {
+            commit_hash: CommitHash::from("abcdef0123456789abcdef0123456789abcdef01"),
+            subject: "subject-match".into(),
+            author_name: "author-match".into(),
+            ..Commit::default()
+        };
+        let reference = Ref::Branch {
+            name: "ref-match".into(),
+            target: commit.commit_hash.clone(),
+        };
+        let refs = [&reference];
+        let cases = [
+            (SearchTarget::All, "subject-match", true),
+            (SearchTarget::All, "author-match", true),
+            (SearchTarget::All, "ref-match", true),
+            (SearchTarget::All, "abcdef0", true),
+            (SearchTarget::Subject, "subject-match", true),
+            (SearchTarget::Subject, "author-match", false),
+            (SearchTarget::Author, "author-match", true),
+            (SearchTarget::Author, "ref-match", false),
+            (SearchTarget::Ref, "ref-match", true),
+            (SearchTarget::Ref, "abcdef0", false),
+            (SearchTarget::Hash, "abcdef0", true),
+            (SearchTarget::Hash, "subject-match", false),
+        ];
+
+        for (target, query, expected) in cases {
+            let matcher = SearchMatcher::new(query, false, false);
+            let mut search_match = SearchMatch::default();
+            search_match.set(&commit, &refs, &matcher, target);
+            assert_eq!(search_match.matched(), expected, "{target:?}: {query}");
+        }
+    }
+
+    #[test]
+    fn test_search_target_change_clears_previous_field_matches() {
+        let commit = Commit {
+            commit_hash: CommitHash::from("abcdef0123456789abcdef0123456789abcdef01"),
+            subject: "match".into(),
+            author_name: "match".into(),
+            ..Commit::default()
+        };
+        let reference = Ref::Branch {
+            name: "match".into(),
+            target: commit.commit_hash.clone(),
+        };
+        let refs = [&reference];
+        let matcher = SearchMatcher::new("match", false, false);
+        let mut search_match = SearchMatch::default();
+
+        search_match.set(&commit, &refs, &matcher, SearchTarget::All);
+        assert!(!search_match.refs.is_empty());
+        assert!(search_match.subject.is_some());
+        assert!(search_match.author_name.is_some());
+
+        search_match.set(&commit, &refs, &matcher, SearchTarget::Hash);
+        assert!(search_match.refs.is_empty());
+        assert!(search_match.subject.is_none());
+        assert!(search_match.author_name.is_none());
     }
 
     #[test]

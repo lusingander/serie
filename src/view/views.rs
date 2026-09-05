@@ -6,11 +6,12 @@ use crate::{
     app::AppContext,
     event::{Sender, UserEventWithCount},
     git::{Commit, FileChange, Ref},
+    search::SearchOptions,
     view::{
         detail::DetailView, help::HelpView, list::ListView, refs::RefsView,
         user_command::UserCommandView,
     },
-    widget::commit_list::{CommitListState, SearchOptions, SearchRefreshContext},
+    widget::commit_list::{CommitListState, SearchRefreshContext},
 };
 
 #[derive(Debug, Default)]

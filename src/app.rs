@@ -24,6 +24,7 @@ use crate::{
     graph::{CellWidthType, Graph, GraphImageManager},
     keybind::KeyBind,
     protocol::ImageProtocol,
+    search::{SearchOptions, SearchTarget},
     view::{RefreshViewContext, View},
     widget::commit_list::{CommitInfo, CommitListState},
 };
@@ -127,8 +128,11 @@ impl<'a> App<'a> {
             graph_cell_width,
             head,
             ref_name_to_commit_index_map,
-            ctx.core_config.search.ignore_case,
-            ctx.core_config.search.fuzzy,
+            SearchOptions {
+                target: SearchTarget::All,
+                ignore_case: ctx.core_config.search.ignore_case,
+                fuzzy: ctx.core_config.search.fuzzy,
+            },
         );
         if let InitialSelection::Head = initial_selection {
             match repository.head() {

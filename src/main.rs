@@ -8,6 +8,7 @@ mod git;
 mod graph;
 mod keybind;
 mod protocol;
+mod search;
 mod view;
 mod widget;
 
