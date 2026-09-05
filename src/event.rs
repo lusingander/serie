@@ -31,13 +31,23 @@ pub enum AppEvent {
     SelectNewerCommit,
     SelectOlderCommit,
     SelectParentCommit,
-    CopyToClipboard { name: String, value: String },
+    CopyToClipboard {
+        name: String,
+        value: String,
+    },
     Refresh(RefreshViewContext),
     ClearStatusLine,
     UpdateStatusInput(String, Option<u16>, Option<String>),
     UpdateStatusTransient(String),
+    UpdateSearchResult {
+        message: String,
+        options: String,
+        matched: bool,
+    },
+    #[expect(dead_code)]
     NotifyInfo(String),
     NotifySuccess(String),
+    #[expect(dead_code)]
     NotifyWarn(String),
     NotifyError(String),
 }

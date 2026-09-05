@@ -63,6 +63,18 @@ pub struct SearchOptions {
     pub fuzzy: bool,
 }
 
+impl SearchOptions {
+    pub fn status_string(&self) -> String {
+        let case = if self.ignore_case {
+            "ignore-case"
+        } else {
+            "case-sensitive"
+        };
+        let matcher = if self.fuzzy { "fuzzy" } else { "substring" };
+        format!("[{case}] [{matcher}]")
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SearchRefreshContext {
     query: String,
@@ -545,28 +557,14 @@ impl<'a> CommitListState<'a> {
         }
     }
 
-    pub fn toggle_ignore_case(&mut self) -> String {
+    pub fn toggle_ignore_case(&mut self) {
         self.search_options.ignore_case = !self.search_options.ignore_case;
-        let message = if self.search_options.ignore_case {
-            "Ignore case: ON "
-        } else {
-            "Ignore case: OFF"
-        };
-
         self.update_search_after_options_change();
-        message.into()
     }
 
-    pub fn toggle_fuzzy(&mut self) -> String {
+    pub fn toggle_fuzzy(&mut self) {
         self.search_options.fuzzy = !self.search_options.fuzzy;
-        let message = if self.search_options.fuzzy {
-            "Fuzzy match: ON "
-        } else {
-            "Fuzzy match: OFF"
-        };
-
         self.update_search_after_options_change();
-        message.into()
     }
 
     pub fn search_query_string(&self) -> Option<String> {
@@ -1364,12 +1362,28 @@ mod tests {
     }
 
     #[test]
-    fn test_search_option_toggle_messages() {
+    fn test_search_option_string_after_toggles() {
         with_commit_list_state(&["fix"], |state| {
-            assert_eq!(state.toggle_ignore_case(), "Ignore case: ON ");
-            assert_eq!(state.toggle_ignore_case(), "Ignore case: OFF");
-            assert_eq!(state.toggle_fuzzy(), "Fuzzy match: ON ");
-            assert_eq!(state.toggle_fuzzy(), "Fuzzy match: OFF");
+            state.toggle_ignore_case();
+            assert_eq!(
+                state.search_options().status_string(),
+                "[ignore-case] [substring]"
+            );
+            state.toggle_ignore_case();
+            assert_eq!(
+                state.search_options().status_string(),
+                "[case-sensitive] [substring]"
+            );
+            state.toggle_fuzzy();
+            assert_eq!(
+                state.search_options().status_string(),
+                "[case-sensitive] [fuzzy]"
+            );
+            state.toggle_fuzzy();
+            assert_eq!(
+                state.search_options().status_string(),
+                "[case-sensitive] [substring]"
+            );
         });
     }
 
