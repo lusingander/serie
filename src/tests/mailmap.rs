@@ -1,6 +1,9 @@
-use std::{fs, path::Path, process::Command};
+use std::{fs, path::Path};
 
-use crate::git::{self, Repository};
+use crate::{
+    git::{self, Repository},
+    test_git::GitRepository,
+};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -20,10 +23,10 @@ const MAPPED_COMMITTER_EMAIL: &str = "new-committer@example.com";
 fn mailmap_enabled_rewrites_author_and_committer() -> TestResult {
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
-    let git = TestGit::new(repo_path);
+    let git = test_git(repo_path);
 
     git.init();
-    git.commit("commit");
+    git.commit("commit", "2024-01-01");
     write_mailmap(repo_path);
 
     let repository = Repository::load(repo_path, git::SortCommit::Chronological, None, true)?;
@@ -42,10 +45,10 @@ fn mailmap_enabled_rewrites_author_and_committer() -> TestResult {
 fn mailmap_disabled_keeps_raw_identity() -> TestResult {
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
-    let git = TestGit::new(repo_path);
+    let git = test_git(repo_path);
 
     git.init();
-    git.commit("commit");
+    git.commit("commit", "2024-01-01");
     write_mailmap(repo_path);
 
     let repository = Repository::load(repo_path, git::SortCommit::Chronological, None, false)?;
@@ -64,10 +67,10 @@ fn mailmap_disabled_keeps_raw_identity() -> TestResult {
 fn mailmap_enabled_without_mailmap_file_is_a_no_op() -> TestResult {
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
-    let git = TestGit::new(repo_path);
+    let git = test_git(repo_path);
 
     git.init();
-    git.commit("commit");
+    git.commit("commit", "2024-01-01");
 
     let repository = Repository::load(repo_path, git::SortCommit::Chronological, None, true)?;
     let commits = repository.all_commits();
@@ -89,37 +92,11 @@ fn write_mailmap(repo_path: &Path) {
     fs::write(repo_path.join(".mailmap"), content).unwrap();
 }
 
-struct TestGit<'a> {
-    path: &'a Path,
-}
-
-impl TestGit<'_> {
-    fn new(path: &Path) -> TestGit<'_> {
-        TestGit { path }
-    }
-
-    fn init(&self) {
-        self.run(&["init", "-b", "master"]);
-    }
-
-    fn commit(&self, message: &str) {
-        self.run(&["commit", "--allow-empty", "-m", message]);
-    }
-
-    fn run(&self, args: &[&str]) {
-        let status = Command::new("git")
-            .args(args)
-            .current_dir(self.path)
-            .env("GIT_AUTHOR_NAME", RAW_AUTHOR_NAME)
-            .env("GIT_AUTHOR_EMAIL", RAW_AUTHOR_EMAIL)
-            .env("GIT_AUTHOR_DATE", "2024-01-01T01:02:03+00:00")
-            .env("GIT_COMMITTER_NAME", RAW_COMMITTER_NAME)
-            .env("GIT_COMMITTER_EMAIL", RAW_COMMITTER_EMAIL)
-            .env("GIT_COMMITTER_DATE", "2024-01-01T01:02:03+00:00")
-            .env("GIT_CONFIG_NOSYSTEM", "true")
-            .env("HOME", "/dev/null")
-            .status()
-            .unwrap_or_else(|_| panic!("failed to execute git {}", args.join(" ")));
-        assert!(status.success(), "git {} failed", args.join(" "));
-    }
+fn test_git(path: &Path) -> GitRepository<'_> {
+    GitRepository::new(path).with_identities(
+        RAW_AUTHOR_NAME,
+        RAW_AUTHOR_EMAIL,
+        RAW_COMMITTER_NAME,
+        RAW_COMMITTER_EMAIL,
+    )
 }

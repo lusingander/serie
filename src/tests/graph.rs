@@ -1,12 +1,13 @@
-use std::{path::Path, process::Command};
+use std::path::Path;
 
-use chrono::{DateTime, Days, NaiveDate, TimeZone, Utc};
+use chrono::{Days, TimeZone, Utc};
 use image::{GenericImage, GenericImageView};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     color, config, git,
     graph::{self, Edge, GraphRowImage},
+    test_git::GitRepository,
 };
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -1271,92 +1272,6 @@ fn complex_001() -> TestResult {
     assert_graph_images(options);
 
     Ok(())
-}
-
-struct GitRepository<'a> {
-    path: &'a Path,
-}
-
-impl GitRepository<'_> {
-    fn new(path: &'_ Path) -> GitRepository<'_> {
-        GitRepository { path }
-    }
-
-    fn init(&self) {
-        self.run(&["init", "-b", "master"], "");
-    }
-
-    fn commit(&self, message: &str, date: &str) {
-        let datetime_str = parse_date(date).to_rfc3339();
-        self.run(&["commit", "--allow-empty", "-m", message], &datetime_str);
-    }
-
-    fn checkout(&self, branch_name: &str) {
-        self.run(&["checkout", branch_name], "");
-    }
-
-    fn checkout_b(&self, branch_name: &str) {
-        self.run(&["checkout", "-b", branch_name], "");
-    }
-
-    fn checkout_orphan(&self, branch_name: &str) {
-        self.run(&["checkout", "--orphan", branch_name], "");
-    }
-
-    fn merge(&self, branch_names: &[&str], date: &str) {
-        let datetime_str = parse_date(date).to_rfc3339();
-        let mut args = vec!["merge", "--no-ff", "--no-log"];
-        args.extend_from_slice(branch_names);
-        self.run(&args, &datetime_str);
-    }
-
-    fn branch_d(&self, branch_name: &str) {
-        self.run(&["branch", "-D", branch_name], "");
-    }
-
-    fn stash(&self, date: &str) {
-        let dummy_file_path = self.path.join("stash.txt");
-        std::fs::File::create(dummy_file_path).unwrap();
-
-        let datetime_str = parse_date(date).to_rfc3339();
-        self.run(&["stash", "--include-untracked"], &datetime_str);
-    }
-
-    fn rev_parse_head(&self) -> String {
-        let output = self.run(&["rev-parse", "HEAD"], "");
-        String::from_utf8(output.stdout).unwrap().trim().to_string()
-    }
-
-    fn log(&self) {
-        let output = self.run(&["log", "--pretty=format:%h %s", "--graph", "--all"], "");
-        println!("{}", String::from_utf8(output.stdout).unwrap())
-    }
-
-    fn run(&self, args: &[&str], datetime_str: &str) -> std::process::Output {
-        let out = Command::new("git")
-            .args(args)
-            .current_dir(self.path)
-            .env("GIT_AUTHOR_NAME", "Author Name")
-            .env("GIT_AUTHOR_EMAIL", "author@example.com")
-            .env("GIT_AUTHOR_DATE", datetime_str)
-            .env("GIT_COMMITTER_NAME", "Committer Name")
-            .env("GIT_COMMITTER_EMAIL", "committer@example.com")
-            .env("GIT_COMMITTER_DATE", datetime_str)
-            .env("GIT_CONFIG_NOSYSTEM", "true")
-            .env("HOME", "/dev/null")
-            .output()
-            .unwrap_or_else(|_| panic!("failed to execute git {}", args.join(" ")));
-        println!("git {}: returned {}", args.join(" "), out.status,);
-        out
-    }
-}
-
-fn parse_date(date: &str) -> DateTime<Utc> {
-    let dt = NaiveDate::parse_from_str(date, "%Y-%m-%d")
-        .unwrap()
-        .and_hms_opt(1, 2, 3)
-        .unwrap();
-    Utc.from_utc_datetime(&dt)
 }
 
 struct GenerateGraphOption {
