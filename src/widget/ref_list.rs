@@ -105,7 +105,10 @@ pub struct RefList {
 
 impl RefList {
     pub fn new(refs: &[Ref], ctx: Rc<AppContext>) -> RefList {
-        let items = build_ref_tree_items(refs, &ctx.color_theme);
+        let items = build_ref_tree_nodes(refs)
+            .into_iter()
+            .map(|node| node.into_tree_item(&ctx.color_theme))
+            .collect();
         RefList { items, ctx }
     }
 }
@@ -134,7 +137,7 @@ impl StatefulWidget for RefList {
     }
 }
 
-fn build_ref_tree_items(refs: &[Ref], color_theme: &ColorTheme) -> Vec<TreeItem<'static, String>> {
+fn build_ref_tree_nodes(refs: &[Ref]) -> Vec<RefTreeNode> {
     let mut branch_refs = Vec::new();
     let mut remote_refs = Vec::new();
     let mut tag_refs = Vec::new();
@@ -159,35 +162,26 @@ fn build_ref_tree_items(refs: &[Ref], color_theme: &ColorTheme) -> Vec<TreeItem<
     sort_tag_tree_nodes(&mut tag_nodes);
     sort_stash_tree_nodes(&mut stash_nodes);
 
-    let branch_items = ref_tree_nodes_to_tree_items(branch_nodes, color_theme);
-    let remote_items = ref_tree_nodes_to_tree_items(remote_nodes, color_theme);
-    let tag_items = ref_tree_nodes_to_tree_items(tag_nodes, color_theme);
-    let stash_items = ref_tree_nodes_to_tree_items(stash_nodes, color_theme);
-
     vec![
-        tree_item(
+        RefTreeNode::new(
             TREE_BRANCH_ROOT_IDENT.into(),
             TREE_BRANCH_ROOT_TEXT.into(),
-            branch_items,
-            color_theme,
+            branch_nodes,
         ),
-        tree_item(
+        RefTreeNode::new(
             TREE_REMOTE_ROOT_IDENT.into(),
             TREE_REMOTE_ROOT_TEXT.into(),
-            remote_items,
-            color_theme,
+            remote_nodes,
         ),
-        tree_item(
+        RefTreeNode::new(
             TREE_TAG_ROOT_IDENT.into(),
             TREE_TAG_ROOT_TEXT.into(),
-            tag_items,
-            color_theme,
+            tag_nodes,
         ),
-        tree_item(
+        RefTreeNode::new(
             TREE_STASH_ROOT_IDENT.into(),
             TREE_STASH_ROOT_TEXT.into(),
-            stash_items,
-            color_theme,
+            stash_nodes,
         ),
     ]
 }
@@ -196,6 +190,25 @@ struct RefTreeNode {
     identifier: String,
     name: String,
     children: Vec<RefTreeNode>,
+}
+
+impl RefTreeNode {
+    fn new(identifier: String, name: String, children: Vec<Self>) -> Self {
+        Self {
+            identifier,
+            name,
+            children,
+        }
+    }
+
+    fn into_tree_item(self, color_theme: &ColorTheme) -> TreeItem<'static, String> {
+        let children = self
+            .children
+            .into_iter()
+            .map(|child| child.into_tree_item(color_theme))
+            .collect();
+        TreeItem::new(self.identifier, self.name.fg(color_theme.fg), children).unwrap()
+    }
 }
 
 fn refs_to_stash_ref_tree_nodes(ref_name_messages: Vec<(String, String)>) -> Vec<RefTreeNode> {
@@ -246,22 +259,6 @@ fn refs_to_ref_tree_nodes(ref_names: Vec<String>) -> Vec<RefTreeNode> {
     nodes
 }
 
-fn ref_tree_nodes_to_tree_items(
-    nodes: Vec<RefTreeNode>,
-    color_theme: &ColorTheme,
-) -> Vec<TreeItem<'static, String>> {
-    let mut items = Vec::new();
-    for node in nodes {
-        if node.children.is_empty() {
-            items.push(tree_leaf_item(node.identifier, node.name, color_theme));
-        } else {
-            let children = ref_tree_nodes_to_tree_items(node.children, color_theme);
-            items.push(tree_item(node.identifier, node.name, children, color_theme));
-        }
-    }
-    items
-}
-
 fn sort_branch_tree_nodes(nodes: &mut [RefTreeNode]) {
     nodes.sort_by(|a, b| {
         b.children
@@ -296,21 +293,4 @@ fn sort_stash_tree_nodes(nodes: &mut [RefTreeNode]) {
 fn parse_semantic_version_tag(tag: &str) -> Option<Version> {
     let tag = tag.trim_start_matches('v');
     Version::parse(tag).ok()
-}
-
-fn tree_item(
-    identifier: String,
-    name: String,
-    children: Vec<TreeItem<'static, String>>,
-    color_theme: &ColorTheme,
-) -> TreeItem<'static, String> {
-    TreeItem::new(identifier, name.fg(color_theme.fg), children).unwrap()
-}
-
-fn tree_leaf_item(
-    identifier: String,
-    name: String,
-    color_theme: &ColorTheme,
-) -> TreeItem<'static, String> {
-    tree_item(identifier, name, Vec::new(), color_theme)
 }
