@@ -642,8 +642,8 @@ impl App<'_> {
     fn open_refs(&mut self) {
         if let View::List(ref mut view) = self.view {
             let commit_list_state = view.take_list_state();
-            let refs = self.repository.all_refs().into_iter().cloned().collect();
-            self.view = View::of_refs(commit_list_state, refs, self.ctx.clone(), self.ec.sender());
+            let refs = self.repository.all_refs();
+            self.view = View::of_refs(commit_list_state, &refs, self.ctx.clone(), self.ec.sender());
         }
     }
 

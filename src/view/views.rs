@@ -136,7 +136,7 @@ impl<'a> View<'a> {
 
     pub fn of_refs(
         commit_list_state: CommitListState<'a>,
-        refs: Vec<Ref>,
+        refs: &[&Ref],
         ctx: Rc<AppContext>,
         tx: Sender,
     ) -> Self {

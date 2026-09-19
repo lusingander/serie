@@ -33,7 +33,6 @@ serde = { version = "1.0.229", features = ["derive"] }
 smart-default = "0.7.1"
 toml = "1.1.3"
 tui-input = "0.15.3"
-tui-tree-widget = "0.24.0"
 umbra = "0.4.0"
 
 [dev-dependencies]
