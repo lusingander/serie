@@ -332,12 +332,10 @@ fn refs_to_ref_tree_nodes(ref_names: Vec<String>) -> Vec<RefTreeNode> {
     let mut nodes: Vec<RefTreeNode> = Vec::new();
 
     for ref_name in ref_names {
-        let mut parts = ref_name.split('/').collect::<Vec<_>>();
         let mut current_nodes = &mut nodes;
         let mut parent_identifier = String::new();
 
-        while !parts.is_empty() {
-            let part = parts.remove(0);
+        for part in ref_name.split('/') {
             if let Some(index) = current_nodes.iter().position(|n| n.name == part) {
                 let node = &mut current_nodes[index];
                 current_nodes = &mut node.children;
