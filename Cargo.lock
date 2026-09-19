@@ -2074,7 +2074,6 @@ dependencies = [
  "text-to-png",
  "toml",
  "tui-input",
- "tui-tree-widget",
  "umbra",
 ]
 
@@ -2595,17 +2594,6 @@ checksum = "0bd014a652e31cf25ea68d11b10a7b09549863449b19387505c9933f11eb05fa"
 dependencies = [
  "ratatui",
  "unicode-segmentation",
- "unicode-width",
-]
-
-[[package]]
-name = "tui-tree-widget"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deca119555009eee2e0cfb9c020f39f632444dc4579918d5fc009d51d75dff92"
-dependencies = [
- "ratatui-core",
- "ratatui-widgets",
  "unicode-width",
 ]
 
