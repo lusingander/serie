@@ -29,13 +29,13 @@ pub struct RefsView<'a> {
 impl<'a> RefsView<'a> {
     pub fn new(
         commit_list_state: CommitListState<'a>,
-        refs: Vec<Ref>,
+        refs: &[&Ref],
         ctx: Rc<AppContext>,
         tx: Sender,
     ) -> RefsView<'a> {
         RefsView {
             commit_list_state: Some(commit_list_state),
-            ref_list_state: RefListState::new(&refs),
+            ref_list_state: RefListState::new(refs),
             ctx,
             tx,
         }

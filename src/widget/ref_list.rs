@@ -31,7 +31,7 @@ pub struct RefListState {
 }
 
 impl RefListState {
-    pub fn new(refs: &[Ref]) -> Self {
+    pub fn new(refs: &[&Ref]) -> Self {
         let selected = vec![TREE_BRANCH_ROOT_IDENT.into()];
         let opened = HashSet::from([selected.clone()]);
         let mut state = Self {
@@ -249,13 +249,13 @@ impl StatefulWidget for RefList {
     }
 }
 
-fn build_ref_tree_nodes(refs: &[Ref]) -> Vec<RefTreeNode> {
+fn build_ref_tree_nodes(refs: &[&Ref]) -> Vec<RefTreeNode> {
     let mut branch_refs = Vec::new();
     let mut remote_refs = Vec::new();
     let mut tag_refs = Vec::new();
     let mut stash_refs = Vec::new();
 
-    for r in refs {
+    for &r in refs {
         match r {
             Ref::Tag { name, .. } => tag_refs.push(name.into()),
             Ref::Branch { name, .. } => branch_refs.push(name.into()),
