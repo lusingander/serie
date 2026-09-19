@@ -22,8 +22,6 @@ pub struct RefsView<'a> {
     commit_list_state: Option<CommitListState<'a>>,
     ref_list_state: RefListState,
 
-    refs: Vec<Ref>,
-
     ctx: Rc<AppContext>,
     tx: Sender,
 }
@@ -37,8 +35,7 @@ impl<'a> RefsView<'a> {
     ) -> RefsView<'a> {
         RefsView {
             commit_list_state: Some(commit_list_state),
-            ref_list_state: RefListState::new(),
-            refs,
+            ref_list_state: RefListState::new(&refs),
             ctx,
             tx,
         }
@@ -102,7 +99,7 @@ impl<'a> RefsView<'a> {
         let commit_list = CommitList::new(self.ctx.clone());
         f.render_stateful_widget(commit_list, list_area, self.as_mut_list_state());
 
-        let ref_list = RefList::new(&self.refs, self.ctx.clone());
+        let ref_list = RefList::new(self.ctx.clone());
         f.render_stateful_widget(ref_list, refs_area, &mut self.ref_list_state);
     }
 

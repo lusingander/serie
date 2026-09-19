@@ -1,15 +1,14 @@
-use std::rc::Rc;
+use std::{collections::HashSet, rc::Rc};
 
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Style, Stylize},
+    style::Style,
     widgets::{Block, Borders, Padding, StatefulWidget},
 };
 use semver::Version;
-use tui_tree_widget::{Tree, TreeItem, TreeState};
 
-use crate::{app::AppContext, color::ColorTheme, git::Ref};
+use crate::{app::AppContext, git::Ref};
 
 const TREE_BRANCH_ROOT_IDENT: &str = "__branches__";
 const TREE_REMOTE_ROOT_IDENT: &str = "__remotes__";
@@ -21,95 +20,174 @@ const TREE_REMOTE_ROOT_TEXT: &str = "Remotes";
 const TREE_TAG_ROOT_TEXT: &str = "Tags";
 const TREE_STASH_ROOT_TEXT: &str = "Stashes";
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RefListState {
-    tree_state: TreeState<String>,
+    roots: Vec<RefTreeNode>,
+    visible_rows: Vec<VisibleRefRow>,
+    selected: Vec<String>,
+    opened: HashSet<Vec<String>>,
+    offset: usize,
+    scroll_to_selection: bool,
 }
 
 impl RefListState {
-    pub fn new() -> Self {
-        let mut tree_state = TreeState::default();
-        tree_state.select(vec![TREE_BRANCH_ROOT_IDENT.into()]);
-        tree_state.open(vec![TREE_BRANCH_ROOT_IDENT.into()]);
-        Self { tree_state }
+    pub fn new(refs: &[Ref]) -> Self {
+        let selected = vec![TREE_BRANCH_ROOT_IDENT.into()];
+        let opened = HashSet::from([selected.clone()]);
+        let mut state = Self {
+            roots: build_ref_tree_nodes(refs),
+            visible_rows: Vec::new(),
+            selected,
+            opened,
+            offset: 0,
+            scroll_to_selection: true,
+        };
+        state.rebuild_visible_rows();
+        state
     }
-}
 
-impl RefListState {
     pub fn select_next(&mut self) {
-        self.tree_state.key_down();
+        let next = self
+            .selected_index()
+            .map_or(0, |index| index.saturating_add(1))
+            .min(self.visible_rows.len().saturating_sub(1));
+        self.select_visible_index(next);
     }
 
     pub fn select_prev(&mut self) {
-        self.tree_state.key_up();
+        let prev = self
+            .selected_index()
+            .map_or(self.visible_rows.len().saturating_sub(1), |index| {
+                index.saturating_sub(1)
+            });
+        self.select_visible_index(prev);
     }
 
     pub fn select_first(&mut self) {
-        self.tree_state.select_first();
+        self.select_visible_index(0);
     }
 
     pub fn select_last(&mut self) {
-        self.tree_state.select_last();
+        self.select_visible_index(self.visible_rows.len().saturating_sub(1));
     }
 
     pub fn open_node(&mut self) {
-        self.tree_state.key_right();
+        if self
+            .visible_rows
+            .iter()
+            .any(|row| row.identifier == self.selected && row.has_children)
+            && self.opened.insert(self.selected.clone())
+        {
+            self.rebuild_visible_rows();
+            self.scroll_to_selection = true;
+        }
     }
 
     pub fn close_node(&mut self) {
-        self.tree_state.key_left();
+        if self.opened.remove(&self.selected) {
+            self.rebuild_visible_rows();
+        } else if self.selected.len() > 1 {
+            self.selected.pop();
+        }
+        // The four category roots always remain selectable.
+        self.scroll_to_selection = true;
     }
 
     pub fn selected_ref_name(&self) -> Option<String> {
-        self.tree_state.selected().last().cloned()
+        self.selected.last().cloned()
     }
 
     pub fn selected_branch(&self) -> Option<String> {
-        let selected = self.tree_state.selected();
-        if selected.len() > 1
-            && (selected[0] == TREE_BRANCH_ROOT_IDENT || selected[0] == TREE_REMOTE_ROOT_IDENT)
+        if self.selected.len() > 1
+            && (self.selected[0] == TREE_BRANCH_ROOT_IDENT
+                || self.selected[0] == TREE_REMOTE_ROOT_IDENT)
         {
-            selected.last().cloned()
+            self.selected.last().cloned()
         } else {
             None
         }
     }
 
     pub fn selected_tag(&self) -> Option<String> {
-        let selected = self.tree_state.selected();
-        if selected.len() > 1 && selected[0] == TREE_TAG_ROOT_IDENT {
-            selected.last().cloned()
+        if self.selected.len() > 1 && self.selected[0] == TREE_TAG_ROOT_IDENT {
+            self.selected.last().cloned()
         } else {
             None
         }
     }
 
     pub fn current_tree_status(&self) -> (Vec<String>, Vec<Vec<String>>) {
-        let selected = self.tree_state.selected().into();
-        let opened = self.tree_state.opened().iter().cloned().collect();
-        (selected, opened)
+        (self.selected.clone(), self.opened.iter().cloned().collect())
     }
 
     pub fn reset_tree_status(&mut self, selected: Vec<String>, opened: Vec<Vec<String>>) {
-        self.tree_state.select(selected);
-        for node in opened {
-            self.tree_state.open(node);
+        self.opened = opened.into_iter().collect();
+        self.rebuild_visible_rows();
+        self.selected = selected;
+        while !self.selected.is_empty() && self.selected_index().is_none() {
+            self.selected.pop();
+        }
+        if self.selected.is_empty() {
+            self.selected = vec![TREE_BRANCH_ROOT_IDENT.into()];
+        }
+        self.scroll_to_selection = true;
+    }
+
+    fn selected_index(&self) -> Option<usize> {
+        self.visible_rows
+            .iter()
+            .position(|row| row.identifier == self.selected)
+    }
+
+    fn select_visible_index(&mut self, index: usize) {
+        if let Some(row) = self.visible_rows.get(index) {
+            self.selected.clone_from(&row.identifier);
+            self.scroll_to_selection = true;
+        }
+    }
+
+    fn rebuild_visible_rows(&mut self) {
+        self.visible_rows.clear();
+        collect_visible_rows(&self.roots, &self.opened, &[], &mut self.visible_rows);
+    }
+}
+
+#[derive(Debug)]
+struct VisibleRefRow {
+    identifier: Vec<String>,
+    name: String,
+    depth: usize,
+    has_children: bool,
+}
+
+fn collect_visible_rows(
+    nodes: &[RefTreeNode],
+    opened: &HashSet<Vec<String>>,
+    parent: &[String],
+    rows: &mut Vec<VisibleRefRow>,
+) {
+    for node in nodes {
+        let mut identifier = parent.to_vec();
+        identifier.push(node.identifier.clone());
+        rows.push(VisibleRefRow {
+            identifier: identifier.clone(),
+            name: node.name.clone(),
+            depth: parent.len(),
+            has_children: !node.children.is_empty(),
+        });
+        if opened.contains(&identifier) {
+            collect_visible_rows(&node.children, opened, &identifier, rows);
         }
     }
 }
 
 pub struct RefList {
-    items: Vec<TreeItem<'static, String>>,
     ctx: Rc<AppContext>,
 }
 
 impl RefList {
-    pub fn new(refs: &[Ref], ctx: Rc<AppContext>) -> RefList {
-        let items = build_ref_tree_nodes(refs)
-            .into_iter()
-            .map(|node| node.into_tree_item(&ctx.color_theme))
-            .collect();
-        RefList { items, ctx }
+    pub fn new(ctx: Rc<AppContext>) -> RefList {
+        RefList { ctx }
     }
 }
 
@@ -117,23 +195,57 @@ impl StatefulWidget for RefList {
     type State = RefListState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let tree = Tree::new(&self.items)
-            .unwrap()
-            .node_closed_symbol("\u{25b8} ") // ▸
-            .node_open_symbol("\u{25be} ") // ▾
-            .node_no_children_symbol("  ")
-            .highlight_style(
-                Style::default()
-                    .bg(self.ctx.color_theme.ref_selected_bg)
-                    .fg(self.ctx.color_theme.ref_selected_fg),
-            )
-            .block(
-                Block::default()
-                    .borders(Borders::LEFT)
-                    .style(Style::default().fg(self.ctx.color_theme.divider_fg))
-                    .padding(Padding::horizontal(1)),
-            );
-        tree.render(area, buf, &mut state.tree_state);
+        let block = Block::default()
+            .borders(Borders::LEFT)
+            .style(Style::default().fg(self.ctx.color_theme.divider_fg))
+            .padding(Padding::horizontal(1));
+        let inner = block.inner(area);
+        ratatui::widgets::Widget::render(block, area, buf);
+        if inner.width == 0 || inner.height == 0 {
+            return;
+        }
+
+        let height = inner.height as usize;
+        state.offset = state.offset.min(state.visible_rows.len().saturating_sub(1));
+        if state.scroll_to_selection {
+            if let Some(index) = state.selected_index() {
+                if index < state.offset {
+                    state.offset = index;
+                } else if index >= state.offset + height {
+                    state.offset = index + 1 - height;
+                }
+            }
+            state.scroll_to_selection = false;
+        }
+
+        let item_style = Style::default().fg(self.ctx.color_theme.fg);
+        let highlight_style = Style::default()
+            .bg(self.ctx.color_theme.ref_selected_bg)
+            .fg(self.ctx.color_theme.ref_selected_fg);
+
+        for (line, row) in state
+            .visible_rows
+            .iter()
+            .skip(state.offset)
+            .take(height)
+            .enumerate()
+        {
+            let y = inner.y + line as u16;
+            let symbol = if !row.has_children {
+                "  "
+            } else if state.opened.contains(&row.identifier) {
+                "▾ "
+            } else {
+                "▸ "
+            };
+            let prefix = format!("{}{symbol}", "  ".repeat(row.depth));
+            let (text_x, _) = buf.set_stringn(inner.x, y, prefix, inner.width as usize, item_style);
+            let remaining = inner.width.saturating_sub(text_x - inner.x);
+            buf.set_stringn(text_x, y, &row.name, remaining as usize, item_style);
+            if row.identifier == state.selected {
+                buf.set_style(Rect::new(inner.x, y, inner.width, 1), highlight_style);
+            }
+        }
     }
 }
 
@@ -186,6 +298,7 @@ fn build_ref_tree_nodes(refs: &[Ref]) -> Vec<RefTreeNode> {
     ]
 }
 
+#[derive(Debug)]
 struct RefTreeNode {
     identifier: String,
     name: String,
@@ -199,15 +312,6 @@ impl RefTreeNode {
             name,
             children,
         }
-    }
-
-    fn into_tree_item(self, color_theme: &ColorTheme) -> TreeItem<'static, String> {
-        let children = self
-            .children
-            .into_iter()
-            .map(|child| child.into_tree_item(color_theme))
-            .collect();
-        TreeItem::new(self.identifier, self.name.fg(color_theme.fg), children).unwrap()
     }
 }
 
