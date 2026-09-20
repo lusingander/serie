@@ -177,8 +177,10 @@
                         "commands": {
                           "type": "array",
                           "description": "A custom command that receives text via stdin.",
+                          "minItems": 1,
                           "items": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           }
                         }
                       },
@@ -244,6 +246,7 @@
             "columns": {
               "type": "array",
               "description": "The order and visibility of columns in the commit list.",
+              "minItems": 1,
               "items": {
                 "$ref": "#/definitions/userListColumnType"
               },
@@ -266,6 +269,7 @@
             "date_format": {
               "type": "string",
               "description": "The date format for the author date in strftime format.",
+              "minLength": 1,
               "default": "%Y-%m-%d"
             },
             "date_width": {
@@ -304,6 +308,7 @@
             "date_format": {
               "type": "string",
               "description": "The date format for author/committer dates in strftime format.",
+              "minLength": 1,
               "default": "%Y-%m-%d %H:%M:%S %z"
             },
             "date_local": {
@@ -363,6 +368,7 @@
             "branches": {
               "type": "array",
               "description": "Colors used for the branches in the graph. Should be in #RRGGBB or #RRGGBBAA format.",
+              "minItems": 1,
               "items": {
                 "type": "string",
                 "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
