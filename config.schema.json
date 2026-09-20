@@ -160,18 +160,18 @@
           "description": "Configuration for external commands used by the application.",
           "properties": {
             "clipboard": {
-              "description": "The clipboard command to use for copy operations.\n- \"Auto\": Use the default clipboard library\n- { Custom = { commands = [\"...\"] } }: Use a custom command that receives text via stdin",
+              "description": "The clipboard command to use for copy operations.\n- \"auto\": Use the default clipboard library\n- { custom = { commands = [\"...\"] } }: Use a custom command that receives text via stdin",
               "oneOf": [
                 {
                   "type": "string",
                   "enum": [
-                    "Auto"
+                    "auto"
                   ]
                 },
                 {
                   "type": "object",
                   "properties": {
-                    "Custom": {
+                    "custom": {
                       "type": "object",
                       "properties": {
                         "commands": {
@@ -189,12 +189,12 @@
                     }
                   },
                   "required": [
-                    "Custom"
+                    "custom"
                   ],
                   "additionalProperties": false
                 }
               ],
-              "default": "Auto"
+              "default": "auto"
             }
           },
           "additionalProperties": false
@@ -215,24 +215,24 @@
                 {
                   "type": "string",
                   "enum": [
-                    "Native"
+                    "native"
                   ]
                 },
                 {
                   "type": "object",
                   "properties": {
-                    "Virtual": {
+                    "virtual": {
                       "type": "string",
                       "description": "A string to be used as a virtual cursor."
                     }
                   },
                   "required": [
-                    "Virtual"
+                    "virtual"
                   ],
                   "additionalProperties": false
                 }
               ],
-              "default": "Native"
+              "default": "native"
             }
           },
           "additionalProperties": false
