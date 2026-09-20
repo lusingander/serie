@@ -622,6 +622,12 @@
         "navigate_left": {
           "$ref": "#/definitions/keybindArray"
         },
+        "select_up": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "select_down": {
+          "$ref": "#/definitions/keybindArray"
+        },
         "go_to_parent": {
           "$ref": "#/definitions/keybindArray"
         },
@@ -680,6 +686,9 @@
           "$ref": "#/definitions/keybindArray"
         },
         "fuzzy_toggle": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "refresh": {
           "$ref": "#/definitions/keybindArray"
         },
         "short_copy": {
