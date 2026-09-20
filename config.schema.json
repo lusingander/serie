@@ -160,25 +160,27 @@
           "description": "Configuration for external commands used by the application.",
           "properties": {
             "clipboard": {
-              "description": "The clipboard command to use for copy operations.\n- \"Auto\": Use the default clipboard library\n- { Custom = { commands = [\"...\"] } }: Use a custom command that receives text via stdin",
+              "description": "The clipboard command to use for copy operations.\n- \"auto\": Use the default clipboard library\n- { custom = { commands = [\"...\"] } }: Use a custom command that receives text via stdin",
               "oneOf": [
                 {
                   "type": "string",
                   "enum": [
-                    "Auto"
+                    "auto"
                   ]
                 },
                 {
                   "type": "object",
                   "properties": {
-                    "Custom": {
+                    "custom": {
                       "type": "object",
                       "properties": {
                         "commands": {
                           "type": "array",
                           "description": "A custom command that receives text via stdin.",
+                          "minItems": 1,
                           "items": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           }
                         }
                       },
@@ -189,12 +191,12 @@
                     }
                   },
                   "required": [
-                    "Custom"
+                    "custom"
                   ],
                   "additionalProperties": false
                 }
               ],
-              "default": "Auto"
+              "default": "auto"
             }
           },
           "additionalProperties": false
@@ -215,24 +217,24 @@
                 {
                   "type": "string",
                   "enum": [
-                    "Native"
+                    "native"
                   ]
                 },
                 {
                   "type": "object",
                   "properties": {
-                    "Virtual": {
+                    "virtual": {
                       "type": "string",
                       "description": "A string to be used as a virtual cursor."
                     }
                   },
                   "required": [
-                    "Virtual"
+                    "virtual"
                   ],
                   "additionalProperties": false
                 }
               ],
-              "default": "Native"
+              "default": "native"
             }
           },
           "additionalProperties": false
@@ -244,6 +246,7 @@
             "columns": {
               "type": "array",
               "description": "The order and visibility of columns in the commit list.",
+              "minItems": 1,
               "items": {
                 "$ref": "#/definitions/userListColumnType"
               },
@@ -259,16 +262,21 @@
             "subject_min_width": {
               "type": "integer",
               "description": "The minimum width of a subject in the commit list.",
+              "minimum": 1,
+              "maximum": 65535,
               "default": 20
             },
             "date_format": {
               "type": "string",
               "description": "The date format for the author date in strftime format.",
+              "minLength": 1,
               "default": "%Y-%m-%d"
             },
             "date_width": {
               "type": "integer",
               "description": "The width of the author date column.",
+              "minimum": 0,
+              "maximum": 65535,
               "default": 10
             },
             "date_local": {
@@ -279,6 +287,8 @@
             "name_width": {
               "type": "integer",
               "description": "The width of the author name column.",
+              "minimum": 0,
+              "maximum": 65535,
               "default": 20
             }
           },
@@ -291,11 +301,14 @@
             "height": {
               "type": "integer",
               "description": "The height of the commit detail area.",
+              "minimum": 1,
+              "maximum": 65535,
               "default": 20
             },
             "date_format": {
               "type": "string",
               "description": "The date format for author/committer dates in strftime format.",
+              "minLength": 1,
               "default": "%Y-%m-%d %H:%M:%S %z"
             },
             "date_local": {
@@ -325,6 +338,8 @@
             "width": {
               "type": "integer",
               "description": "The width of the refs list area.",
+              "minimum": 1,
+              "maximum": 65535,
               "default": 26
             }
           },
@@ -353,6 +368,7 @@
             "branches": {
               "type": "array",
               "description": "Colors used for the branches in the graph. Should be in #RRGGBB or #RRGGBBAA format.",
+              "minItems": 1,
               "items": {
                 "type": "string",
                 "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
@@ -622,6 +638,12 @@
         "navigate_left": {
           "$ref": "#/definitions/keybindArray"
         },
+        "select_up": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "select_down": {
+          "$ref": "#/definitions/keybindArray"
+        },
         "go_to_parent": {
           "$ref": "#/definitions/keybindArray"
         },
@@ -680,6 +702,9 @@
           "$ref": "#/definitions/keybindArray"
         },
         "fuzzy_toggle": {
+          "$ref": "#/definitions/keybindArray"
+        },
+        "refresh": {
           "$ref": "#/definitions/keybindArray"
         },
         "short_copy": {
