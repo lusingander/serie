@@ -259,6 +259,8 @@
             "subject_min_width": {
               "type": "integer",
               "description": "The minimum width of a subject in the commit list.",
+              "minimum": 1,
+              "maximum": 65535,
               "default": 20
             },
             "date_format": {
@@ -269,6 +271,8 @@
             "date_width": {
               "type": "integer",
               "description": "The width of the author date column.",
+              "minimum": 0,
+              "maximum": 65535,
               "default": 10
             },
             "date_local": {
@@ -279,6 +283,8 @@
             "name_width": {
               "type": "integer",
               "description": "The width of the author name column.",
+              "minimum": 0,
+              "maximum": 65535,
               "default": 20
             }
           },
@@ -291,6 +297,8 @@
             "height": {
               "type": "integer",
               "description": "The height of the commit detail area.",
+              "minimum": 1,
+              "maximum": 65535,
               "default": 20
             },
             "date_format": {
@@ -325,6 +333,8 @@
             "width": {
               "type": "integer",
               "description": "The width of the refs list area.",
+              "minimum": 1,
+              "maximum": 65535,
               "default": 26
             }
           },
