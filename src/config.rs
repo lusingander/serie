@@ -334,6 +334,9 @@ pub struct CoreExternalConfig {
 #[optional(derives = [Deserialize])]
 #[derive(Debug, Clone, PartialEq, Eq, SmartDefault, Validate)]
 pub struct UiListConfig {
+    #[garde(range(min = 0))]
+    #[default = 0]
+    pub scrolloff: u16,
     #[garde(length(min = 1))]
     #[default(vec![
         UserListColumnType::Graph,
@@ -484,6 +487,7 @@ mod tests {
                     cursor_type: CursorType::Native,
                 },
                 list: UiListConfig {
+                    scrolloff: 0,
                     columns: vec![
                         UserListColumnType::Graph,
                         UserListColumnType::Marker,
@@ -551,6 +555,7 @@ mod tests {
             [ui.common]
             cursor_type = { virtual = "|" }
             [ui.list]
+            scrolloff = 3
             columns = ["date", "subject", "hash", "graph"]
             subject_min_width = 40
             date_format = "%Y/%m/%d"
@@ -643,6 +648,7 @@ mod tests {
                     cursor_type: CursorType::Virtual("|".into()),
                 },
                 list: UiListConfig {
+                    scrolloff: 3,
                     columns: vec![
                         UserListColumnType::Date,
                         UserListColumnType::Subject,
@@ -729,6 +735,7 @@ mod tests {
                     cursor_type: CursorType::Native,
                 },
                 list: UiListConfig {
+                    scrolloff: 0,
                     columns: vec![
                         UserListColumnType::Graph,
                         UserListColumnType::Marker,

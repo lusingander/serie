@@ -29,6 +29,7 @@ clipboard = "auto"
 cursor_type = "native"
 
 [ui.list]
+scrolloff = 0
 columns = ["graph", "marker", "subject", "name", "hash", "date"]
 subject_min_width = 20
 date_format = "%Y-%m-%d"
@@ -278,6 +279,13 @@ The type of a cursor to display in the input.
   - `native`: Use the terminal native cursor.
   - `{ virtual = "|" }`: Use a virtual cursor with the specified string.
     - value: `string` - The string to display as the virtual cursor.
+
+### `ui.list.scrolloff`
+
+The minimum number of visible rows to keep above and below the selected commit while scrolling, where the list boundaries allow it. On short screens, the effective value is limited to fit the available height.
+
+- type: `u16`
+- default: `0`
 
 ### `ui.list.columns`
 

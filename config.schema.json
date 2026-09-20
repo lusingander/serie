@@ -243,6 +243,13 @@
           "type": "object",
           "description": "Settings for the commit list view.",
           "properties": {
+            "scrolloff": {
+              "type": "integer",
+              "description": "Minimum number of visible rows to keep above and below the selected commit where possible.",
+              "minimum": 0,
+              "maximum": 65535,
+              "default": 0
+            },
             "columns": {
               "type": "array",
               "description": "The order and visibility of columns in the commit list.",
