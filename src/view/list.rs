@@ -303,9 +303,7 @@ impl<'a> ListView<'a> {
             list_state.select_first();
         } else {
             list_state.select_commit_hash(&CommitHash::from(commit_hash.as_str()));
-            for _ in 0..*selected {
-                list_state.scroll_up();
-            }
+            list_state.restore_selected_row(*selected);
         }
         if let Some(search_context) = search_context {
             list_state.restore_search(search_context);

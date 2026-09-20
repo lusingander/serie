@@ -202,6 +202,7 @@ pub struct CommitListState<'a> {
     offset: usize,
     total: usize,
     height: usize,
+    scrolloff: usize,
 }
 
 impl<'a> CommitListState<'a> {
@@ -212,6 +213,7 @@ impl<'a> CommitListState<'a> {
         head: &'a Head,
         ref_name_to_commit_index_map: FxHashMap<&'a str, usize>,
         search_options: SearchOptions,
+        scrolloff: usize,
     ) -> CommitListState<'a> {
         let total = commits.len();
         let commit_hash_set = commits.iter().map(|c| &c.commit.commit_hash).collect();
@@ -230,6 +232,7 @@ impl<'a> CommitListState<'a> {
             offset: 0,
             total,
             height: 0,
+            scrolloff,
         }
     }
 
@@ -279,10 +282,8 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn select_next(&mut self) {
-        if self.selected < (self.total - 1).min(self.height - 1) {
-            self.selected += 1;
-        } else if self.selected + self.offset < self.total - 1 {
-            self.offset += 1;
+        if self.total > 0 {
+            self.select_visible_index((self.current_selected_index() + 1).min(self.total - 1));
         }
     }
 
@@ -304,11 +305,7 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn select_prev(&mut self) {
-        if self.selected > 0 {
-            self.selected -= 1;
-        } else if self.offset > 0 {
-            self.offset -= 1;
-        }
+        self.select_visible_index(self.current_selected_index().saturating_sub(1));
     }
 
     pub fn select_first(&mut self) {
@@ -326,7 +323,7 @@ impl<'a> CommitListState<'a> {
     pub fn scroll_down(&mut self) {
         if self.offset + self.height < self.total {
             self.offset += 1;
-            if self.selected > 0 {
+            if self.selected > self.effective_scrolloff() {
                 self.selected -= 1;
             }
         }
@@ -335,7 +332,7 @@ impl<'a> CommitListState<'a> {
     pub fn scroll_up(&mut self) {
         if self.offset > 0 {
             self.offset -= 1;
-            if self.selected < self.height - 1 {
+            if self.selected < self.height.saturating_sub(1 + self.effective_scrolloff()) {
                 self.selected += 1;
             }
         }
@@ -405,13 +402,32 @@ impl<'a> CommitListState<'a> {
 
     fn select_index(&mut self, index: usize) {
         if index < self.total {
-            if self.total > self.height {
-                self.selected = 0;
-                self.offset = index;
-            } else {
-                self.selected = index;
-            }
+            self.offset = index
+                .saturating_sub(self.effective_scrolloff())
+                .min(self.total.saturating_sub(self.height));
+            self.selected = index - self.offset;
         }
+    }
+
+    fn effective_scrolloff(&self) -> usize {
+        self.scrolloff.min(self.height.saturating_sub(1) / 2)
+    }
+
+    fn select_visible_index(&mut self, index: usize) {
+        if self.height == 0 {
+            self.select_index(index);
+            return;
+        }
+
+        let margin = self.effective_scrolloff();
+        let bottom = self.height - 1 - margin;
+        let max_offset = self.total.saturating_sub(self.height);
+        if index < self.offset.saturating_add(margin) {
+            self.offset = index.saturating_sub(margin);
+        } else if index > self.offset.saturating_add(bottom) {
+            self.offset = index.saturating_sub(bottom).min(max_offset);
+        }
+        self.selected = index - self.offset;
     }
 
     pub fn select_next_match(&mut self) {
@@ -440,14 +456,17 @@ impl<'a> CommitListState<'a> {
         self.height = height;
     }
 
+    pub fn restore_selected_row(&mut self, row: usize) {
+        let index = self.current_selected_index();
+        self.offset = index
+            .saturating_sub(row.min(self.height.saturating_sub(1)))
+            .min(self.total.saturating_sub(self.height));
+        self.selected = index - self.offset;
+    }
+
     pub fn select_ref(&mut self, ref_name: &str) {
         if let Some(&index) = self.ref_name_to_commit_index_map.get(ref_name) {
-            if self.total > self.height {
-                self.selected = 0;
-                self.offset = index;
-            } else {
-                self.selected = index;
-            }
+            self.select_index(index);
         }
     }
 
@@ -455,16 +474,12 @@ impl<'a> CommitListState<'a> {
         if !self.commit_hash_set.contains(commit_hash) {
             return;
         }
-        for (i, commit_info) in self.commits.iter().enumerate() {
-            if commit_info.commit.commit_hash == *commit_hash {
-                if self.total > self.height {
-                    self.selected = 0;
-                    self.offset = i;
-                } else {
-                    self.selected = i;
-                }
-                break;
-            }
+        if let Some(index) = self
+            .commits
+            .iter()
+            .position(|commit_info| commit_info.commit.commit_hash == *commit_hash)
+        {
+            self.select_index(index);
         }
     }
 
@@ -1222,6 +1237,7 @@ mod tests {
             repository.head(),
             FxHashMap::default(),
             SearchOptions::default(),
+            0,
         );
         state.reset_height(subjects.len());
         f(&mut state)
@@ -1232,6 +1248,51 @@ mod tests {
         for c in query.chars() {
             state.handle_search_input(KeyEvent::from(KeyCode::Char(c)));
         }
+    }
+
+    #[test]
+    fn test_scrolloff_keeps_context_for_selection_and_single_row_scrolling() {
+        with_commit_list_state(&["commit"; 12], |state| {
+            state.reset_height(6);
+            state.scrolloff = 2;
+
+            for _ in 0..4 {
+                state.select_next();
+            }
+            assert_eq!(state.current_list_status(), (3, 1, 6));
+
+            state.select_prev();
+            state.select_prev();
+            assert_eq!(state.current_list_status(), (2, 0, 6));
+
+            state.select_index(7);
+            assert_eq!(state.current_list_status(), (2, 5, 6));
+            state.scroll_down();
+            assert_eq!(state.current_list_status(), (2, 6, 6));
+            state.scroll_up();
+            assert_eq!(state.current_list_status(), (3, 5, 6));
+
+            state.select_last();
+            assert_eq!(state.current_list_status(), (5, 6, 6));
+            state.select_prev();
+            assert_eq!(state.current_list_status(), (4, 6, 6));
+        });
+    }
+
+    #[test]
+    fn test_scrolloff_is_limited_by_list_height() {
+        with_commit_list_state(&["commit"; 8], |state| {
+            state.reset_height(2);
+            state.scrolloff = 10;
+
+            state.select_next();
+            state.select_next();
+            assert_eq!(state.current_list_status(), (1, 1, 2));
+
+            state.select_index(6);
+            state.restore_selected_row(1);
+            assert_eq!(state.current_list_status(), (1, 5, 2));
+        });
     }
 
     #[test]
