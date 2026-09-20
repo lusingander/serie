@@ -283,6 +283,7 @@ The type of a cursor to display in the input.
 ### `ui.list.scrolloff`
 
 The minimum number of visible rows to keep above and below the selected commit while scrolling, where the list boundaries allow it. On short screens, the effective value is limited to fit the available height.
+Page scrolling on the first or last page can move the selection into this margin to reach the first or last commit.
 
 - type: `u16`
 - default: `0`

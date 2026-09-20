@@ -355,6 +355,9 @@ impl<'a> CommitListState<'a> {
     }
 
     fn scroll_down_height(&mut self, scroll_height: usize) {
+        if self.height == 0 || self.total == 0 {
+            return;
+        }
         if self.offset + self.height + scroll_height < self.total {
             self.offset += scroll_height;
         } else {
@@ -366,9 +369,17 @@ impl<'a> CommitListState<'a> {
                 self.selected = size - 1;
             }
         }
+        // At the final page, keep the viewport fixed so further page scrolls
+        // can move the selection to the last commit as before.
+        if self.offset < self.total.saturating_sub(self.height) {
+            self.select_visible_index(self.current_selected_index());
+        }
     }
 
     fn scroll_up_height(&mut self, scroll_height: usize) {
+        if self.height == 0 || self.total == 0 {
+            return;
+        }
         if self.offset > scroll_height {
             self.offset -= scroll_height;
         } else {
@@ -377,6 +388,9 @@ impl<'a> CommitListState<'a> {
             self.selected = self
                 .selected
                 .saturating_sub(scroll_height - (old_offset - self.offset));
+        }
+        if self.offset > 0 {
+            self.select_visible_index(self.current_selected_index());
         }
     }
 
@@ -1292,6 +1306,88 @@ mod tests {
             state.select_index(6);
             state.restore_selected_row(1);
             assert_eq!(state.current_list_status(), (1, 5, 2));
+        });
+    }
+
+    #[test]
+    fn test_page_scrolloff_keeps_context_until_final_page() {
+        with_commit_list_state(&["commit"; 30], |state| {
+            state.reset_height(10);
+            state.scrolloff = 2;
+
+            state.scroll_down_page();
+            assert_eq!(state.current_list_status(), (2, 8, 10));
+            state.scroll_down_page();
+            assert_eq!(state.current_list_status(), (2, 18, 10));
+            state.scroll_down_page();
+            assert_eq!(state.current_list_status(), (9, 20, 10));
+            state.scroll_down_page();
+            assert_eq!(state.current_list_status(), (9, 20, 10));
+
+            state.scroll_up_page();
+            assert_eq!(state.current_list_status(), (7, 12, 10));
+            state.scroll_up_page();
+            assert_eq!(state.current_list_status(), (7, 2, 10));
+            state.scroll_up_page();
+            assert_eq!(state.current_list_status(), (0, 0, 10));
+        });
+    }
+
+    #[test]
+    fn test_half_page_scroll_reaches_last_commit_after_final_page() {
+        with_commit_list_state(&["commit"; 26], |state| {
+            state.reset_height(10);
+            state.scrolloff = 2;
+            state.select_index(12);
+
+            state.scroll_down_half();
+            assert_eq!(state.current_list_status(), (2, 15, 10));
+            state.scroll_down_half();
+            assert_eq!(state.current_list_status(), (6, 16, 10));
+            state.scroll_down_half();
+            assert_eq!(state.current_list_status(), (9, 16, 10));
+        });
+    }
+
+    #[test]
+    fn test_full_page_scroll_reaches_last_commit_after_final_page() {
+        with_commit_list_state(&["commit"; 25], |state| {
+            state.reset_height(10);
+            state.scrolloff = 2;
+            state.select_index(12);
+
+            state.scroll_down_page();
+            assert_eq!(state.current_list_status(), (7, 15, 10));
+            state.scroll_down_page();
+            assert_eq!(state.current_list_status(), (9, 15, 10));
+        });
+    }
+
+    #[test]
+    fn test_refresh_restores_selected_row_with_scrolloff() {
+        with_commit_list_state(&["commit"; 30], |state| {
+            state.reset_height(10);
+            state.scrolloff = 2;
+            state.select_index(15);
+            assert_eq!(state.current_list_status(), (2, 13, 10));
+
+            state.restore_selected_row(7);
+            assert_eq!(state.current_list_status(), (7, 8, 10));
+            assert_eq!(state.current_selected_index(), 15);
+        });
+    }
+
+    #[test]
+    fn test_zero_scrolloff_preserves_page_scroll_behavior() {
+        with_commit_list_state(&["commit"; 25], |state| {
+            state.reset_height(10);
+            state.select_index(12);
+            assert_eq!(state.current_list_status(), (0, 12, 10));
+
+            state.scroll_down_page();
+            assert_eq!(state.current_list_status(), (7, 15, 10));
+            state.scroll_down_page();
+            assert_eq!(state.current_list_status(), (9, 15, 10));
         });
     }
 
