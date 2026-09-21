@@ -198,9 +198,7 @@ fn main() -> Result<()> {
         let mut app = App::new(
             &repository,
             graph_image_manager,
-            &graph,
             &graph_color_set,
-            cell_width_type,
             initial_selection,
             ctx.clone(),
             &ec,

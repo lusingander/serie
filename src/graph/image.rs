@@ -78,6 +78,18 @@ impl<'a> GraphImageManager<'a> {
         self.prepared_image_map.get(commit_hash).unwrap()
     }
 
+    pub fn graph(&self) -> &'a Graph<'a> {
+        self.graph
+    }
+
+    pub fn graph_cell_width(&self) -> u16 {
+        let cell_count = (self.graph.max_pos_x + 1) as u16;
+        match self.cell_width_type {
+            CellWidthType::Double => cell_count * 2,
+            CellWidthType::Single => cell_count,
+        }
+    }
+
     pub fn image_ids(&self) -> &FxHashSet<u32> {
         &self.image_ids
     }

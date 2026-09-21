@@ -21,7 +21,7 @@ use crate::{
         copy_to_clipboard, exec_user_command, exec_user_command_suspend, ExternalCommandParameters,
     },
     git::{Commit, FileChange, Head, Ref, Repository},
-    graph::{CellWidthType, Graph, GraphImageManager},
+    graph::GraphImageManager,
     keybind::KeyBind,
     protocol::ImageProtocol,
     search::SearchOptions,
@@ -94,14 +94,13 @@ impl<'a> App<'a> {
     pub fn new(
         repository: &'a Repository,
         graph_image_manager: GraphImageManager<'a>,
-        graph: &'a Graph,
         graph_color_set: &'a GraphColorSet,
-        cell_width_type: CellWidthType,
         initial_selection: InitialSelection,
         ctx: Rc<AppContext>,
         ec: &'a EventController,
         refresh_view_context: Option<RefreshViewContext>,
     ) -> Self {
+        let graph = graph_image_manager.graph();
         let mut ref_name_to_commit_index_map = FxHashMap::default();
         let commits = graph
             .commits
@@ -117,10 +116,7 @@ impl<'a> App<'a> {
                 CommitInfo::new(commit, refs, graph_color)
             })
             .collect();
-        let graph_cell_width = match cell_width_type {
-            CellWidthType::Double => (graph.max_pos_x + 1) as u16 * 2,
-            CellWidthType::Single => (graph.max_pos_x + 1) as u16,
-        };
+        let graph_cell_width = graph_image_manager.graph_cell_width();
         let head = repository.head();
         let mut commit_list_state = CommitListState::new(
             commits,
