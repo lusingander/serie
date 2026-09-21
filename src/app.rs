@@ -133,6 +133,7 @@ impl<'a> App<'a> {
                 ignore_case: ctx.core_config.search.ignore_case,
                 fuzzy: ctx.core_config.search.fuzzy,
             },
+            ctx.ui_config.list.scrolloff as usize,
         );
         if let InitialSelection::Head = initial_selection {
             match repository.head() {
