@@ -223,6 +223,10 @@ impl<'a> ListView<'a> {
         self.as_list_state().graph_image_ids_sorted()
     }
 
+    pub fn session_nonce(&self) -> u32 {
+        self.as_list_state().session_nonce()
+    }
+
     fn update_search_status(&self) {
         if let SearchState::Searching { .. } = self.as_list_state().search_state() {
             let list_state = self.as_list_state();
@@ -307,6 +311,11 @@ impl<'a> ListView<'a> {
         }
         if let Some(search_context) = search_context {
             list_state.restore_search(search_context);
+        }
+        match self.as_list_state().search_state() {
+            SearchState::Searching { .. } => self.update_search_status(),
+            SearchState::Applied { .. } => self.update_matched_message(),
+            SearchState::Inactive => {}
         }
     }
 }

@@ -1,10 +1,12 @@
 use std::{
     fmt::{self, Debug, Formatter},
+    process::{Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc, Arc, Mutex,
     },
     thread,
+    time::Duration,
 };
 
 use ratatui::crossterm::event::KeyEvent;
@@ -36,6 +38,7 @@ pub enum AppEvent {
         value: String,
     },
     Refresh(RefreshViewContext),
+    AutoRefresh,
     ClearStatusLine,
     UpdateStatusInput {
         message: String,
@@ -95,10 +98,14 @@ pub struct EventController {
     rx: Receiver,
     stop: Arc<AtomicBool>,
     handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
+    watch_interval: Option<Duration>,
+    watch_fetch: bool,
+    watch_stop: Arc<AtomicBool>,
+    watch_handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
 }
 
 impl EventController {
-    pub fn init() -> Self {
+    pub fn new(auto_refresh: Option<Duration>, fetch: bool) -> Self {
         let (tx, rx) = mpsc::channel();
         let tx = Sender { tx };
         let rx = Receiver { rx };
@@ -108,6 +115,10 @@ impl EventController {
             rx,
             stop: Arc::new(AtomicBool::new(false)),
             handle: Arc::new(Mutex::new(None)),
+            watch_interval: auto_refresh,
+            watch_fetch: fetch,
+            watch_stop: Arc::new(AtomicBool::new(false)),
+            watch_handle: Arc::new(Mutex::new(None)),
         };
         controller.start();
 
@@ -122,7 +133,7 @@ impl EventController {
             if stop.load(Ordering::Relaxed) {
                 break;
             }
-            match ratatui::crossterm::event::poll(std::time::Duration::from_millis(100)) {
+            match ratatui::crossterm::event::poll(Duration::from_millis(100)) {
                 Ok(true) => match ratatui::crossterm::event::read() {
                     Ok(e) => match e {
                         ratatui::crossterm::event::Event::Key(key) => {
@@ -137,15 +148,42 @@ impl EventController {
                         panic!("Failed to read event: {e}");
                     }
                 },
-                Ok(false) => {
-                    continue;
-                }
+                Ok(false) => {}
                 Err(e) => {
                     panic!("Failed to poll event: {e}");
                 }
             }
         });
         *self.handle.lock().unwrap() = Some(handle);
+
+        if let Some(interval) = self.watch_interval {
+            self.watch_stop.store(false, Ordering::Relaxed);
+            let stop = self.watch_stop.clone();
+            let tx = self.tx.clone();
+            let fetch = self.watch_fetch;
+            let handle = thread::spawn(move || loop {
+                let mut remaining = interval;
+                while remaining > Duration::ZERO {
+                    if stop.load(Ordering::Relaxed) {
+                        return;
+                    }
+                    let slice = remaining.min(Duration::from_millis(100));
+                    thread::sleep(slice);
+                    remaining = remaining.saturating_sub(slice);
+                }
+                if stop.load(Ordering::Relaxed) {
+                    return;
+                }
+                if fetch {
+                    fetch_remotes();
+                }
+                if stop.load(Ordering::Relaxed) {
+                    return;
+                }
+                tx.send(AppEvent::AutoRefresh);
+            });
+            *self.watch_handle.lock().unwrap() = Some(handle);
+        }
     }
 
     pub fn resume(&self) {
@@ -173,7 +211,11 @@ impl EventController {
 
     fn stop(&self) {
         self.stop.store(true, Ordering::Relaxed);
+        self.watch_stop.store(true, Ordering::Relaxed);
         if let Some(handle) = self.handle.lock().unwrap().take() {
+            handle.join().unwrap();
+        }
+        if let Some(handle) = self.watch_handle.lock().unwrap().take() {
             handle.join().unwrap();
         }
     }
@@ -195,6 +237,16 @@ impl EventController {
     pub fn recv(&self) -> AppEvent {
         self.rx.recv()
     }
+}
+
+fn fetch_remotes() {
+    let _ = Command::new("git")
+        .args(["fetch", "--all", "--quiet"])
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
 }
 
 // The event triggered by user's key input

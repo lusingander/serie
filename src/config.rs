@@ -131,6 +131,8 @@ pub struct CoreOptionConfig {
     pub graph_width: Option<GraphWidthType>,
     pub graph_style: Option<GraphStyle>,
     pub initial_selection: Option<InitialSelection>,
+    pub auto_refresh: Option<u64>,
+    pub fetch: Option<bool>,
 }
 
 #[optional(derives = [Deserialize])]
@@ -452,6 +454,8 @@ mod tests {
                     graph_width: None,
                     graph_style: None,
                     initial_selection: None,
+                    auto_refresh: None,
+                    fetch: None,
                 },
                 git: CoreGitConfig { mailmap: false },
                 search: CoreSearchConfig {
@@ -540,6 +544,8 @@ mod tests {
             graph_width = "single"
             graph_style = "angular"
             initial_selection = "head"
+            auto_refresh = 2
+            fetch = true
             [core.git]
             mailmap = true
             [core.search]
@@ -586,6 +592,8 @@ mod tests {
                     graph_width: Some(GraphWidthType::Single),
                     graph_style: Some(GraphStyle::Angular),
                     initial_selection: Some(InitialSelection::Head),
+                    auto_refresh: Some(2),
+                    fetch: Some(true),
                 },
                 git: CoreGitConfig { mailmap: true },
                 search: CoreSearchConfig {
@@ -700,6 +708,8 @@ mod tests {
                     graph_width: None,
                     graph_style: None,
                     initial_selection: None,
+                    auto_refresh: None,
+                    fetch: None,
                 },
                 git: CoreGitConfig { mailmap: false },
                 search: CoreSearchConfig {

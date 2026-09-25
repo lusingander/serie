@@ -110,7 +110,7 @@ impl HelpView<'_> {
             Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)])
                 .areas(area);
 
-        if key_area.width - 4 /* padding */ < self.help_key_line_max_width {
+        if key_area.width.saturating_sub(4) /* padding */ < self.help_key_line_max_width {
             [key_area, value_area] = Layout::horizontal([
                 Constraint::Length(self.help_key_line_max_width + 4),
                 Constraint::Min(0),
@@ -154,6 +154,10 @@ impl<'a> HelpView<'a> {
         self.before.graph_image_ids_sorted()
     }
 
+    pub fn session_nonce(&self) -> u32 {
+        self.before.session_nonce()
+    }
+
     fn scroll_down(&mut self) {
         self.offset = self.offset.saturating_add(1);
     }
@@ -188,7 +192,7 @@ impl<'a> HelpView<'a> {
 
     fn update_state(&mut self, area: Rect) {
         self.height = area.height as usize;
-        self.offset = self.offset.min(self.help_key_lines.len() - 1)
+        self.offset = self.offset.min(self.help_key_lines.len().saturating_sub(1))
     }
 }
 
