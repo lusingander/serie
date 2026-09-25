@@ -135,6 +135,10 @@ impl<'a> RefsView<'a> {
         self.as_list_state().graph_image_ids_sorted()
     }
 
+    pub fn session_nonce(&self) -> u32 {
+        self.as_list_state().session_nonce()
+    }
+
     fn split_areas(&self, area: Rect) -> [Rect; 2] {
         let graph_width = self.as_list_state().graph_area_cell_width() + 1; // graph area + marker
         let refs_width =

@@ -270,6 +270,10 @@ impl<'a> CommitListState<'a> {
         self.graph_image_manager.drain_pending_uploads()
     }
 
+    pub fn session_nonce(&self) -> u32 {
+        self.graph_image_manager.session_nonce()
+    }
+
     pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
         let mut image_ids: Vec<u32> = self
             .graph_image_manager
@@ -1236,6 +1240,7 @@ mod tests {
             GraphStyle::Rounded,
             GraphImageWidthMode::Compact,
             ImageProtocol::Iterm2,
+            None,
         );
         let commit_infos = graph
             .commits

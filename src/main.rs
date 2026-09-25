@@ -24,7 +24,7 @@ mod mailmap_tests;
 #[path = "tests/git.rs"]
 mod test_git;
 
-use std::{path::Path, rc::Rc};
+use std::{path::Path, rc::Rc, time::Duration};
 
 use app::{App, Ret};
 use clap::{Parser, ValueEnum};
@@ -58,6 +58,16 @@ struct Args {
     /// Initial selection of commit [default: latest]
     #[arg(short, long, value_name = "TYPE")]
     initial_selection: Option<InitialSelection>,
+
+    /// Auto-reload when the repository changes. Pass seconds, or omit the value for 2s
+    #[arg(
+        short = 'r',
+        long,
+        value_name = "SECONDS",
+        num_args = 0..=1,
+        default_missing_value = "2"
+    )]
+    auto_refresh: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
@@ -159,6 +169,11 @@ fn main() -> Result<()> {
         .initial_selection
         .or(core_config.option.initial_selection)
         .into();
+    let auto_refresh = args
+        .auto_refresh
+        .or(core_config.option.auto_refresh)
+        .filter(|secs| *secs > 0)
+        .map(Duration::from_secs);
     let mailmap = core_config.git.mailmap;
 
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
@@ -171,9 +186,12 @@ fn main() -> Result<()> {
         image_protocol,
     });
 
-    let ec = event::EventController::init();
+    let ec = event::EventController::new(auto_refresh);
     let mut refresh_view_context = None;
     let mut terminal = None;
+    let mut skip_screen_clear = false;
+    let mut session_nonce = None;
+    let mut previous_image_ids = Vec::new();
 
     let ret = loop {
         let repository = git::Repository::load(Path::new("."), order, max_count, mailmap)?;
@@ -189,6 +207,7 @@ fn main() -> Result<()> {
             graph_style,
             graph_image_width_mode,
             image_protocol,
+            session_nonce,
         );
 
         if terminal.is_none() {
@@ -205,12 +224,19 @@ fn main() -> Result<()> {
             refresh_view_context,
         );
 
-        match app.run(terminal.as_mut().unwrap()) {
+        match app.run(
+            terminal.as_mut().unwrap(),
+            skip_screen_clear,
+            previous_image_ids,
+        ) {
             Ok(Ret::Quit) => {
                 break Ok(());
             }
             Ok(Ret::Refresh(request)) => {
                 refresh_view_context = Some(request.context);
+                session_nonce = Some(request.session_nonce);
+                previous_image_ids = request.previous_image_ids;
+                skip_screen_clear = true;
                 continue;
             }
             Err(e) => {

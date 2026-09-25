@@ -66,3 +66,15 @@ _Possible values:_ `latest`, `head`
 `latest` will select the latest commit.
 
 `head` will select the commit at HEAD.
+
+## -r, --auto-refresh \[SECONDS\]
+
+Automatically reload the repository when git refs change.
+
+_Possible values:_ a positive number of seconds. Passing the flag without a value uses `2`. `0` disables auto-refresh.
+
+The value specified in the command line argument takes precedence over `core.option.auto_refresh` in the config file.
+
+When a change is detected, Serie reloads commits and redraws in place: it does not clear the terminal or delete existing graph images first, so the list should not flash. Unchanged rows keep their current graph images (same Kitty image IDs). Commits that disappeared have their images deleted after the new frame is shown.
+
+Manual refresh with <kbd>R</kbd> uses the same in-place path.

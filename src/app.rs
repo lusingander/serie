@@ -11,7 +11,7 @@ use ratatui::{
     widgets::{Block, Borders, Padding, Paragraph},
     DefaultTerminal, Frame,
 };
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     color::{ColorTheme, GraphColorSet},
@@ -20,7 +20,7 @@ use crate::{
     external::{
         copy_to_clipboard, exec_user_command, exec_user_command_suspend, ExternalCommandParameters,
     },
-    git::{Commit, FileChange, Head, Ref, Repository},
+    git::{self, Commit, FileChange, Head, Ref, Repository},
     graph::GraphImageManager,
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -63,6 +63,8 @@ pub enum Ret {
 
 pub struct RefreshRequest {
     pub context: RefreshViewContext,
+    pub session_nonce: u32,
+    pub previous_image_ids: Vec<u32>,
 }
 
 #[derive(Debug)]
@@ -88,6 +90,7 @@ pub struct App<'a> {
     app_status: AppStatus,
     ctx: Rc<AppContext>,
     ec: &'a EventController,
+    fingerprint: u64,
 }
 
 impl<'a> App<'a> {
@@ -146,6 +149,7 @@ impl<'a> App<'a> {
             app_status: AppStatus::default(),
             ctx,
             ec,
+            fingerprint: git::state_fingerprint(repository.path()),
         };
 
         if let Some(context) = refresh_view_context {
@@ -157,15 +161,22 @@ impl<'a> App<'a> {
 }
 
 impl App<'_> {
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<Ret, std::io::Error> {
-        // Clearing the screen here, as it should be cleared upon refresh
-        self.clear_image(None)?;
-        terminal.clear()?;
+    pub fn run(
+        &mut self,
+        terminal: &mut DefaultTerminal,
+        skip_screen_clear: bool,
+        mut previous_image_ids: Vec<u32>,
+    ) -> Result<Ret, std::io::Error> {
+        if !skip_screen_clear {
+            self.clear_image(None)?;
+            terminal.clear()?;
+        }
 
         loop {
             self.prepare_render(terminal)?;
             self.flush_pending_graph_uploads()?;
             terminal.draw(|f| self.render(f))?;
+            self.delete_stale_graph_images(&mut previous_image_ids)?;
             match self.ec.recv() {
                 AppEvent::Key(key) => {
                     match self.app_status.status_line {
@@ -278,9 +289,18 @@ impl App<'_> {
                     self.copy_to_clipboard(name, value);
                 }
                 AppEvent::Refresh(context) => {
-                    self.cleanup_graph_images()?;
-                    let request = RefreshRequest { context };
+                    let request = RefreshRequest {
+                        context,
+                        session_nonce: self.view.session_nonce(),
+                        previous_image_ids: self.view.graph_image_ids_sorted(),
+                    };
                     return Ok(Ret::Refresh(request));
+                }
+                AppEvent::AutoRefresh => {
+                    let fingerprint = git::state_fingerprint(self.repository.path());
+                    if fingerprint != 0 && fingerprint != self.fingerprint {
+                        self.view.refresh();
+                    }
                 }
                 AppEvent::ClearStatusLine => {
                     self.clear_status_line();
@@ -343,6 +363,24 @@ impl App<'_> {
     fn cleanup_graph_images(&self) -> Result<(), std::io::Error> {
         let image_ids = self.view.graph_image_ids_sorted();
         self.ctx.image_protocol.delete_images(&image_ids)
+    }
+
+    fn delete_stale_graph_images(
+        &self,
+        previous_image_ids: &mut Vec<u32>,
+    ) -> Result<(), std::io::Error> {
+        if previous_image_ids.is_empty() {
+            return Ok(());
+        }
+        let current: FxHashSet<u32> = self.view.graph_image_ids_sorted().into_iter().collect();
+        let stale: Vec<u32> = previous_image_ids
+            .iter()
+            .copied()
+            .filter(|id| !current.contains(id))
+            .collect();
+        self.ctx.image_protocol.delete_images(&stale)?;
+        previous_image_ids.clear();
+        Ok(())
     }
 
     fn render(&mut self, f: &mut Frame) {

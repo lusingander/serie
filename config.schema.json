@@ -59,6 +59,11 @@
                 "head"
               ],
               "default": "latest"
+            },
+            "auto_refresh": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Interval in seconds for automatically reloading the repository when git refs change. Omit or set 0 to disable. The command line argument takes precedence."
             }
           },
           "additionalProperties": false

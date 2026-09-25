@@ -154,6 +154,10 @@ impl<'a> HelpView<'a> {
         self.before.graph_image_ids_sorted()
     }
 
+    pub fn session_nonce(&self) -> u32 {
+        self.before.session_nonce()
+    }
+
     fn scroll_down(&mut self) {
         self.offset = self.offset.saturating_add(1);
     }

@@ -165,6 +165,10 @@ impl<'a> DetailView<'a> {
         self.as_list_state().graph_image_ids_sorted()
     }
 
+    pub fn session_nonce(&self) -> u32 {
+        self.as_list_state().session_nonce()
+    }
+
     fn split_areas(&self, area: Rect) -> [Rect; 2] {
         let detail_height = (area.height - 1).min(self.ctx.ui_config.detail.height);
         Layout::vertical([Constraint::Min(0), Constraint::Length(detail_height)]).areas(area)
