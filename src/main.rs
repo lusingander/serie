@@ -73,6 +73,10 @@ struct Args {
     )]
     auto_refresh: Option<u64>,
 
+    /// Run `git fetch --all` before each auto-refresh (implies --auto-refresh)
+    #[arg(long)]
+    fetch: bool,
+
     /// Path to a git repository [default: current directory]
     #[arg(value_name = "PATH")]
     path: Option<PathBuf>,
@@ -177,9 +181,11 @@ fn main() -> Result<()> {
         .initial_selection
         .or(core_config.option.initial_selection)
         .into();
+    let fetch = args.fetch || core_config.option.fetch.unwrap_or(false);
     let auto_refresh = args
         .auto_refresh
         .or(core_config.option.auto_refresh)
+        .or(if fetch { Some(30) } else { None })
         .filter(|secs| *secs > 0)
         .map(Duration::from_secs);
     let mailmap = core_config.git.mailmap;
@@ -199,7 +205,7 @@ fn main() -> Result<()> {
         image_protocol,
     });
 
-    let ec = event::EventController::new(auto_refresh);
+    let ec = event::EventController::new(auto_refresh, fetch);
     let mut refresh_view_context = None;
     let mut terminal = None;
     let mut skip_screen_clear = false;

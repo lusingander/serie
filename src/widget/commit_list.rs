@@ -61,6 +61,8 @@ pub enum SearchState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SearchRefreshContext {
     query: String,
+    cursor: usize,
+    applied: bool,
 }
 
 impl SearchState {
@@ -547,33 +549,46 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn search_refresh_context(&self) -> Option<SearchRefreshContext> {
-        if let SearchState::Applied { .. } = self.search_state {
-            Some(SearchRefreshContext {
-                query: self.search_input.value().into(),
-            })
-        } else {
-            None
+        match self.search_state {
+            SearchState::Searching { .. } | SearchState::Applied { .. } => {
+                Some(SearchRefreshContext {
+                    query: self.search_input.value().into(),
+                    cursor: self.search_input.cursor(),
+                    applied: matches!(self.search_state, SearchState::Applied { .. }),
+                })
+            }
+            SearchState::Inactive => None,
         }
     }
 
     pub fn restore_search(&mut self, context: &SearchRefreshContext) {
-        self.search_input = Input::new(context.query.clone());
+        self.search_input = Input::new(context.query.clone()).with_cursor(context.cursor);
         self.update_search_matches();
 
-        let total_match = self.search_matches.iter().filter(|m| m.matched()).count();
-        self.search_state = SearchState::Applied {
-            // The selected commit may not match after refresh; next/previous updates this value.
-            match_index: 0,
-            total_match,
-        };
+        if context.applied {
+            let total_match = self.search_matches.iter().filter(|m| m.matched()).count();
+            self.search_state = SearchState::Applied {
+                // The selected commit may not match after refresh; next/previous updates this value.
+                match_index: 0,
+                total_match,
+            };
 
-        if total_match > 0 {
-            let current_index = self.current_selected_index();
-            if self.search_matches[current_index].matched() {
-                self.search_state
-                    .update_match_index(self.search_matches[current_index].match_index);
+            if total_match > 0 {
+                let current_index = self.current_selected_index();
+                if self.search_matches[current_index].matched() {
+                    self.search_state
+                        .update_match_index(self.search_matches[current_index].match_index);
+                }
             }
+            return;
         }
+
+        let match_index = self.search_matches[self.current_selected_index()].match_index;
+        self.search_state = SearchState::Searching {
+            start_index: self.current_selected_index(),
+            match_index,
+        };
+        self.select_current_or_next_match_index(self.current_selected_index());
     }
 
     pub fn cancel_search(&mut self) {
@@ -1410,7 +1425,14 @@ mod tests {
             )
         });
 
-        assert_eq!(context, SearchRefreshContext { query: "fx".into() });
+        assert_eq!(
+            context,
+            SearchRefreshContext {
+                query: "fx".into(),
+                cursor: 2,
+                applied: true,
+            }
+        );
         assert_eq!(
             options,
             SearchOptions {
@@ -1491,6 +1513,40 @@ mod tests {
             assert_eq!(
                 state.matched_query_string(),
                 Some(("Match 1 of 1 (query: \"fix\")".into(), true))
+            );
+        });
+    }
+
+    #[test]
+    fn test_restore_searching_keeps_in_progress_query() {
+        let context = with_commit_list_state(&["fix", "other"], |state| {
+            input_search_query(state, "fi");
+            state.search_refresh_context().unwrap()
+        });
+
+        assert_eq!(
+            context,
+            SearchRefreshContext {
+                query: "fi".into(),
+                cursor: 2,
+                applied: false,
+            }
+        );
+
+        with_commit_list_state(&["fix", "other"], |state| {
+            state.restore_search(&context);
+            assert!(matches!(
+                state.search_state(),
+                SearchState::Searching { .. }
+            ));
+            assert_eq!(state.search_query_string(), Some("/fi".into()));
+            assert_eq!(
+                state.search_refresh_context(),
+                Some(SearchRefreshContext {
+                    query: "fi".into(),
+                    cursor: 2,
+                    applied: false,
+                })
             );
         });
     }

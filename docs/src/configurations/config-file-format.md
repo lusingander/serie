@@ -10,6 +10,7 @@ graph_width = "auto"
 graph_style = "rounded"
 initial_selection = "latest"
 auto_refresh = 2
+fetch = true
 
 [core.git]
 mailmap = false
@@ -187,6 +188,15 @@ Interval in seconds for automatically reloading the repository when git refs cha
   - `1` or greater: poll for git ref changes at that interval
 
 The value specified in the command line argument (`-r` / `--auto-refresh`) takes precedence.
+
+### `core.option.fetch`
+
+Whether to run `git fetch --all` before each auto-refresh tick.
+
+- type: `boolean` (optional)
+- default: unset (`false`)
+
+If `true` and `auto_refresh` is unset, auto-refresh uses a 30 second interval. The command line flag `--fetch` takes precedence.
 
 ### `core.git.mailmap`
 

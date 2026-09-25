@@ -312,5 +312,6 @@ impl<'a> ListView<'a> {
         if let Some(search_context) = search_context {
             list_state.restore_search(search_context);
         }
+        self.update_search_status(None);
     }
 }

@@ -26,7 +26,7 @@ use crate::{
     protocol::ImageProtocol,
     search::SearchOptions,
     view::{RefreshViewContext, View},
-    widget::commit_list::{CommitInfo, CommitListState},
+    widget::commit_list::{CommitInfo, CommitListState, SearchState},
 };
 
 #[derive(Debug, Default)]
@@ -758,6 +758,22 @@ impl App<'_> {
                 }
             }
         }
+        self.sync_status_line_from_search();
+    }
+
+    fn sync_status_line_from_search(&mut self) {
+        let View::List(view) = &self.view else {
+            return;
+        };
+        let list_state = view.as_list_state();
+        if !matches!(list_state.search_state(), SearchState::Searching { .. }) {
+            return;
+        }
+        let Some(query) = list_state.search_query_string() else {
+            return;
+        };
+        let cursor_pos = list_state.search_query_cursor_position();
+        self.update_status_input(query, Some(cursor_pos), None);
     }
 
     fn clear_status_line(&mut self) {

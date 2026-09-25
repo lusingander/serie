@@ -79,6 +79,18 @@ When a change is detected, Serie reloads commits and redraws in place: it does n
 
 Manual refresh with <kbd>R</kbd> uses the same in-place path.
 
+In-progress `/` search is restored across refreshes (query, cursor, and live matches), so auto-refresh does not drop the prompt or skip ticks while you type.
+
+## --fetch
+
+Run `git fetch --all --quiet` before each auto-refresh tick.
+
+Implies `--auto-refresh`: if `-r` is not specified, the interval defaults to 30 seconds. Combine with `-r <SECONDS>` to override.
+
+Fetch is non-interactive (`GIT_TERMINAL_PROMPT=0`, stdin closed). Network or auth failures are ignored so the refresh still runs against local refs.
+
+Also available as `core.option.fetch` in the config file. The command line flag takes precedence.
+
 ## PATH
 
 Path to a git repository.

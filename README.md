@@ -82,6 +82,7 @@ Options:
   -s, --graph-style <TYPE>        Commit graph image edge style [default: rounded] [possible values: rounded, angular]
   -i, --initial-selection <TYPE>  Initial selection of commit [default: latest] [possible values: latest, head]
   -r, --auto-refresh [SECONDS]    Auto-reload when the repository changes. Pass seconds, or omit the value for 2s
+      --fetch                     Run `git fetch --all` before each auto-refresh (implies --auto-refresh)
   -h, --help                      Print help
   -V, --version                   Print version
 
