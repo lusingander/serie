@@ -223,7 +223,7 @@ fn main() -> Result<()> {
 
         let graph = graph::calc_graph(&repository);
 
-        let cell_width_type = check::decide_cell_width_type(&graph, graph_width)?;
+        let cell_width_type = check::decide_cell_width_type(&graph, graph_width, args.padding)?;
 
         let graph_image_manager = GraphImageManager::new(
             &graph,
