@@ -37,6 +37,8 @@ _Possible values:_ `auto`, `double`, `single`
 
 If not specified or `auto` is specified, `double` will be used automatically if there is enough width to display it, `single` otherwise.
 
+`--graph-width auto` uses the remaining width after `--padding` is applied.
+
 <img src="https://raw.githubusercontent.com/lusingander/serie/master/img/graph-width-double.png" width=300>
 
 <img src="https://raw.githubusercontent.com/lusingander/serie/master/img/graph-width-single.png" width=300>
@@ -90,6 +92,14 @@ Implies `--auto-refresh`: if `-r` is not specified, the interval defaults to 30 
 Fetch is non-interactive (`GIT_TERMINAL_PROMPT=0`, stdin closed). Network or auth failures are ignored so the refresh still runs against local refs.
 
 Also available as `core.option.fetch` in the config file. The command line flag takes precedence.
+
+## --padding \<CELLS\>
+
+Inset the whole UI by this many cells on every side.
+
+The same value is applied to top, right, bottom, and left. Default is `0`, which keeps the existing full-screen layout.
+
+If the terminal is too small to keep a usable content area, padding is reduced (or ignored) so the UI still fits. `--graph-width auto` uses the remaining width after this inset.
 
 ## PATH
 

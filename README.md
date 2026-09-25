@@ -74,6 +74,9 @@ Serie - A rich git commit graph in your terminal, like magic 📚
 
 Usage: serie [OPTIONS] [PATH]
 
+Arguments:
+  [PATH]  Path to a git repository [default: current directory]
+
 Options:
   -n, --max-count <NUMBER>        Maximum number of commits to render
   -p, --protocol <TYPE>           Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty, kitty-unicode]
@@ -81,13 +84,11 @@ Options:
   -g, --graph-width <TYPE>        Commit graph image cell width [default: auto] [possible values: auto, double, single]
   -s, --graph-style <TYPE>        Commit graph image edge style [default: rounded] [possible values: rounded, angular]
   -i, --initial-selection <TYPE>  Initial selection of commit [default: latest] [possible values: latest, head]
-  -r, --auto-refresh [SECONDS]    Auto-reload when the repository changes. Pass seconds, or omit the value for 2s
+  -r, --auto-refresh [<SECONDS>]  Auto-reload when the repository changes. Pass seconds, or omit the value for 2s
       --fetch                     Run `git fetch --all` before each auto-refresh (implies --auto-refresh)
+      --padding <CELLS>           Inset the whole UI by this many cells on every side [default: 0]
   -h, --help                      Print help
   -V, --version                   Print version
-
-Arguments:
-  [PATH]  Path to a git repository [default: current directory]
 ```
 
 For details on each option, see [Command Line Options](https://lusingander.github.io/serie/getting-started/command-line-options.html).
