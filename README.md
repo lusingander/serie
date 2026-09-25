@@ -87,6 +87,7 @@ Options:
   -r, --auto-refresh [<SECONDS>]  Auto-reload when the repository changes. Pass seconds, or omit the value for 2s
       --fetch                     Run `git fetch --all` before each auto-refresh (implies --auto-refresh)
       --padding <CELLS>           Inset the whole UI by this many cells on every side [default: 0]
+      --padding-shade <SHADE>     Make the padding band lighter or darker than the content [default: lighter] [possible values: lighter, darker]
   -h, --help                      Print help
   -V, --version                   Print version
 ```

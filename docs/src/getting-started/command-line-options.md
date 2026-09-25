@@ -101,6 +101,16 @@ The same value is applied to top, right, bottom, and left. Default is `0`, which
 
 If the terminal is too small to keep a usable content area, padding is reduced (or ignored) so the UI still fits. `--graph-width auto` uses the remaining width after this inset.
 
+The padding band is filled with a shifted copy of `color.bg` so it reads as a frame around the content. See [`--padding-shade`](#--padding-shade-shade).
+
+## --padding-shade \<SHADE\>
+
+Whether the padding band is lighter or darker than the content background.
+
+_Possible values:_ `lighter`, `darker`
+
+Default is `lighter`. Has no effect when `--padding` is `0`.
+
 ## PATH
 
 Path to a git repository.

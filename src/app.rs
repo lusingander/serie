@@ -14,7 +14,7 @@ use ratatui::{
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    color::{ColorTheme, GraphColorSet},
+    color::{padding_bg, ColorTheme, GraphColorSet, PaddingShade},
     config::{CoreConfig, CursorType, UiConfig, UserCommand, UserCommandType},
     event::{AppEvent, EventController, UserEvent, UserEventWithCount},
     external::{
@@ -76,6 +76,7 @@ pub struct AppContext {
     pub color_theme: ColorTheme,
     pub image_protocol: ImageProtocol,
     pub page_padding: u16,
+    pub page_padding_shade: PaddingShade,
 }
 
 #[derive(Debug, Default)]
@@ -388,12 +389,22 @@ impl App<'_> {
     }
 
     fn render(&mut self, f: &mut Frame) {
-        let base = Block::default()
-            .fg(self.ctx.color_theme.fg)
-            .bg(self.ctx.color_theme.bg);
-        f.render_widget(base, f.area());
+        let frame = f.area();
+        let content = self.content_area(frame);
+        let fg = self.ctx.color_theme.fg;
+        let bg = self.ctx.color_theme.bg;
 
-        let [view_area, status_line_area] = split_app_areas(self.content_area(f.area()));
+        if content != frame {
+            f.render_widget(
+                Block::default()
+                    .fg(fg)
+                    .bg(padding_bg(bg, self.ctx.page_padding_shade)),
+                frame,
+            );
+        }
+        f.render_widget(Block::default().fg(fg).bg(bg), content);
+
+        let [view_area, status_line_area] = split_app_areas(content);
 
         self.update_state(view_area);
 

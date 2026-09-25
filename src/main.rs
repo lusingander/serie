@@ -82,6 +82,10 @@ struct Args {
     #[arg(long, value_name = "CELLS", default_value_t = 0)]
     padding: u16,
 
+    /// Make the padding band lighter or darker than the content
+    #[arg(long, value_name = "SHADE", default_value = "lighter")]
+    padding_shade: color::PaddingShade,
+
     /// Path to a git repository [default: current directory]
     #[arg(value_name = "PATH")]
     path: Option<PathBuf>,
@@ -209,6 +213,7 @@ fn main() -> Result<()> {
         color_theme,
         image_protocol,
         page_padding: args.padding,
+        page_padding_shade: args.padding_shade,
     });
 
     let ec = event::EventController::new(auto_refresh, fetch);
