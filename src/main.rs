@@ -7,6 +7,7 @@ mod external;
 mod git;
 mod graph;
 mod keybind;
+mod padding;
 mod protocol;
 mod search;
 mod view;
