@@ -74,6 +74,7 @@ pub struct AppContext {
     pub ui_config: UiConfig,
     pub color_theme: ColorTheme,
     pub image_protocol: ImageProtocol,
+    pub page_padding: u16,
 }
 
 #[derive(Debug, Default)]
