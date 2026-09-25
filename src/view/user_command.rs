@@ -183,7 +183,8 @@ impl<'a> UserCommandView<'a> {
     }
 
     fn split_areas(&self, area: Rect) -> [Rect; 2] {
-        let user_command_height = (area.height - 1).min(self.ctx.ui_config.user_command.height);
+        let user_command_height =
+            (area.height.saturating_sub(1)).min(self.ctx.ui_config.user_command.height);
         Layout::vertical([Constraint::Min(0), Constraint::Length(user_command_height)]).areas(area)
     }
 

@@ -86,7 +86,7 @@ impl StatefulWidget for CommitDetail<'_> {
 
         let (mut label_lines, mut value_lines) = self.contents(area);
 
-        let content_area_height = area.height as usize - 1; // minus the top border
+        let content_area_height = (area.height as usize).saturating_sub(1); // minus the top border
         self.update_state(state, value_lines.len(), content_area_height);
 
         label_lines = label_lines.into_iter().skip(state.offset).collect();

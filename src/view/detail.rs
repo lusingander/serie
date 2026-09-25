@@ -170,7 +170,7 @@ impl<'a> DetailView<'a> {
     }
 
     fn split_areas(&self, area: Rect) -> [Rect; 2] {
-        let detail_height = (area.height - 1).min(self.ctx.ui_config.detail.height);
+        let detail_height = (area.height.saturating_sub(1)).min(self.ctx.ui_config.detail.height);
         Layout::vertical([Constraint::Min(0), Constraint::Length(detail_height)]).areas(area)
     }
 

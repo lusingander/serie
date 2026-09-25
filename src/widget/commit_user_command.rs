@@ -65,7 +65,7 @@ impl StatefulWidget for CommitUserCommand<'_> {
     type State = CommitUserCommandState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let content_area_height = area.height as usize - 1; // minus the top border
+        let content_area_height = (area.height as usize).saturating_sub(1); // minus the top border
         self.update_state(state, self.lines.len(), content_area_height);
 
         self.render_user_command_lines(area, buf, state);
@@ -83,7 +83,7 @@ impl CommitUserCommand<'_> {
             .lines
             .iter()
             .skip(state.offset)
-            .take(area.height as usize - 1)
+            .take((area.height as usize).saturating_sub(1))
             .cloned()
             .collect::<Vec<_>>();
         let paragraph = Paragraph::new(lines)
