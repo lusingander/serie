@@ -312,6 +312,10 @@ impl<'a> ListView<'a> {
         if let Some(search_context) = search_context {
             list_state.restore_search(search_context);
         }
-        self.update_search_status(None);
+        match self.as_list_state().search_state() {
+            SearchState::Searching { .. } => self.update_search_status(),
+            SearchState::Applied { .. } => self.update_matched_message(),
+            SearchState::Inactive => {}
+        }
     }
 }

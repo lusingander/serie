@@ -795,14 +795,23 @@ impl App<'_> {
             return;
         };
         let list_state = view.as_list_state();
-        if !matches!(list_state.search_state(), SearchState::Searching { .. }) {
-            return;
+        match list_state.search_state() {
+            SearchState::Searching { .. } => {
+                let Some(query) = list_state.search_query_string() else {
+                    return;
+                };
+                let cursor_position = list_state.search_query_cursor_position();
+                let metadata = list_state.search_options().status_string();
+                self.update_status_input(query, cursor_position, metadata);
+            }
+            SearchState::Applied { .. } => {
+                if let Some((message, matched)) = list_state.matched_query_string() {
+                    let options = list_state.search_options().status_string();
+                    self.update_search_result(message, options, matched);
+                }
+            }
+            SearchState::Inactive => {}
         }
-        let Some(query) = list_state.search_query_string() else {
-            return;
-        };
-        let cursor_pos = list_state.search_query_cursor_position();
-        self.update_status_input(query, Some(cursor_pos), None);
     }
 
     fn clear_status_line(&mut self) {
