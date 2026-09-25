@@ -61,12 +61,18 @@ $ cd <your git repository>
 $ serie
 ```
 
+Or pass the repository path:
+
+```
+$ serie /path/to/repo
+```
+
 ### Options
 
 ```
 Serie - A rich git commit graph in your terminal, like magic 📚
 
-Usage: serie [OPTIONS]
+Usage: serie [OPTIONS] [PATH]
 
 Options:
   -n, --max-count <NUMBER>        Maximum number of commits to render
@@ -78,6 +84,9 @@ Options:
   -r, --auto-refresh [SECONDS]    Auto-reload when the repository changes. Pass seconds, or omit the value for 2s
   -h, --help                      Print help
   -V, --version                   Print version
+
+Arguments:
+  [PATH]  Path to a git repository [default: current directory]
 ```
 
 For details on each option, see [Command Line Options](https://lusingander.github.io/serie/getting-started/command-line-options.html).

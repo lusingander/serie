@@ -78,3 +78,9 @@ The value specified in the command line argument takes precedence over `core.opt
 When a change is detected, Serie reloads commits and redraws in place: it does not clear the terminal or delete existing graph images first, so the list should not flash. Unchanged rows keep their current graph images (same Kitty image IDs). Commits that disappeared have their images deleted after the new frame is shown.
 
 Manual refresh with <kbd>R</kbd> uses the same in-place path.
+
+## PATH
+
+Path to a git repository.
+
+If omitted, the current directory is used.

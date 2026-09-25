@@ -24,7 +24,11 @@ mod mailmap_tests;
 #[path = "tests/git.rs"]
 mod test_git;
 
-use std::{path::Path, rc::Rc, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    rc::Rc,
+    time::Duration,
+};
 
 use app::{App, Ret};
 use clap::{Parser, ValueEnum};
@@ -68,6 +72,10 @@ struct Args {
         default_missing_value = "2"
     )]
     auto_refresh: Option<u64>,
+
+    /// Path to a git repository [default: current directory]
+    #[arg(value_name = "PATH")]
+    path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
@@ -175,6 +183,11 @@ fn main() -> Result<()> {
         .filter(|secs| *secs > 0)
         .map(Duration::from_secs);
     let mailmap = core_config.git.mailmap;
+    let repo_path = args.path.unwrap_or_else(|| PathBuf::from("."));
+    if repo_path != Path::new(".") {
+        std::env::set_current_dir(&repo_path)
+            .map_err(|err| format!("Failed to open repository {}: {err}", repo_path.display()))?;
+    }
 
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 
