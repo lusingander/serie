@@ -22,13 +22,25 @@ Before reporting, please check if an issue with the same content already exists.
 
 ### Reporting Bugs
 
+Serie renders commit graphs using terminal image display protocols. Before reporting a graph rendering problem, make sure you understand which protocol Serie is using and confirm that every part of your terminal environment supports it. When using a terminal multiplexer, also confirm whether it supports or passes through the selected protocol. See [Compatibility](https://lusingander.github.io/serie/getting-started/compatibility.html) for the protocols and environments currently supported by Serie.
+
 When reporting a bug, please include the following information:
 
 - Application version
   - `serie --version`
-- Version of the terminal emulator and the OS it's running on
+- Installation method
+- OS and version
+- Terminal emulator and version
+- Terminal multiplexer and version, if used
+- Git version
+- Command-line options, selected image display protocol, and relevant configuration
+- Steps to reproduce the problem
+- Expected and actual behavior
+- Error messages, panic output, and backtrace, if available
 - Information about the git repository to reproduce the issue
-  - If possible, provide the smallest possible repository (debugging a repository with 100,000 commits is difficult)
+  - If possible, provide the smallest possible repository or a script that creates it (debugging a repository with 100,000 commits is difficult)
+  - If you cannot share the repository, provide relevant output such as `git log --graph --oneline --all`
+- For display problems, the terminal size and a screenshot or video
 
 ### Suggesting Features
 
@@ -36,9 +48,11 @@ When proposing a feature, describe the problem and workflow it would address, th
 
 ### Terminal Emulator Compatibility
 
-If the application does not work with your terminal emulator, please first check whether the terminal emulator supports the target image display protocol.
+Support for an image display protocol does not guarantee that every terminal implements every part of that protocol in the same way. Please verify the actual behavior in the target terminal rather than relying only on its documented protocol support.
 
 For information on tested terminal emulators, refer to [Compatibility](https://lusingander.github.io/serie/getting-started/compatibility.html).
+
+When reporting compatibility results or proposing a compatibility change, include the terminal and version, OS, multiplexer if any, selected protocol, and the behavior of graph rendering, scrolling, resizing, and opening other views such as commit details.
 
 ## Pull Requests
 
