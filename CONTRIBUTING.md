@@ -65,13 +65,25 @@ We welcome pull requests, but please note that they are not guaranteed to be acc
 - Keep each pull request focused on one purpose. Do not include fixes, refactoring, or cleanup that are not directly related to that purpose.
 - If the change was discussed in an issue, link the issue and keep the implementation within the agreed scope.
 - Preserve existing behavior and defaults unless a change has been discussed and agreed on.
+- Describe the problem, the chosen approach, and any important alternatives or tradeoffs.
+- Include screenshots or videos for visible UI changes.
+- For terminal or platform compatibility changes, describe the environments and operations that were tested.
+- Update user documentation when behavior, command-line options, configuration, or keybindings change.
+- Update `config.schema.json`, `assets/default-keybind.toml`, and existing tests when they are affected by the change.
 
 ### Continuous Integration
 
-We use [GitHub Actions](https://github.com/lusingander/serie/blob/master/.github/workflows/build.yml) to perform basic checks:
+We use [GitHub Actions](https://github.com/lusingander/serie/blob/master/.github/workflows/build.yml) to build and test with both stable Rust and the minimum supported Rust version specified by `rust-version` in `Cargo.toml`.
 
-- Run both stable and MSRV versions of Rust.
-- Run build, test, format, and lint.
+Before submitting a pull request, run the following checks locally:
+
+```sh
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test
+```
+
+If a check cannot be run in your environment, explain that in the pull request.
 
 ### Improving the Commit Graph
 
