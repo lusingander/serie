@@ -69,16 +69,31 @@ fn calc_commit_positions<'a>(
 ) -> CommitPosMap<'a> {
     let mut commit_pos_map: CommitPosMap = FxHashMap::default();
     let mut commit_line_state: Vec<Option<&CommitHash>> = Vec::new();
+    let mut line_last_occupied_pos_y: Vec<usize> = Vec::new();
 
     for (pos_y, commit) in commits.iter().enumerate() {
         let filtered_children_hash = filtered_children_hash(commit, repository);
         if filtered_children_hash.is_empty() {
-            let pos_x = get_first_vacant_line(&commit_line_state);
+            let merge_child_pos_y = repository
+                .children_hash(&commit.commit_hash)
+                .into_iter()
+                .map(|hash| commit_pos_map[hash].1)
+                .min();
+            let pos_x = get_first_vacant_line(
+                &commit_line_state,
+                &line_last_occupied_pos_y,
+                merge_child_pos_y,
+            );
             add_commit_line(commit, &mut commit_line_state, pos_x);
             commit_pos_map.insert(&commit.commit_hash, (pos_x, pos_y));
+            occupy_line(&mut line_last_occupied_pos_y, pos_x, pos_y);
         } else {
             let pos_x = update_commit_line(commit, &mut commit_line_state, &filtered_children_hash);
             commit_pos_map.insert(&commit.commit_hash, (pos_x, pos_y));
+            for child_hash in filtered_children_hash {
+                let child_pos_x = commit_pos_map[child_hash].0;
+                occupy_line(&mut line_last_occupied_pos_y, child_pos_x, pos_y);
+            }
         }
     }
 
@@ -99,11 +114,32 @@ fn filtered_children_hash<'a>(
         .collect()
 }
 
-fn get_first_vacant_line(commit_line_state: &[Option<&CommitHash>]) -> usize {
+fn get_first_vacant_line(
+    commit_line_state: &[Option<&CommitHash>],
+    line_last_occupied_pos_y: &[usize],
+    merge_child_pos_y: Option<usize>,
+) -> usize {
     commit_line_state
         .iter()
-        .position(|c| c.is_none())
+        .enumerate()
+        .position(|(pos_x, commit)| {
+            // A line can be vacant in the current state while still containing an edge above
+            // this row. Reusing it for a merge edge that reaches above that edge would make two
+            // unrelated branches appear to be connected.
+            commit.is_none()
+                && merge_child_pos_y.is_none_or(|merge_child_pos_y| {
+                    line_last_occupied_pos_y[pos_x] <= merge_child_pos_y
+                })
+        })
         .unwrap_or(commit_line_state.len())
+}
+
+fn occupy_line(line_last_occupied_pos_y: &mut Vec<usize>, pos_x: usize, pos_y: usize) {
+    if line_last_occupied_pos_y.len() == pos_x {
+        line_last_occupied_pos_y.push(pos_y);
+    } else {
+        line_last_occupied_pos_y[pos_x] = pos_y;
+    }
 }
 
 fn add_commit_line<'a>(
