@@ -440,6 +440,76 @@ fn branch_005() -> TestResult {
 }
 
 #[test]
+fn branch_006() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+
+    git.commit("001", "2024-01-01");
+
+    git.checkout_b("10");
+
+    git.checkout("master");
+    git.commit("002", "2024-01-02");
+
+    git.checkout("10");
+    git.commit("011", "2024-02-01");
+
+    git.checkout("master");
+    git.commit("003", "2024-02-02");
+
+    git.checkout_b("20");
+
+    git.checkout("master");
+    git.checkout_b("30");
+
+    git.checkout("master");
+    git.merge(&["10"], "2024-03-01");
+
+    git.checkout("20");
+    git.commit("021", "2024-03-02");
+
+    git.checkout("master");
+    git.merge(&["20"], "2024-03-03");
+
+    git.checkout("30");
+    git.commit("031", "2024-03-04");
+
+    git.checkout("master");
+    git.merge(&["30"], "2024-03-05");
+
+    git.log();
+
+    let options = &[
+        GenerateGraphOption::new(
+            "branch_006_chrono",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        ),
+        GenerateGraphOption::new(
+            "branch_006_topo",
+            git::SortCommit::Topological,
+            graph::GraphStyle::Rounded,
+        ),
+        GenerateGraphOption::new(
+            "branch_006_angular",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        ),
+    ];
+
+    copy_git_dir(repo_path, "branch_006");
+
+    generate_and_output_graph_images(repo_path, options);
+    assert_graph_images(options);
+
+    Ok(())
+}
+
+#[test]
 fn merge_001() -> TestResult {
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
