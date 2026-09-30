@@ -510,6 +510,57 @@ fn branch_006() -> TestResult {
 }
 
 #[test]
+fn branch_007() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+
+    git.commit("001", "2024-01-01");
+
+    git.checkout_b("10");
+    git.commit("011", "2024-02-01");
+
+    git.checkout("master");
+    git.merge(&["10"], "2024-02-02");
+
+    git.checkout_b("20");
+    git.commit("021", "2024-02-03");
+
+    git.checkout("master");
+    git.merge(&["20"], "2024-02-04");
+
+    git.log();
+
+    let options = &[
+        GenerateGraphOption::new(
+            "branch_007_chrono",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        ),
+        GenerateGraphOption::new(
+            "branch_007_topo",
+            git::SortCommit::Topological,
+            graph::GraphStyle::Rounded,
+        ),
+        GenerateGraphOption::new(
+            "branch_007_angular",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        ),
+    ];
+
+    copy_git_dir(repo_path, "branch_007");
+
+    generate_and_output_graph_images(repo_path, options);
+    assert_graph_images(options);
+
+    Ok(())
+}
+
+#[test]
 fn merge_001() -> TestResult {
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
