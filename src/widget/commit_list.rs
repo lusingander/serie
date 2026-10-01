@@ -61,6 +61,8 @@ pub enum SearchState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SearchRefreshContext {
     query: String,
+    cursor: usize,
+    applied: bool,
 }
 
 impl SearchState {
@@ -243,14 +245,16 @@ impl<'a> CommitListState<'a> {
     pub fn update_height(&mut self, height: usize) {
         self.height = height;
 
-        if self.total > self.height && self.total - self.height < self.offset {
-            let diff = self.offset - (self.total - self.height);
+        if self.total > self.height && self.total.saturating_sub(self.height) < self.offset {
+            let diff = self
+                .offset
+                .saturating_sub(self.total.saturating_sub(self.height));
             self.selected += diff;
-            self.offset -= diff;
+            self.offset = self.offset.saturating_sub(diff);
         }
         if self.selected >= self.height {
-            let diff = self.selected - self.height + 1;
-            self.selected -= diff;
+            let diff = self.selected.saturating_sub(self.height).saturating_add(1);
+            self.selected = self.selected.saturating_sub(diff);
             self.offset += diff;
         }
     }
@@ -268,6 +272,10 @@ impl<'a> CommitListState<'a> {
 
     pub fn drain_pending_graph_uploads(&mut self) -> Vec<String> {
         self.graph_image_manager.drain_pending_uploads()
+    }
+
+    pub fn session_nonce(&self) -> u32 {
+        self.graph_image_manager.session_nonce()
     }
 
     pub fn graph_image_ids_sorted(&self) -> Vec<u32> {
@@ -314,9 +322,12 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn select_last(&mut self) {
-        self.selected = (self.height - 1).min(self.total - 1);
+        self.selected = self
+            .height
+            .saturating_sub(1)
+            .min(self.total.saturating_sub(1));
         if self.height < self.total {
-            self.offset = self.total - self.height;
+            self.offset = self.total.saturating_sub(self.height);
         }
     }
 
@@ -363,10 +374,10 @@ impl<'a> CommitListState<'a> {
         } else {
             let old_offset = self.offset;
             let size = self.height.min(self.total);
-            self.offset = self.total - size;
-            self.selected += scroll_height - (self.offset - old_offset);
+            self.offset = self.total.saturating_sub(size);
+            self.selected += scroll_height.saturating_sub(self.offset.saturating_sub(old_offset));
             if self.selected >= size {
-                self.selected = size - 1;
+                self.selected = size.saturating_sub(1);
             }
         }
         // At the final page, keep the viewport fixed so further page scrolls
@@ -408,9 +419,9 @@ impl<'a> CommitListState<'a> {
 
     pub fn select_low(&mut self) {
         if self.total > self.height {
-            self.selected = self.height - 1;
+            self.selected = self.height.saturating_sub(1);
         } else {
-            self.selected = self.total - 1;
+            self.selected = self.total.saturating_sub(1);
         }
     }
 
@@ -543,33 +554,46 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn search_refresh_context(&self) -> Option<SearchRefreshContext> {
-        if let SearchState::Applied { .. } = self.search_state {
-            Some(SearchRefreshContext {
-                query: self.search_input.value().into(),
-            })
-        } else {
-            None
+        match self.search_state {
+            SearchState::Searching { .. } | SearchState::Applied { .. } => {
+                Some(SearchRefreshContext {
+                    query: self.search_input.value().into(),
+                    cursor: self.search_input.cursor(),
+                    applied: matches!(self.search_state, SearchState::Applied { .. }),
+                })
+            }
+            SearchState::Inactive => None,
         }
     }
 
     pub fn restore_search(&mut self, context: &SearchRefreshContext) {
-        self.search_input = Input::new(context.query.clone());
+        self.search_input = Input::new(context.query.clone()).with_cursor(context.cursor);
         self.update_search_matches();
 
-        let total_match = self.search_matches.iter().filter(|m| m.matched()).count();
-        self.search_state = SearchState::Applied {
-            // The selected commit may not match after refresh; next/previous updates this value.
-            match_index: 0,
-            total_match,
-        };
+        if context.applied {
+            let total_match = self.search_matches.iter().filter(|m| m.matched()).count();
+            self.search_state = SearchState::Applied {
+                // The selected commit may not match after refresh; next/previous updates this value.
+                match_index: 0,
+                total_match,
+            };
 
-        if total_match > 0 {
-            let current_index = self.current_selected_index();
-            if self.search_matches[current_index].matched() {
-                self.search_state
-                    .update_match_index(self.search_matches[current_index].match_index);
+            if total_match > 0 {
+                let current_index = self.current_selected_index();
+                if self.search_matches[current_index].matched() {
+                    self.search_state
+                        .update_match_index(self.search_matches[current_index].match_index);
+                }
             }
+            return;
         }
+
+        let match_index = self.search_matches[self.current_selected_index()].match_index;
+        self.search_state = SearchState::Searching {
+            start_index: self.current_selected_index(),
+            match_index,
+        };
+        self.select_current_or_next_match_index(self.current_selected_index());
     }
 
     pub fn cancel_search(&mut self) {
@@ -695,7 +719,7 @@ impl<'a> CommitListState<'a> {
                     .update_match_index(self.search_matches[i].match_index);
                 return;
             }
-            if i == self.total - 1 {
+            if i == self.total.saturating_sub(1) {
                 i = 0;
             } else {
                 i += 1;
@@ -713,7 +737,7 @@ impl<'a> CommitListState<'a> {
                 return;
             }
             if i == 0 {
-                i = self.total - 1;
+                i = self.total.saturating_sub(1);
             } else {
                 i -= 1;
             }
@@ -1236,6 +1260,7 @@ mod tests {
             GraphStyle::Rounded,
             GraphImageWidthMode::Compact,
             ImageProtocol::Iterm2,
+            None,
         );
         let commit_infos = graph
             .commits
@@ -1405,7 +1430,14 @@ mod tests {
             )
         });
 
-        assert_eq!(context, SearchRefreshContext { query: "fx".into() });
+        assert_eq!(
+            context,
+            SearchRefreshContext {
+                query: "fx".into(),
+                cursor: 2,
+                applied: true,
+            }
+        );
         assert_eq!(
             options,
             SearchOptions {
@@ -1486,6 +1518,40 @@ mod tests {
             assert_eq!(
                 state.matched_query_string(),
                 Some(("Match 1 of 1 (query: \"fix\")".into(), true))
+            );
+        });
+    }
+
+    #[test]
+    fn test_restore_searching_keeps_in_progress_query() {
+        let context = with_commit_list_state(&["fix", "other"], |state| {
+            input_search_query(state, "fi");
+            state.search_refresh_context().unwrap()
+        });
+
+        assert_eq!(
+            context,
+            SearchRefreshContext {
+                query: "fi".into(),
+                cursor: 2,
+                applied: false,
+            }
+        );
+
+        with_commit_list_state(&["fix", "other"], |state| {
+            state.restore_search(&context);
+            assert!(matches!(
+                state.search_state(),
+                SearchState::Searching { .. }
+            ));
+            assert_eq!(state.search_query_string(), Some("/fi".into()));
+            assert_eq!(
+                state.search_refresh_context(),
+                Some(SearchRefreshContext {
+                    query: "fi".into(),
+                    cursor: 2,
+                    applied: false,
+                })
             );
         });
     }

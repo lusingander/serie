@@ -7,6 +7,7 @@ mod external;
 mod git;
 mod graph;
 mod keybind;
+mod padding;
 mod protocol;
 mod search;
 mod view;
@@ -24,7 +25,11 @@ mod mailmap_tests;
 #[path = "tests/git.rs"]
 mod test_git;
 
-use std::{path::Path, rc::Rc};
+use std::{
+    path::{Path, PathBuf},
+    rc::Rc,
+    time::Duration,
+};
 
 use app::{App, Ret};
 use clap::{Parser, ValueEnum};
@@ -58,6 +63,32 @@ struct Args {
     /// Initial selection of commit [default: latest]
     #[arg(short, long, value_name = "TYPE")]
     initial_selection: Option<InitialSelection>,
+
+    /// Auto-reload when the repository changes. Pass seconds, or omit the value for 2s
+    #[arg(
+        short = 'r',
+        long,
+        value_name = "SECONDS",
+        num_args = 0..=1,
+        default_missing_value = "2"
+    )]
+    auto_refresh: Option<u64>,
+
+    /// Run `git fetch --all` before each auto-refresh (implies --auto-refresh)
+    #[arg(long)]
+    fetch: bool,
+
+    /// Inset the whole UI by this many cells on every side
+    #[arg(long, value_name = "CELLS", default_value_t = 0)]
+    padding: u16,
+
+    /// Make the padding band lighter or darker than the content
+    #[arg(long, value_name = "SHADE", default_value = "lighter")]
+    padding_shade: color::PaddingShade,
+
+    /// Path to a git repository [default: current directory]
+    #[arg(value_name = "PATH")]
+    path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
@@ -159,7 +190,19 @@ fn main() -> Result<()> {
         .initial_selection
         .or(core_config.option.initial_selection)
         .into();
+    let fetch = args.fetch || core_config.option.fetch.unwrap_or(false);
+    let auto_refresh = args
+        .auto_refresh
+        .or(core_config.option.auto_refresh)
+        .or(if fetch { Some(30) } else { None })
+        .filter(|secs| *secs > 0)
+        .map(Duration::from_secs);
     let mailmap = core_config.git.mailmap;
+    let repo_path = args.path.unwrap_or_else(|| PathBuf::from("."));
+    if repo_path != Path::new(".") {
+        std::env::set_current_dir(&repo_path)
+            .map_err(|err| format!("Failed to open repository {}: {err}", repo_path.display()))?;
+    }
 
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 
@@ -169,18 +212,23 @@ fn main() -> Result<()> {
         ui_config,
         color_theme,
         image_protocol,
+        page_padding: args.padding,
+        page_padding_shade: args.padding_shade,
     });
 
-    let ec = event::EventController::init();
+    let ec = event::EventController::new(auto_refresh, fetch);
     let mut refresh_view_context = None;
     let mut terminal = None;
+    let mut skip_screen_clear = false;
+    let mut session_nonce = None;
+    let mut previous_image_ids = Vec::new();
 
     let ret = loop {
         let repository = git::Repository::load(Path::new("."), order, max_count, mailmap)?;
 
         let graph = graph::calc_graph(&repository);
 
-        let cell_width_type = check::decide_cell_width_type(&graph, graph_width)?;
+        let cell_width_type = check::decide_cell_width_type(&graph, graph_width, args.padding)?;
 
         let graph_image_manager = GraphImageManager::new(
             &graph,
@@ -189,6 +237,7 @@ fn main() -> Result<()> {
             graph_style,
             graph_image_width_mode,
             image_protocol,
+            session_nonce,
         );
 
         if terminal.is_none() {
@@ -205,12 +254,19 @@ fn main() -> Result<()> {
             refresh_view_context,
         );
 
-        match app.run(terminal.as_mut().unwrap()) {
+        match app.run(
+            terminal.as_mut().unwrap(),
+            skip_screen_clear,
+            previous_image_ids,
+        ) {
             Ok(Ret::Quit) => {
                 break Ok(());
             }
             Ok(Ret::Refresh(request)) => {
                 refresh_view_context = Some(request.context);
+                session_nonce = Some(request.session_nonce);
+                previous_image_ids = request.previous_image_ids;
+                skip_screen_clear = true;
                 continue;
             }
             Err(e) => {

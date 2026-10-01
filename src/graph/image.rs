@@ -55,6 +55,7 @@ impl<'a> GraphImageManager<'a> {
         graph_style: GraphStyle,
         image_width_mode: GraphImageWidthMode,
         image_protocol: ImageProtocol,
+        session_nonce: Option<u32>,
     ) -> Self {
         let image_params = ImageParams::new(graph_color_set, cell_width_type);
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -70,8 +71,12 @@ impl<'a> GraphImageManager<'a> {
             image_params,
             drawing_pixels,
             image_protocol,
-            session_nonce: create_session_nonce(),
+            session_nonce: session_nonce.unwrap_or_else(create_session_nonce),
         }
+    }
+
+    pub fn session_nonce(&self) -> u32 {
+        self.session_nonce
     }
 
     pub fn prepared_image(&self, commit_hash: &CommitHash) -> &PreparedImage {

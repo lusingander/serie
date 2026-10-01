@@ -61,12 +61,21 @@ $ cd <your git repository>
 $ serie
 ```
 
+Or pass the repository path:
+
+```
+$ serie /path/to/repo
+```
+
 ### Options
 
 ```
 Serie - A rich git commit graph in your terminal, like magic 📚
 
-Usage: serie [OPTIONS]
+Usage: serie [OPTIONS] [PATH]
+
+Arguments:
+  [PATH]  Path to a git repository [default: current directory]
 
 Options:
   -n, --max-count <NUMBER>        Maximum number of commits to render
@@ -75,6 +84,10 @@ Options:
   -g, --graph-width <TYPE>        Commit graph image cell width [default: auto] [possible values: auto, double, single]
   -s, --graph-style <TYPE>        Commit graph image edge style [default: rounded] [possible values: rounded, angular]
   -i, --initial-selection <TYPE>  Initial selection of commit [default: latest] [possible values: latest, head]
+  -r, --auto-refresh [<SECONDS>]  Auto-reload when the repository changes. Pass seconds, or omit the value for 2s
+      --fetch                     Run `git fetch --all` before each auto-refresh (implies --auto-refresh)
+      --padding <CELLS>           Inset the whole UI by this many cells on every side [default: 0]
+      --padding-shade <SHADE>     Make the padding band lighter or darker than the content [default: lighter] [possible values: lighter, darker]
   -h, --help                      Print help
   -V, --version                   Print version
 ```

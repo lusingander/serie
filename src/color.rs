@@ -1,9 +1,18 @@
+use clap::ValueEnum;
 use ratatui::style::Color as RatatuiColor;
 use serde::Deserialize;
 use smart_default::SmartDefault;
 use umbra::optional;
 
 use crate::config::GraphColorConfig;
+
+/// Whether the page-padding band is lighter or darker than the content `bg`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
+pub enum PaddingShade {
+    #[default]
+    Lighter,
+    Darker,
+}
 
 #[optional(derives = [Deserialize], visibility = pub)]
 #[derive(Debug, Clone, PartialEq, Eq, SmartDefault)]
@@ -156,6 +165,89 @@ impl GraphColorSet {
     }
 }
 
+/// Background for the page-padding band, shifted from `bg` toward white or black.
+pub(crate) fn padding_bg(bg: RatatuiColor, shade: PaddingShade) -> RatatuiColor {
+    const STEP: u8 = 96;
+    match rgb_of(bg) {
+        None => match shade {
+            PaddingShade::Lighter => RatatuiColor::Rgb(STEP, STEP, STEP),
+            PaddingShade::Darker => RatatuiColor::Black,
+        },
+        Some((r, g, b)) => {
+            let (r, g, b) = match shade {
+                PaddingShade::Lighter => (lift(r, STEP), lift(g, STEP), lift(b, STEP)),
+                PaddingShade::Darker => (drop(r, STEP), drop(g, STEP), drop(b, STEP)),
+            };
+            RatatuiColor::Rgb(r, g, b)
+        }
+    }
+}
+
+fn lift(c: u8, d: u8) -> u8 {
+    c.saturating_add(d)
+}
+
+fn drop(c: u8, d: u8) -> u8 {
+    c.saturating_sub(d)
+}
+
+fn rgb_of(color: RatatuiColor) -> Option<(u8, u8, u8)> {
+    match color {
+        RatatuiColor::Reset => None,
+        RatatuiColor::Black => Some((0, 0, 0)),
+        RatatuiColor::Red => Some((128, 0, 0)),
+        RatatuiColor::Green => Some((0, 128, 0)),
+        RatatuiColor::Yellow => Some((128, 128, 0)),
+        RatatuiColor::Blue => Some((0, 0, 128)),
+        RatatuiColor::Magenta => Some((128, 0, 128)),
+        RatatuiColor::Cyan => Some((0, 128, 128)),
+        RatatuiColor::Gray => Some((192, 192, 192)),
+        RatatuiColor::DarkGray => Some((128, 128, 128)),
+        RatatuiColor::LightRed => Some((255, 0, 0)),
+        RatatuiColor::LightGreen => Some((0, 255, 0)),
+        RatatuiColor::LightYellow => Some((255, 255, 0)),
+        RatatuiColor::LightBlue => Some((0, 0, 255)),
+        RatatuiColor::LightMagenta => Some((255, 0, 255)),
+        RatatuiColor::LightCyan => Some((0, 255, 255)),
+        RatatuiColor::White => Some((255, 255, 255)),
+        RatatuiColor::Rgb(r, g, b) => Some((r, g, b)),
+        RatatuiColor::Indexed(i) => Some(indexed_rgb(i)),
+    }
+}
+
+fn indexed_rgb(i: u8) -> (u8, u8, u8) {
+    match i {
+        0 => (0, 0, 0),
+        1 => (128, 0, 0),
+        2 => (0, 128, 0),
+        3 => (128, 128, 0),
+        4 => (0, 0, 128),
+        5 => (128, 0, 128),
+        6 => (0, 128, 128),
+        7 => (192, 192, 192),
+        8 => (128, 128, 128),
+        9 => (255, 0, 0),
+        10 => (0, 255, 0),
+        11 => (255, 255, 0),
+        12 => (0, 0, 255),
+        13 => (255, 0, 255),
+        14 => (0, 255, 255),
+        15 => (255, 255, 255),
+        16..=231 => {
+            let n = i - 16;
+            let r = n / 36;
+            let g = (n / 6) % 6;
+            let b = n % 6;
+            let q = |v: u8| if v == 0 { 0 } else { 55 + 40 * v };
+            (q(r), q(g), q(b))
+        }
+        232..=255 => {
+            let v = 8 + (i - 232) * 10;
+            (v, v, v)
+        }
+    }
+}
+
 fn parse_rgba_color(s: &str) -> Option<GraphColor> {
     if !s.starts_with('#') {
         return None;
@@ -193,5 +285,46 @@ mod tests {
     #[case("##123456", None)]
     fn test_parse_rgba_color(#[case] input: &str, #[case] expected: Option<GraphColor>) {
         assert_eq!(parse_rgba_color(input), expected);
+    }
+
+    #[test]
+    fn padding_bg_lighter_lifts_reset_and_black() {
+        assert_eq!(
+            padding_bg(RatatuiColor::Reset, PaddingShade::Lighter),
+            RatatuiColor::Rgb(96, 96, 96)
+        );
+        assert_eq!(
+            padding_bg(RatatuiColor::Black, PaddingShade::Lighter),
+            RatatuiColor::Rgb(96, 96, 96)
+        );
+    }
+
+    #[test]
+    fn padding_bg_darker_reset_is_black() {
+        assert_eq!(
+            padding_bg(RatatuiColor::Reset, PaddingShade::Darker),
+            RatatuiColor::Black
+        );
+    }
+
+    #[test]
+    fn padding_bg_shifts_rgb_both_ways() {
+        let src = RatatuiColor::Rgb(16, 16, 24);
+        assert_eq!(
+            padding_bg(src, PaddingShade::Lighter),
+            RatatuiColor::Rgb(112, 112, 120)
+        );
+        assert_eq!(
+            padding_bg(src, PaddingShade::Darker),
+            RatatuiColor::Rgb(0, 0, 0)
+        );
+        assert_eq!(
+            padding_bg(RatatuiColor::Rgb(240, 240, 240), PaddingShade::Darker),
+            RatatuiColor::Rgb(144, 144, 144)
+        );
+        assert_eq!(
+            padding_bg(RatatuiColor::Rgb(240, 240, 240), PaddingShade::Lighter),
+            RatatuiColor::Rgb(255, 255, 255)
+        );
     }
 }

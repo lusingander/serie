@@ -92,6 +92,17 @@ impl<'a> View<'a> {
         }
     }
 
+    pub fn session_nonce(&self) -> u32 {
+        match self {
+            View::Default => 0,
+            View::List(view) => view.session_nonce(),
+            View::Detail(view) => view.session_nonce(),
+            View::UserCommand(view) => view.session_nonce(),
+            View::Refs(view) => view.session_nonce(),
+            View::Help(view) => view.session_nonce(),
+        }
+    }
+
     pub fn of_list(
         commit_list_state: CommitListState<'a>,
         ctx: Rc<AppContext>,

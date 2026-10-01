@@ -11,22 +11,23 @@ use ratatui::{
     widgets::{Block, Borders, Padding, Paragraph},
     DefaultTerminal, Frame,
 };
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    color::{ColorTheme, GraphColorSet},
+    color::{padding_bg, ColorTheme, GraphColorSet, PaddingShade},
     config::{CoreConfig, CursorType, UiConfig, UserCommand, UserCommandType},
     event::{AppEvent, EventController, UserEvent, UserEventWithCount},
     external::{
         copy_to_clipboard, exec_user_command, exec_user_command_suspend, ExternalCommandParameters,
     },
-    git::{Commit, FileChange, Head, Ref, Repository},
+    git::{self, Commit, FileChange, Head, Ref, Repository},
     graph::GraphImageManager,
     keybind::KeyBind,
+    padding::{clamp_uniform, inset_rect, shrink_to_fit_graph},
     protocol::ImageProtocol,
     search::SearchOptions,
     view::{RefreshViewContext, View},
-    widget::commit_list::{CommitInfo, CommitListState},
+    widget::commit_list::{CommitInfo, CommitListState, SearchState},
 };
 
 #[derive(Debug, Default)]
@@ -63,6 +64,8 @@ pub enum Ret {
 
 pub struct RefreshRequest {
     pub context: RefreshViewContext,
+    pub session_nonce: u32,
+    pub previous_image_ids: Vec<u32>,
 }
 
 #[derive(Debug)]
@@ -72,6 +75,8 @@ pub struct AppContext {
     pub ui_config: UiConfig,
     pub color_theme: ColorTheme,
     pub image_protocol: ImageProtocol,
+    pub page_padding: u16,
+    pub page_padding_shade: PaddingShade,
 }
 
 #[derive(Debug, Default)]
@@ -88,6 +93,8 @@ pub struct App<'a> {
     app_status: AppStatus,
     ctx: Rc<AppContext>,
     ec: &'a EventController,
+    fingerprint: u64,
+    graph_cell_width: u16,
 }
 
 impl<'a> App<'a> {
@@ -146,6 +153,8 @@ impl<'a> App<'a> {
             app_status: AppStatus::default(),
             ctx,
             ec,
+            fingerprint: git::state_fingerprint(repository.path()),
+            graph_cell_width,
         };
 
         if let Some(context) = refresh_view_context {
@@ -157,15 +166,22 @@ impl<'a> App<'a> {
 }
 
 impl App<'_> {
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<Ret, std::io::Error> {
-        // Clearing the screen here, as it should be cleared upon refresh
-        self.clear_image(None)?;
-        terminal.clear()?;
+    pub fn run(
+        &mut self,
+        terminal: &mut DefaultTerminal,
+        skip_screen_clear: bool,
+        mut previous_image_ids: Vec<u32>,
+    ) -> Result<Ret, std::io::Error> {
+        if !skip_screen_clear {
+            self.clear_image(None)?;
+            terminal.clear()?;
+        }
 
         loop {
             self.prepare_render(terminal)?;
             self.flush_pending_graph_uploads()?;
             terminal.draw(|f| self.render(f))?;
+            self.delete_stale_graph_images(&mut previous_image_ids)?;
             match self.ec.recv() {
                 AppEvent::Key(key) => {
                     match self.app_status.status_line {
@@ -278,9 +294,18 @@ impl App<'_> {
                     self.copy_to_clipboard(name, value);
                 }
                 AppEvent::Refresh(context) => {
-                    self.cleanup_graph_images()?;
-                    let request = RefreshRequest { context };
+                    let request = RefreshRequest {
+                        context,
+                        session_nonce: self.view.session_nonce(),
+                        previous_image_ids: self.view.graph_image_ids_sorted(),
+                    };
                     return Ok(Ret::Refresh(request));
+                }
+                AppEvent::AutoRefresh => {
+                    let fingerprint = git::state_fingerprint(self.repository.path());
+                    if fingerprint != 0 && fingerprint != self.fingerprint {
+                        self.view.refresh();
+                    }
                 }
                 AppEvent::ClearStatusLine => {
                     self.clear_status_line();
@@ -320,7 +345,7 @@ impl App<'_> {
 
     fn prepare_render(&mut self, terminal: &mut DefaultTerminal) -> Result<(), std::io::Error> {
         let area: Rect = terminal.size()?.into();
-        let [view_area, _] = split_app_areas(area);
+        let [view_area, _] = split_app_areas(self.content_area(area));
         self.update_state(view_area);
         self.view.update_layout(view_area);
         self.view.prepare_graph_uploads();
@@ -345,18 +370,60 @@ impl App<'_> {
         self.ctx.image_protocol.delete_images(&image_ids)
     }
 
-    fn render(&mut self, f: &mut Frame) {
-        let base = Block::default()
-            .fg(self.ctx.color_theme.fg)
-            .bg(self.ctx.color_theme.bg);
-        f.render_widget(base, f.area());
+    fn delete_stale_graph_images(
+        &self,
+        previous_image_ids: &mut Vec<u32>,
+    ) -> Result<(), std::io::Error> {
+        if previous_image_ids.is_empty() {
+            return Ok(());
+        }
+        let current: FxHashSet<u32> = self.view.graph_image_ids_sorted().into_iter().collect();
+        let stale: Vec<u32> = previous_image_ids
+            .iter()
+            .copied()
+            .filter(|id| !current.contains(id))
+            .collect();
+        self.ctx.image_protocol.delete_images(&stale)?;
+        previous_image_ids.clear();
+        Ok(())
+    }
 
-        let [view_area, status_line_area] = split_app_areas(f.area());
+    fn render(&mut self, f: &mut Frame) {
+        let frame = f.area();
+        let content = self.content_area(frame);
+        let fg = self.ctx.color_theme.fg;
+        let bg = self.ctx.color_theme.bg;
+
+        if content != frame {
+            f.render_widget(
+                Block::default()
+                    .fg(fg)
+                    .bg(padding_bg(bg, self.ctx.page_padding_shade)),
+                frame,
+            );
+        }
+        f.render_widget(Block::default().fg(fg).bg(bg), content);
+
+        let [view_area, status_line_area] = split_app_areas(content);
 
         self.update_state(view_area);
 
         self.view.render(f, view_area);
         self.render_status_line(f, status_line_area);
+    }
+
+    fn content_area(&self, area: Rect) -> Rect {
+        inset_rect(area, self.effective_padding(area))
+    }
+
+    fn effective_padding(&self, area: Rect) -> u16 {
+        let mut pad = clamp_uniform(self.ctx.page_padding, area.width, area.height);
+        let remaining = area.width.saturating_sub(pad.saturating_mul(2));
+        let required = self.graph_cell_width.saturating_add(2);
+        if required > remaining {
+            pad = shrink_to_fit_graph(pad, area.width, required);
+        }
+        pad
     }
 }
 
@@ -719,6 +786,31 @@ impl App<'_> {
                     view.reset_refs_with(refs_context);
                 }
             }
+        }
+        self.sync_status_line_from_search();
+    }
+
+    fn sync_status_line_from_search(&mut self) {
+        let View::List(view) = &self.view else {
+            return;
+        };
+        let list_state = view.as_list_state();
+        match list_state.search_state() {
+            SearchState::Searching { .. } => {
+                let Some(query) = list_state.search_query_string() else {
+                    return;
+                };
+                let cursor_position = list_state.search_query_cursor_position();
+                let metadata = list_state.search_options().status_string();
+                self.update_status_input(query, cursor_position, metadata);
+            }
+            SearchState::Applied { .. } => {
+                if let Some((message, matched)) = list_state.matched_query_string() {
+                    let options = list_state.search_options().status_string();
+                    self.update_search_result(message, options, matched);
+                }
+            }
+            SearchState::Inactive => {}
         }
     }
 

@@ -1,5 +1,6 @@
 use std::{
-    hash::Hash,
+    fs,
+    hash::{Hash, Hasher},
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -213,6 +214,10 @@ impl Repository {
         &self.head
     }
 
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
     pub fn commit_detail(&self, commit_hash: &CommitHash) -> (Commit, Vec<FileChange>) {
         let commit = self.commit(commit_hash).unwrap().clone();
         let changes = if commit.parent_commit_hashes.is_empty() {
@@ -221,6 +226,77 @@ impl Repository {
             get_diff_summary(&self.path, commit_hash)
         };
         (commit, changes)
+    }
+}
+
+/// Cheap fingerprint of git refs / HEAD so callers can skip a full reload
+/// when the repository has not changed.
+pub fn state_fingerprint(work_tree: &Path) -> u64 {
+    let mut hasher = rustc_hash::FxHasher::default();
+    let Some(git_dir) = git_rev_parse(work_tree, &["--absolute-git-dir"]) else {
+        return 0;
+    };
+    let git_dir = PathBuf::from(git_dir);
+
+    hash_path_metadata(&mut hasher, &git_dir.join("HEAD"));
+    hash_path_metadata(&mut hasher, &git_dir.join("packed-refs"));
+    hash_path_metadata(&mut hasher, &git_dir.join("FETCH_HEAD"));
+    hash_dir_metadata(&mut hasher, &git_dir.join("refs"));
+    hash_dir_metadata(&mut hasher, &git_dir.join("logs"));
+
+    if let Ok(commondir) = fs::read_to_string(git_dir.join("commondir")) {
+        let common = git_dir.join(commondir.trim());
+        hash_path_metadata(&mut hasher, &common.join("HEAD"));
+        hash_path_metadata(&mut hasher, &common.join("packed-refs"));
+        hash_dir_metadata(&mut hasher, &common.join("refs"));
+        hash_dir_metadata(&mut hasher, &common.join("logs"));
+    }
+
+    hasher.finish()
+}
+
+fn git_rev_parse(work_tree: &Path, args: &[&str]) -> Option<String> {
+    let output = Command::new("git")
+        .arg("rev-parse")
+        .args(args)
+        .current_dir(work_tree)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if value.is_empty() {
+        None
+    } else {
+        Some(value)
+    }
+}
+
+fn hash_path_metadata(hasher: &mut rustc_hash::FxHasher, path: &Path) {
+    path.hash(hasher);
+    if let Ok(metadata) = fs::metadata(path) {
+        metadata.len().hash(hasher);
+        if let Ok(modified) = metadata.modified() {
+            modified.hash(hasher);
+        }
+    }
+}
+
+fn hash_dir_metadata(hasher: &mut rustc_hash::FxHasher, dir: &Path) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    let mut paths: Vec<PathBuf> = entries
+        .filter_map(|entry| entry.ok().map(|e| e.path()))
+        .collect();
+    paths.sort();
+    for path in paths {
+        if path.is_dir() {
+            hash_dir_metadata(hasher, &path);
+        } else {
+            hash_path_metadata(hasher, &path);
+        }
     }
 }
 
@@ -696,4 +772,18 @@ pub fn get_initial_commit_additions(path: &Path, commit_hash: &CommitHash) -> Ve
     cmd.wait().unwrap();
 
     changes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn state_fingerprint_is_stable_without_repo_changes() {
+        let path = Path::new(".");
+        let first = state_fingerprint(path);
+        let second = state_fingerprint(path);
+        assert_eq!(first, second);
+        assert_ne!(first, 0);
+    }
 }

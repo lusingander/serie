@@ -37,6 +37,8 @@ _Possible values:_ `auto`, `double`, `single`
 
 If not specified or `auto` is specified, `double` will be used automatically if there is enough width to display it, `single` otherwise.
 
+`--graph-width auto` uses the remaining width after `--padding` is applied.
+
 <img src="https://raw.githubusercontent.com/lusingander/serie/master/img/graph-width-double.png" width=300>
 
 <img src="https://raw.githubusercontent.com/lusingander/serie/master/img/graph-width-single.png" width=300>
@@ -66,3 +68,51 @@ _Possible values:_ `latest`, `head`
 `latest` will select the latest commit.
 
 `head` will select the commit at HEAD.
+
+## -r, --auto-refresh \[SECONDS\]
+
+Automatically reload the repository when git refs change.
+
+_Possible values:_ a positive number of seconds. Passing the flag without a value uses `2`. `0` disables auto-refresh.
+
+The value specified in the command line argument takes precedence over `core.option.auto_refresh` in the config file.
+
+When a change is detected, Serie reloads commits and redraws in place: it does not clear the terminal or delete existing graph images first, so the list should not flash. Unchanged rows keep their current graph images (same Kitty image IDs). Commits that disappeared have their images deleted after the new frame is shown.
+
+Manual refresh with <kbd>R</kbd> uses the same in-place path.
+
+In-progress `/` search is restored across refreshes (query, cursor, and live matches), so auto-refresh does not drop the prompt or skip ticks while you type.
+
+## --fetch
+
+Run `git fetch --all --quiet` before each auto-refresh tick.
+
+Implies `--auto-refresh`: if `-r` is not specified, the interval defaults to 30 seconds. Combine with `-r <SECONDS>` to override.
+
+Fetch is non-interactive (`GIT_TERMINAL_PROMPT=0`, stdin closed). Network or auth failures are ignored so the refresh still runs against local refs.
+
+Also available as `core.option.fetch` in the config file. The command line flag takes precedence.
+
+## --padding \<CELLS\>
+
+Inset the whole UI by this many cells on every side.
+
+The same value is applied to top, right, bottom, and left. Default is `0`, which keeps the existing full-screen layout.
+
+If the terminal is too small to keep a usable content area, padding is reduced (or ignored) so the UI still fits. `--graph-width auto` uses the remaining width after this inset.
+
+The padding band is filled with a shifted copy of `color.bg` so it reads as a frame around the content. See [`--padding-shade`](#--padding-shade-shade).
+
+## --padding-shade \<SHADE\>
+
+Whether the padding band is lighter or darker than the content background.
+
+_Possible values:_ `lighter`, `darker`
+
+Default is `lighter`. Has no effect when `--padding` is `0`.
+
+## PATH
+
+Path to a git repository.
+
+If omitted, the current directory is used.
