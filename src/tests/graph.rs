@@ -1507,11 +1507,270 @@ fn complex_001() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn primary_branch_001() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+
+    git.commit("001", "2024-01-01");
+    git.commit("002", "2024-01-02");
+
+    git.checkout_b("feature1");
+    git.commit("feat1", "2024-01-03");
+
+    git.checkout("master");
+    git.commit("003", "2024-01-04");
+
+    git.checkout_b("feature2");
+    git.commit("feat2", "2024-01-05");
+
+    git.checkout("master");
+    git.merge(&["feature1"], "2024-01-06");
+
+    git.checkout("feature2");
+    git.commit("feat2-2", "2024-01-07");
+
+    git.checkout("master");
+    git.checkout_b("feature3");
+    git.commit("feat3", "2024-01-08");
+
+    git.log();
+
+    let options = &[
+        GenerateGraphOption::new(
+            "primary_branch_001_chrono",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        )
+        .with_primary_branch("master"),
+        GenerateGraphOption::new(
+            "primary_branch_001_topo",
+            git::SortCommit::Topological,
+            graph::GraphStyle::Rounded,
+        )
+        .with_primary_branch("master"),
+    ];
+
+    copy_git_dir(repo_path, "primary_branch_001");
+
+    generate_and_output_graph_images(repo_path, options);
+
+    let normal_repository =
+        git::Repository::load(repo_path, git::SortCommit::Chronological, None, true)?;
+    let normal_graph = graph::calc_graph(&normal_repository, None);
+    let normal_feature_tip = normal_graph
+        .commits
+        .iter()
+        .find(|c| c.subject == "feat3")
+        .unwrap();
+    assert_eq!(
+        normal_graph.commit_pos_map[&normal_feature_tip.commit_hash].0,
+        0
+    );
+
+    for sort in [git::SortCommit::Chronological, git::SortCommit::Topological] {
+        let repository = git::Repository::load(repo_path, sort, None, true)?;
+        let graph = graph::calc_graph(&repository, Some("master"));
+
+        assert_eq!(graph.warning, None);
+
+        for subject in ["001", "002", "003"] {
+            let commit = graph.commits.iter().find(|c| c.subject == subject).unwrap();
+            assert_eq!(
+                graph.commit_pos_map[&commit.commit_hash].0, 0,
+                "primary branch commit {subject} was not pinned to column 0"
+            );
+        }
+
+        let merge_commit = graph
+            .commits
+            .iter()
+            .find(|c| c.parent_commit_hashes.len() == 2)
+            .unwrap();
+        assert_eq!(
+            graph.commit_pos_map[&merge_commit.commit_hash].0, 0,
+            "primary branch merge commit was not pinned to column 0"
+        );
+
+        for subject in ["feat1", "feat2", "feat2-2", "feat3"] {
+            let commit = graph.commits.iter().find(|c| c.subject == subject).unwrap();
+            assert!(
+                graph.commit_pos_map[&commit.commit_hash].0 >= 1,
+                "feature commit {subject} was assigned to column 0"
+            );
+        }
+    }
+
+    assert_graph_images(options);
+
+    Ok(())
+}
+
+#[test]
+fn primary_branch_merge_back() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+    git.commit("001", "2024-01-01");
+    git.commit("002", "2024-01-02");
+
+    git.checkout_b("feature");
+    git.commit("feat1", "2024-01-03");
+    git.commit("feat2", "2024-01-04");
+
+    git.checkout("master");
+    git.commit("003", "2024-01-05");
+    git.merge(&["feature"], "2024-01-06");
+
+    // Add another commit to master after merge
+    git.commit("004", "2024-01-07");
+
+    // Also a newer feature branch commit
+    git.checkout("feature");
+    git.commit("feat3", "2024-01-08");
+    git.checkout("master");
+
+    let repository = git::Repository::load(repo_path, git::SortCommit::Chronological, None, true)?;
+    let graph = graph::calc_graph(&repository, Some("master"));
+
+    let m4 = graph.commits.iter().find(|c| c.subject == "004").unwrap();
+    let merge_commit = graph
+        .commits
+        .iter()
+        .find(|c| c.parent_commit_hashes.len() == 2)
+        .unwrap();
+    let m3 = graph.commits.iter().find(|c| c.subject == "003").unwrap();
+    let m2 = graph.commits.iter().find(|c| c.subject == "002").unwrap();
+    let m1 = graph.commits.iter().find(|c| c.subject == "001").unwrap();
+    let feat3 = graph.commits.iter().find(|c| c.subject == "feat3").unwrap();
+    let feat2 = graph.commits.iter().find(|c| c.subject == "feat2").unwrap();
+    let feat1 = graph.commits.iter().find(|c| c.subject == "feat1").unwrap();
+
+    // Primary branch spine commits must all be on column 0
+    assert_eq!(graph.commit_pos_map[&m4.commit_hash].0, 0);
+    assert_eq!(graph.commit_pos_map[&merge_commit.commit_hash].0, 0);
+    assert_eq!(graph.commit_pos_map[&m3.commit_hash].0, 0);
+    assert_eq!(graph.commit_pos_map[&m2.commit_hash].0, 0);
+    assert_eq!(graph.commit_pos_map[&m1.commit_hash].0, 0);
+
+    // Feature branch commits must be placed in columns >= 1
+    assert!(graph.commit_pos_map[&feat3.commit_hash].0 >= 1);
+    assert!(graph.commit_pos_map[&feat2.commit_hash].0 >= 1);
+    assert!(graph.commit_pos_map[&feat1.commit_hash].0 >= 1);
+
+    Ok(())
+}
+
+#[test]
+fn primary_branch_fallback_unresolved_or_none() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+    git.commit("001", "2024-01-01");
+    git.commit("002", "2024-01-02");
+    git.checkout_b("feature");
+    git.commit("feat1", "2024-01-04");
+    git.checkout("master");
+    git.commit("003", "2024-01-03");
+
+    let repository = git::Repository::load(repo_path, git::SortCommit::Chronological, None, true)?;
+
+    let graph_none = graph::calc_graph(&repository, None);
+    let graph_unknown = graph::calc_graph(&repository, Some("nonexistent_branch"));
+
+    // Unknown branch must fall back gracefully to the normal layout
+    assert_eq!(graph_none.commit_pos_map, graph_unknown.commit_pos_map);
+    assert_eq!(graph_none.warning, None);
+    assert_eq!(
+        graph_unknown.warning.as_deref(),
+        Some("Primary branch 'nonexistent_branch' could not be resolved")
+    );
+
+    Ok(())
+}
+
+#[test]
+fn primary_branch_max_count() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+    git.commit("001", "2024-01-01");
+    git.commit("002", "2024-01-02");
+
+    git.checkout_b("feature");
+    git.commit("feat1", "2024-01-03");
+    git.commit("feat2", "2024-01-04");
+    git.commit("feat3", "2024-01-05");
+
+    git.checkout("master");
+
+    // Case 1: max_count = 2 (only feat3 and feat2 loaded, primary branch master tip is excluded)
+    // Must return warning and fall back to the normal graph layout.
+    let repo_truncated =
+        git::Repository::load(repo_path, git::SortCommit::Chronological, Some(2), true)?;
+    let graph_truncated = graph::calc_graph(&repo_truncated, Some("master"));
+    let graph_normal = graph::calc_graph(&repo_truncated, None);
+    assert_eq!(graph_truncated.commit_pos_map, graph_normal.commit_pos_map);
+    assert_eq!(
+        graph_truncated.warning.as_deref(),
+        Some("Primary branch 'master' tip is not included in the loaded commits")
+    );
+
+    // Case 2: max_count = 5 (all commits loaded, primary branch master tip is visible)
+    // Feature commits must be on pos_x = 1, and master commits on pos_x = 0.
+    let repo_full =
+        git::Repository::load(repo_path, git::SortCommit::Chronological, Some(5), true)?;
+    let graph_full = graph::calc_graph(&repo_full, Some("master"));
+    let feat3_full = graph_full
+        .commits
+        .iter()
+        .find(|c| c.subject == "feat3")
+        .unwrap();
+    let m2_full = graph_full
+        .commits
+        .iter()
+        .find(|c| c.subject == "002")
+        .unwrap();
+    assert_eq!(graph_full.commit_pos_map[&feat3_full.commit_hash].0, 1);
+    assert_eq!(graph_full.commit_pos_map[&m2_full.commit_hash].0, 0);
+
+    // Case 3: max_count = 4 (feat3, feat2, feat1, 002 loaded; master tip 002 is included, older 001 truncated)
+    // Pinning the visible part of the spine to column 0.
+    let repo_part =
+        git::Repository::load(repo_path, git::SortCommit::Chronological, Some(4), true)?;
+    let graph_part = graph::calc_graph(&repo_part, Some("master"));
+    let feat3_part = graph_part
+        .commits
+        .iter()
+        .find(|c| c.subject == "feat3")
+        .unwrap();
+    let m2_part = graph_part
+        .commits
+        .iter()
+        .find(|c| c.subject == "002")
+        .unwrap();
+    assert_eq!(graph_part.commit_pos_map[&feat3_part.commit_hash].0, 1);
+    assert_eq!(graph_part.commit_pos_map[&m2_part.commit_hash].0, 0);
+
+    Ok(())
+}
+
 struct GenerateGraphOption {
     output_name: &'static str,
     sort: git::SortCommit,
     style: graph::GraphStyle,
     max_count: Option<usize>,
+    primary_branch: Option<String>,
 }
 
 impl GenerateGraphOption {
@@ -1525,11 +1784,17 @@ impl GenerateGraphOption {
             sort,
             style,
             max_count: None,
+            primary_branch: None,
         }
     }
 
     fn with_max_count(mut self, max_count: usize) -> GenerateGraphOption {
         self.max_count = Some(max_count);
+        self
+    }
+
+    fn with_primary_branch(mut self, primary_branch: impl Into<String>) -> GenerateGraphOption {
+        self.primary_branch = Some(primary_branch.into());
         self
     }
 }
@@ -1547,7 +1812,7 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     let graph_color_set = color::GraphColorSet::new(&graph_color_config);
     let cell_width_type = graph::CellWidthType::Double;
     let repository = git::Repository::load(path.as_ref(), option.sort, max_count, true).unwrap();
-    let graph = graph::calc_graph(&repository);
+    let graph = graph::calc_graph(&repository, option.primary_branch.as_deref());
     let image_params = graph::ImageParams::new(&graph_color_set, cell_width_type);
     let drawing_pixels = graph::DrawingPixels::new(&image_params);
     let graph_image = build_graph_image(&graph, &image_params, &drawing_pixels, option.style);

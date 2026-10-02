@@ -66,3 +66,9 @@ _Possible values:_ `latest`, `head`
 `latest` will select the latest commit.
 
 `head` will select the commit at HEAD.
+
+## -b, --primary-branch \<BRANCH\>
+
+The primary branch to keep on the leftmost column.
+
+When specified, Serie preserves the first-parent commit spine of the specified branch along the leftmost column, displaying other branches in subsequent columns even if they contain newer commits.

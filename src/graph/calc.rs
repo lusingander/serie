@@ -1,6 +1,6 @@
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::git::{Commit, CommitHash, Repository};
+use crate::git::{Commit, CommitHash, Ref, Repository};
 
 type CommitPosMap<'a> = FxHashMap<&'a CommitHash, (usize, usize)>;
 
@@ -10,6 +10,7 @@ pub struct Graph<'a> {
     pub commit_pos_map: CommitPosMap<'a>,
     pub edges: Vec<Vec<Edge>>,
     pub max_pos_x: usize,
+    pub warning: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -49,10 +50,10 @@ impl EdgeType {
     }
 }
 
-pub fn calc_graph(repository: &Repository) -> Graph<'_> {
+pub fn calc_graph<'a>(repository: &'a Repository, primary_branch: Option<&str>) -> Graph<'a> {
     let commits = repository.all_commits();
 
-    let commit_pos_map = calc_commit_positions(&commits, repository);
+    let (commit_pos_map, warning) = calc_commit_positions(&commits, repository, primary_branch);
     let (graph_edges, max_pos_x) = calc_edges(&commit_pos_map, &commits, repository);
 
     Graph {
@@ -60,18 +61,74 @@ pub fn calc_graph(repository: &Repository) -> Graph<'_> {
         commit_pos_map,
         edges: graph_edges,
         max_pos_x,
+        warning,
     }
+}
+
+pub(crate) fn find_primary_branch_tip<'a>(
+    repository: &'a Repository,
+    primary_branch: &str,
+) -> Option<&'a CommitHash> {
+    if primary_branch.is_empty() {
+        return None;
+    }
+
+    for r in repository.all_refs() {
+        if let Ref::Branch { name, target } = r {
+            if name.eq_ignore_ascii_case(primary_branch) {
+                return Some(target);
+            }
+        }
+    }
+
+    None
+}
+
+fn primary_branch_spine<'a>(
+    commits: &[&'a Commit],
+    repository: &'a Repository,
+    primary_branch: Option<&str>,
+) -> (FxHashSet<&'a CommitHash>, Option<String>) {
+    let Some(branch) = primary_branch else {
+        return (FxHashSet::default(), None);
+    };
+
+    let Some(tip) = find_primary_branch_tip(repository, branch) else {
+        let msg = format!("Primary branch '{branch}' could not be resolved");
+        return (FxHashSet::default(), Some(msg));
+    };
+
+    if !commits.iter().any(|c| &c.commit_hash == tip) {
+        let msg = format!("Primary branch '{branch}' tip is not included in the loaded commits");
+        return (FxHashSet::default(), Some(msg));
+    }
+
+    let mut spine = FxHashSet::default();
+    let mut current = Some(tip);
+
+    while let Some(hash) = current {
+        spine.insert(hash);
+        let parents = repository.parents_hash(hash);
+        current = parents.first().copied();
+    }
+
+    (spine, None)
 }
 
 fn calc_commit_positions<'a>(
     commits: &[&'a Commit],
     repository: &'a Repository,
-) -> CommitPosMap<'a> {
+    primary_branch: Option<&str>,
+) -> (CommitPosMap<'a>, Option<String>) {
     let mut commit_pos_map: CommitPosMap = FxHashMap::default();
     let mut commit_line_state: Vec<Option<&CommitHash>> = Vec::new();
     let mut line_last_occupied_pos_y: Vec<usize> = Vec::new();
+    let (primary_spine, warning) = primary_branch_spine(commits, repository, primary_branch);
+    let has_visible_primary = !primary_spine.is_empty();
+    let min_col = if has_visible_primary { 1 } else { 0 };
 
     for (pos_y, commit) in commits.iter().enumerate() {
+        let is_primary = primary_spine.contains(&commit.commit_hash);
         let filtered_children_hash = filtered_children_hash(commit, repository);
         if filtered_children_hash.is_empty() {
             let merge_child_pos_y = repository
@@ -79,16 +136,52 @@ fn calc_commit_positions<'a>(
                 .into_iter()
                 .map(|hash| commit_pos_map[hash].1)
                 .min();
-            let pos_x = get_first_vacant_line(
-                &commit_line_state,
-                &line_last_occupied_pos_y,
-                merge_child_pos_y,
-            );
+
+            let pos_x = if is_primary {
+                // For a primary spine commit with no first-parent children (i.e. tip of primary branch),
+                // verify that column 0 is vacant and doesn't overlap an active merge line before assigning it.
+                let col_0_vacant = commit_line_state.first().is_none_or(|c| c.is_none());
+                let col_0_no_overlap = merge_child_pos_y.is_none_or(|child_y| {
+                    line_last_occupied_pos_y.first().copied().unwrap_or(0) <= child_y
+                });
+                if col_0_vacant && col_0_no_overlap {
+                    0
+                } else {
+                    get_first_vacant_line(
+                        &commit_line_state,
+                        &line_last_occupied_pos_y,
+                        merge_child_pos_y,
+                        min_col,
+                    )
+                }
+            } else {
+                get_first_vacant_line(
+                    &commit_line_state,
+                    &line_last_occupied_pos_y,
+                    merge_child_pos_y,
+                    min_col,
+                )
+            };
             add_commit_line(commit, &mut commit_line_state, pos_x);
             commit_pos_map.insert(&commit.commit_hash, (pos_x, pos_y));
             occupy_line(&mut line_last_occupied_pos_y, pos_x, pos_y);
         } else {
-            let pos_x = update_commit_line(commit, &mut commit_line_state, &filtered_children_hash);
+            let mut pos_x =
+                update_commit_line(commit, &mut commit_line_state, &filtered_children_hash);
+
+            // If this is a primary spine commit and update_commit_line placed it in a column > 0
+            // (e.g. because first-parent children were on non-zero columns), properly relocate
+            // the state line to column 0 if vacant to keep commit_line_state and commit_pos_map synchronized.
+            if is_primary && pos_x != 0 && commit_line_state.first().is_none_or(|c| c.is_none()) {
+                commit_line_state[pos_x] = None;
+                if commit_line_state.is_empty() {
+                    commit_line_state.push(Some(&commit.commit_hash));
+                } else {
+                    commit_line_state[0] = Some(&commit.commit_hash);
+                }
+                pos_x = 0;
+            }
+
             commit_pos_map.insert(&commit.commit_hash, (pos_x, pos_y));
             for child_hash in filtered_children_hash {
                 let child_pos_x = commit_pos_map[child_hash].0;
@@ -97,7 +190,7 @@ fn calc_commit_positions<'a>(
         }
     }
 
-    commit_pos_map
+    (commit_pos_map, warning)
 }
 
 fn filtered_children_hash<'a>(
@@ -118,28 +211,30 @@ fn get_first_vacant_line(
     commit_line_state: &[Option<&CommitHash>],
     line_last_occupied_pos_y: &[usize],
     merge_child_pos_y: Option<usize>,
+    min_col: usize,
 ) -> usize {
     commit_line_state
         .iter()
         .enumerate()
+        .skip(min_col)
         .position(|(pos_x, commit)| {
             // A line can be vacant in the current state while still containing an edge above
             // this row. Reusing it for a merge edge that reaches above that edge would make two
             // unrelated branches appear to be connected.
             commit.is_none()
                 && merge_child_pos_y.is_none_or(|merge_child_pos_y| {
-                    line_last_occupied_pos_y[pos_x] <= merge_child_pos_y
+                    line_last_occupied_pos_y.get(pos_x).copied().unwrap_or(0) <= merge_child_pos_y
                 })
         })
-        .unwrap_or(commit_line_state.len())
+        .map(|pos_x| pos_x + min_col)
+        .unwrap_or_else(|| commit_line_state.len().max(min_col))
 }
 
 fn occupy_line(line_last_occupied_pos_y: &mut Vec<usize>, pos_x: usize, pos_y: usize) {
-    if line_last_occupied_pos_y.len() == pos_x {
-        line_last_occupied_pos_y.push(pos_y);
-    } else {
-        line_last_occupied_pos_y[pos_x] = pos_y;
+    if line_last_occupied_pos_y.len() <= pos_x {
+        line_last_occupied_pos_y.resize(pos_x + 1, 0);
     }
+    line_last_occupied_pos_y[pos_x] = pos_y;
 }
 
 fn add_commit_line<'a>(
@@ -148,10 +243,9 @@ fn add_commit_line<'a>(
     pos_x: usize,
 ) {
     if commit_line_state.len() <= pos_x {
-        commit_line_state.push(Some(&commit.commit_hash));
-    } else {
-        commit_line_state[pos_x] = Some(&commit.commit_hash);
+        commit_line_state.resize(pos_x + 1, None);
     }
+    commit_line_state[pos_x] = Some(&commit.commit_hash);
 }
 
 fn update_commit_line<'a>(
