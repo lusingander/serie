@@ -65,7 +65,7 @@ pub fn calc_graph<'a>(repository: &'a Repository, primary_branch: Option<&str>) 
     }
 }
 
-pub(crate) fn find_primary_branch_tip<'a>(
+fn find_primary_branch_tip<'a>(
     repository: &'a Repository,
     primary_branch: &str,
 ) -> Option<&'a CommitHash> {
@@ -75,7 +75,7 @@ pub(crate) fn find_primary_branch_tip<'a>(
 
     for r in repository.all_refs() {
         if let Ref::Branch { name, target } = r {
-            if name.eq_ignore_ascii_case(primary_branch) {
+            if name == primary_branch {
                 return Some(target);
             }
         }
