@@ -58,6 +58,10 @@ struct Args {
     /// Initial selection of commit [default: latest]
     #[arg(short, long, value_name = "TYPE")]
     initial_selection: Option<InitialSelection>,
+
+    /// Primary branch to keep on the leftmost column
+    #[arg(short = 'b', long, value_name = "BRANCH")]
+    primary_branch: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
@@ -160,6 +164,7 @@ fn main() -> Result<()> {
         .or(core_config.option.initial_selection)
         .into();
     let mailmap = core_config.git.mailmap;
+    let primary_branch = args.primary_branch.filter(|s| !s.is_empty());
 
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 
@@ -178,7 +183,7 @@ fn main() -> Result<()> {
     let ret = loop {
         let repository = git::Repository::load(Path::new("."), order, max_count, mailmap)?;
 
-        let graph = graph::calc_graph(&repository);
+        let graph = graph::calc_graph(&repository, primary_branch.as_deref());
 
         let cell_width_type = check::decide_cell_width_type(&graph, graph_width)?;
 

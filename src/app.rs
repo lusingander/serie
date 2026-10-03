@@ -148,6 +148,10 @@ impl<'a> App<'a> {
             ec,
         };
 
+        if let Some(warning) = &graph.warning {
+            app.warn_notification(warning.clone());
+        }
+
         if let Some(context) = refresh_view_context {
             app.init_with_context(context);
         }

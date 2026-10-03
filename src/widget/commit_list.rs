@@ -1227,7 +1227,7 @@ mod tests {
             Head::None,
             commit_hashes,
         );
-        let graph = calc_graph(&repository);
+        let graph = calc_graph(&repository, None);
         let graph_color_set = GraphColorSet::new(&GraphColorConfig::default());
         let graph_image_manager = GraphImageManager::new(
             &graph,
