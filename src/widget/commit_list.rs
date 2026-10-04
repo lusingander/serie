@@ -12,7 +12,7 @@ use ratatui::{
     widgets::{List, ListItem, StatefulWidget, Widget},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use tui_input::{backend::crossterm::EventHandler, Input};
+use tui_input::{backend::crossterm::EventHandler, Input, InputRequest};
 
 use crate::{
     app::AppContext,
@@ -510,14 +510,22 @@ impl<'a> CommitListState<'a> {
     }
 
     pub fn start_search(&mut self) {
-        if let SearchState::Inactive | SearchState::Applied { .. } = self.search_state {
-            self.search_state = SearchState::Searching {
-                start_index: self.current_selected_index(),
-                match_index: 0,
-            };
-            self.search_input.reset();
-            self.clear_search_matches();
-        }
+        let match_index = match self.search_state {
+            SearchState::Inactive => {
+                self.search_input.reset();
+                self.clear_search_matches();
+                0
+            }
+            SearchState::Applied { match_index, .. } => {
+                self.search_input.handle(InputRequest::GoToEnd);
+                match_index
+            }
+            SearchState::Searching { .. } => return,
+        };
+        self.search_state = SearchState::Searching {
+            start_index: self.current_selected_index(),
+            match_index,
+        };
     }
 
     pub fn handle_search_input(&mut self, key: KeyEvent) {
@@ -531,7 +539,7 @@ impl<'a> CommitListState<'a> {
     pub fn apply_search(&mut self) {
         if let SearchState::Searching { match_index, .. } = self.search_state {
             if self.search_input.value().is_empty() {
-                self.search_state = SearchState::Inactive;
+                self.cancel_search();
             } else {
                 let total_match = self.search_matches.iter().filter(|m| m.matched()).count();
                 self.search_state = SearchState::Applied {
@@ -629,6 +637,11 @@ impl<'a> CommitListState<'a> {
     }
 
     fn update_search_matches(&mut self) {
+        if self.search_input.value().is_empty() {
+            self.clear_search_matches();
+            self.search_state.update_match_index(0);
+            return;
+        }
         let matcher = SearchMatcher::new(
             self.search_input.value(),
             self.search_options.ignore_case,
@@ -1188,7 +1201,7 @@ fn calc_cell_widths(
 mod tests {
     use std::path::PathBuf;
 
-    use ratatui::crossterm::event::KeyCode;
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     use crate::{
         color::GraphColorSet,
@@ -1505,6 +1518,180 @@ mod tests {
                 state.matched_query_string(),
                 Some(("Match 1 of 1 (query: \"fix\")".into(), true))
             );
+        });
+    }
+
+    #[test]
+    fn test_resume_search_preserves_query_options_matches_and_view_position() {
+        with_commit_list_state(&["other", "Fix parser", "FIX graph", "last"], |state| {
+            state.reset_height(2);
+            state.toggle_ignore_case();
+            state.toggle_fuzzy();
+            state.toggle_search_target();
+            input_search_query(state, "fx");
+            state.handle_search_input(KeyEvent::from(KeyCode::Left));
+            state.apply_search();
+            state.select_next_match();
+            state.scroll_up();
+
+            let options = state.search_options();
+            let position = state.current_list_status();
+            let result = state.matched_query_string();
+            let matches: Vec<_> = state
+                .search_matches
+                .iter()
+                .map(|m| m.subject.as_ref().map(|p| p.matched_indices.clone()))
+                .collect();
+            assert_eq!(result, Some(("Match 2 of 2 (query: \"fx\")".into(), true)));
+
+            state.start_search();
+
+            assert_eq!(state.search_query_string(), Some("/fx".into()));
+            assert_eq!(state.search_query_cursor_position(), 3);
+            assert_eq!(state.search_options(), options);
+            assert_eq!(state.current_list_status(), position);
+            assert_eq!(
+                state
+                    .search_matches
+                    .iter()
+                    .map(|m| m.subject.as_ref().map(|p| p.matched_indices.clone()))
+                    .collect::<Vec<_>>(),
+                matches
+            );
+
+            state.apply_search();
+            assert_eq!(state.matched_query_string(), result);
+            assert_eq!(state.current_list_status(), position);
+        });
+    }
+
+    #[test]
+    fn test_resume_search_edits_from_current_selection() {
+        with_commit_list_state(
+            &["fix parser older", "fix graph", "fix parser newer"],
+            |state| {
+                input_search_query(state, "fix");
+                state.apply_search();
+                state.select_next_match();
+                assert_eq!(state.current_selected_index(), 1);
+
+                state.start_search();
+                for c in " parser".chars() {
+                    state.handle_search_input(KeyEvent::from(KeyCode::Char(c)));
+                }
+                assert_eq!(state.current_selected_index(), 2);
+                assert!(!state.search_matches[1].matched());
+                assert!(state.search_matches[2].matched());
+
+                state.handle_search_input(KeyEvent::from(KeyCode::Backspace));
+                assert_eq!(state.search_query_string(), Some("/fix parse".into()));
+                state.apply_search();
+                assert_eq!(
+                    state.matched_query_string(),
+                    Some(("Match 2 of 2 (query: \"fix parse\")".into(), true))
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn test_resume_search_does_not_move_selection_off_an_unmatched_commit() {
+        with_commit_list_state(&["fix", "other", "fix again"], |state| {
+            input_search_query(state, "fix");
+            state.apply_search();
+            state.select_next();
+            let position = state.current_list_status();
+            let result = state.matched_query_string();
+
+            state.start_search();
+            state.apply_search();
+
+            assert_eq!(state.current_list_status(), position);
+            assert_eq!(state.current_selected_index(), 1);
+            assert_eq!(state.matched_query_string(), result);
+        });
+    }
+
+    #[test]
+    fn test_resume_search_without_matches_can_be_corrected() {
+        with_commit_list_state(&["fix", "other"], |state| {
+            input_search_query(state, "fixx");
+            state.apply_search();
+            let result = state.matched_query_string();
+
+            state.start_search();
+            assert_eq!(state.search_query_string(), Some("/fixx".into()));
+            state.apply_search();
+            assert_eq!(state.matched_query_string(), result);
+
+            state.start_search();
+            state.handle_search_input(KeyEvent::from(KeyCode::Backspace));
+            state.apply_search();
+            assert_eq!(
+                state.matched_query_string(),
+                Some(("Match 1 of 1 (query: \"fix\")".into(), true))
+            );
+        });
+    }
+
+    #[test]
+    fn test_cancel_resumed_search_starts_next_search_empty() {
+        with_commit_list_state(&["fix", "other"], |state| {
+            input_search_query(state, "fix");
+            state.apply_search();
+            state.start_search();
+            state.cancel_search();
+
+            assert_eq!(state.search_state(), SearchState::Inactive);
+            assert!(state.search_matches.iter().all(|m| !m.matched()));
+            state.start_search();
+            assert_eq!(state.search_query_string(), Some("/".into()));
+        });
+    }
+
+    #[test]
+    fn test_clear_resumed_query_clears_matches_and_applies_inactive_search() {
+        for fuzzy in [false, true] {
+            with_commit_list_state(&["fix", "other"], |state| {
+                if fuzzy {
+                    state.toggle_fuzzy();
+                }
+                input_search_query(state, "fix");
+                state.apply_search();
+                state.start_search();
+                state.handle_search_input(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::CONTROL));
+
+                assert_eq!(state.search_query_string(), Some("/".into()));
+                assert!(state.search_matches.iter().all(|m| !m.matched()));
+                state.apply_search();
+                assert_eq!(state.search_state(), SearchState::Inactive);
+                assert_eq!(state.matched_query_string(), None);
+
+                state.start_search();
+                assert_eq!(state.search_query_string(), Some("/".into()));
+                state.handle_search_input(KeyEvent::from(KeyCode::Char('o')));
+                state.apply_search();
+                assert_eq!(
+                    state.matched_query_string(),
+                    Some(("Match 1 of 1 (query: \"o\")".into(), true))
+                );
+            });
+        }
+    }
+
+    #[test]
+    fn test_resume_search_moves_cursor_to_end_of_long_unicode_query() {
+        let query = "検索".repeat(40);
+        with_commit_list_state(&[query.as_str()], |state| {
+            input_search_query(state, &query);
+            state.handle_search_input(KeyEvent::from(KeyCode::Home));
+            state.apply_search();
+
+            state.start_search();
+            assert_eq!(state.search_query_string(), Some(format!("/{query}")));
+            assert_eq!(state.search_query_cursor_position(), 161);
+            state.handle_search_input(KeyEvent::from(KeyCode::Char('追')));
+            assert_eq!(state.search_query_string(), Some(format!("/{query}追")));
         });
     }
 
