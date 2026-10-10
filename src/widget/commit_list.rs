@@ -1247,6 +1247,7 @@ mod tests {
             &graph_color_set,
             CellWidthType::Double,
             GraphStyle::Rounded,
+            false,
             GraphImageWidthMode::Compact,
             ImageProtocol::Iterm2,
         );

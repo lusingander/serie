@@ -56,10 +56,11 @@ impl<'a> GraphImageManager<'a> {
         graph_color_set: &GraphColorSet,
         cell_width_type: CellWidthType,
         graph_style: GraphStyle,
+        antialias: bool,
         image_width_mode: GraphImageWidthMode,
         image_protocol: ImageProtocol,
     ) -> Self {
-        let image_params = ImageParams::new(graph_color_set, cell_width_type, false);
+        let image_params = ImageParams::new(graph_color_set, cell_width_type, antialias);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         GraphImageManager {
