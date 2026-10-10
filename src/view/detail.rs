@@ -115,6 +115,9 @@ impl<'a> DetailView<'a> {
             UserEvent::Confirm | UserEvent::Cancel | UserEvent::Close => {
                 self.tx.send(AppEvent::CloseDetail);
             }
+            UserEvent::MarkToggle => {
+                self.as_mut_list_state().toggle_mark();
+            }
             UserEvent::Refresh => {
                 self.refresh();
             }

@@ -124,6 +124,9 @@ impl<'a> UserCommandView<'a> {
             UserEvent::Cancel | UserEvent::Close => {
                 self.tx.send(AppEvent::CloseUserCommand);
             }
+            UserEvent::MarkToggle => {
+                self.as_mut_list_state().toggle_mark();
+            }
             UserEvent::Refresh => {
                 self.refresh();
             }

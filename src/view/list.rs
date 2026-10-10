@@ -165,6 +165,9 @@ impl<'a> ListView<'a> {
                 UserEvent::RefList => {
                     self.tx.send(AppEvent::OpenRefs);
                 }
+                UserEvent::MarkToggle => {
+                    self.as_mut_list_state().toggle_mark();
+                }
                 UserEvent::Refresh => {
                     self.refresh();
                 }

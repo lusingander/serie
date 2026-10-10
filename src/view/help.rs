@@ -254,6 +254,7 @@ fn build_lines(
         (vec![UserEvent::SearchTargetToggle], "Toggle search target".into()),
         (vec![UserEvent::IgnoreCaseToggle], "Toggle ignore case".into()),
         (vec![UserEvent::FuzzyToggle], "Toggle fuzzy match".into()),
+        (vec![UserEvent::MarkToggle], "Toggle commit mark".into()),
         (vec![UserEvent::Refresh], "Refresh".into()),
         (vec![UserEvent::ShortCopy], "Copy commit short hash".into()),
         (vec![UserEvent::FullCopy], "Copy commit hash".into()),
@@ -274,6 +275,7 @@ fn build_lines(
         (vec![UserEvent::SelectDown], "Select older commit".into()),
         (vec![UserEvent::SelectUp], "Select newer commit".into()),
         (vec![UserEvent::GoToParent], "Select parent commit".into()),
+        (vec![UserEvent::MarkToggle], "Toggle commit mark".into()),
         (vec![UserEvent::Refresh], "Refresh".into()),
         (vec![UserEvent::ShortCopy], "Copy commit short hash".into()),
         (vec![UserEvent::FullCopy], "Copy commit hash".into()),
@@ -307,6 +309,7 @@ fn build_lines(
         (vec![UserEvent::SelectDown], "Select older commit".into()),
         (vec![UserEvent::SelectUp], "Select newer commit".into()),
         (vec![UserEvent::GoToParent], "Select parent commit".into()),
+        (vec![UserEvent::MarkToggle], "Toggle commit mark".into()),
         (vec![UserEvent::Refresh], "Refresh".into()),
         (vec![UserEvent::Confirm], "Show commit details".into()),
     ];
