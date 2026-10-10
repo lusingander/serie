@@ -746,179 +746,92 @@ fn draw_diagonal_connected_edge(
     edges: &[&Edge],
     image_params: &ImageParams,
 ) {
-    let corner_edges = edges.iter().filter(|e| {
-        matches!(
-            e.edge_type,
-            EdgeType::RightBottom | EdgeType::LeftBottom | EdgeType::RightTop | EdgeType::LeftTop
-        )
-    });
-
-    for corner_edge in corner_edges {
-        let expected_side_edge_type = match corner_edge.edge_type {
+    for corner in edges
+        .iter()
+        .filter(|e| !e.edge_type.is_vertically_related())
+    {
+        let side_type = match corner.edge_type {
             EdgeType::RightBottom | EdgeType::RightTop => EdgeType::Right,
             EdgeType::LeftBottom | EdgeType::LeftTop => EdgeType::Left,
-            _ => unreachable!("unexpected edge type for corner edge"),
+            _ => continue,
         };
-        let side_edge_opt = edges
-            .iter()
-            .find(|e| e.edge_type == expected_side_edge_type);
-        // No side edge found, nothing to draw (should not happen)
-        if let Some(side_edge) = side_edge_opt {
-            let line_width_f64 = image_params.line_width as f64;
-            let line_width_i32 = image_params.line_width as i32;
-
-            // NOTE: Select y_offset of the corner edge based on the cell width.
-            // The hard-coded value `height / 10.0` is based on the assumption that the cell
-            // has a 1:1 aspect ratio, and does not work well for non-1:1 ratios.
-            let y_offset = if image_params.width == image_params.height {
-                image_params.height as f64 / 10.0
-            } else {
-                image_params.height as f64 / 2.0 - image_params.corner_radius() as f64
-            };
-
-            match corner_edge.edge_type {
-                EdgeType::RightBottom | EdgeType::LeftBottom => {
-                    let start_pos_center = Point::new(
-                        (side_edge.pos_x * image_params.width as usize) as f64
-                            + (image_params.width as f64 / 2.0),
-                        image_params.height as f64 / 2.0,
-                    );
-                    let end_pos_center = Point::new(
-                        (corner_edge.pos_x * image_params.width as usize) as f64
-                            + (image_params.width as f64 / 2.0),
-                        y_offset,
-                    );
-
-                    let line_vec = end_pos_center - start_pos_center;
-                    let unit_vec = line_vec.normalize();
-                    let normal_vec = unit_vec.perpendicular();
-
-                    let line_start =
-                        start_pos_center + unit_vec * (image_params.circle_outer_radius as f64);
-                    let line_start_1 = line_start + normal_vec * (line_width_f64 / 2.0);
-                    let line_start_2 = line_start - normal_vec * (line_width_f64 / 2.0);
-
-                    let half_width = line_width_f64 / 2.0;
-                    let slope = unit_vec.y / unit_vec.x;
-
-                    let vertical_left_x = end_pos_center.x - half_width;
-                    let vertical_right_x = end_pos_center.x + half_width;
-
-                    let corner_1 = Point::new(
-                        vertical_right_x,
-                        line_start_1.y + slope * (vertical_right_x - line_start_1.x),
-                    );
-                    let corner_2 = Point::new(
-                        vertical_left_x,
-                        line_start_2.y + slope * (vertical_left_x - line_start_2.x),
-                    );
-
-                    let vertices = [line_start_1, corner_1, corner_2, line_start_2];
-
-                    let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
-                    for y in min_y..max_y {
-                        for x in min_x..max_x {
-                            if x < img_buf.width() && y < img_buf.height() {
-                                let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
-
-                                if p.is_inside_polygon(&vertices) {
-                                    let pixel = img_buf.get_pixel_mut(x, y);
-                                    let color =
-                                        image_params.edge_color(side_edge.associated_line_pos_x);
-                                    *pixel = color;
-                                }
-                            }
-                        }
-                    }
-
-                    let y_end = corner_1.y.max(corner_2.y) as u32;
-                    let end_center_x_i32 = end_pos_center.x as i32;
-                    let x_start = end_center_x_i32 - line_width_i32 / 2;
-                    for y in 0..y_end {
-                        for i in 0..line_width_i32 {
-                            let x = (x_start + i) as u32;
-                            if x < img_buf.width() && y < img_buf.height() {
-                                let pixel = img_buf.get_pixel_mut(x, y);
-                                let color =
-                                    image_params.edge_color(side_edge.associated_line_pos_x);
-                                *pixel = color;
-                            }
-                        }
-                    }
+        let Some(side) = edges.iter().find(|e| e.edge_type == side_type) else {
+            continue;
+        };
+        let (vertices, ys, x_start) = diagonal_connection(side, corner, image_params);
+        let color = image_params.edge_color(side.associated_line_pos_x);
+        let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
+        for y in min_y..max_y.min(img_buf.height()) {
+            for x in min_x..max_x.min(img_buf.width()) {
+                let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
+                if p.is_inside_polygon(&vertices) {
+                    *img_buf.get_pixel_mut(x, y) = color;
                 }
-                EdgeType::RightTop | EdgeType::LeftTop => {
-                    let start_pos_center = Point::new(
-                        (side_edge.pos_x * image_params.width as usize) as f64
-                            + (image_params.width as f64 / 2.0),
-                        image_params.height as f64 / 2.0,
-                    );
-                    let end_pos_center = Point::new(
-                        (corner_edge.pos_x * image_params.width as usize) as f64
-                            + (image_params.width as f64 / 2.0),
-                        image_params.height as f64 - y_offset,
-                    );
-
-                    let line_vec = end_pos_center - start_pos_center;
-                    let unit_vec = line_vec.normalize();
-                    let normal_vec = unit_vec.perpendicular();
-
-                    let line_start =
-                        start_pos_center + unit_vec * (image_params.circle_outer_radius as f64);
-                    let line_start_1 = line_start + normal_vec * (line_width_f64 / 2.0);
-                    let line_start_2 = line_start - normal_vec * (line_width_f64 / 2.0);
-
-                    let half_width = line_width_f64 / 2.0;
-                    let slope = unit_vec.y / unit_vec.x;
-
-                    let vertical_left_x = end_pos_center.x - half_width;
-                    let vertical_right_x = end_pos_center.x + half_width;
-
-                    let corner_1 = Point::new(
-                        vertical_left_x,
-                        line_start_1.y + slope * (vertical_left_x - line_start_1.x),
-                    );
-                    let corner_2 = Point::new(
-                        vertical_right_x,
-                        line_start_2.y + slope * (vertical_right_x - line_start_2.x),
-                    );
-
-                    let vertices = [line_start_1, corner_1, corner_2, line_start_2];
-
-                    let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
-                    for y in min_y..max_y {
-                        for x in min_x..max_x {
-                            if x < img_buf.width() && y < img_buf.height() {
-                                let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
-
-                                if p.is_inside_polygon(&vertices) {
-                                    let pixel = img_buf.get_pixel_mut(x, y);
-                                    let color =
-                                        image_params.edge_color(side_edge.associated_line_pos_x);
-                                    *pixel = color;
-                                }
-                            }
-                        }
-                    }
-
-                    let y_start = corner_1.y.min(corner_2.y) as u32;
-                    let end_center_x_i32 = end_pos_center.x as i32;
-                    let x_start = end_center_x_i32 - line_width_i32 / 2;
-                    for y in (y_start + 1)..image_params.height as u32 {
-                        for i in 0..line_width_i32 {
-                            let x = (x_start + i) as u32;
-                            if x < img_buf.width() && y < img_buf.height() {
-                                let pixel = img_buf.get_pixel_mut(x, y);
-                                let color =
-                                    image_params.edge_color(side_edge.associated_line_pos_x);
-                                *pixel = color;
-                            }
-                        }
-                    }
+            }
+        }
+        for y in ys {
+            for i in 0..i32::from(image_params.line_width) {
+                let x = (x_start + i) as u32;
+                if x < img_buf.width() && y < img_buf.height() {
+                    *img_buf.get_pixel_mut(x, y) = color;
                 }
-                _ => unreachable!("unexpected edge type for corner edge"),
             }
         }
     }
+}
+
+fn diagonal_connection(
+    side: &Edge,
+    corner: &Edge,
+    image_params: &ImageParams,
+) -> ([Point; 4], std::ops::Range<u32>, i32) {
+    let half_width = f64::from(image_params.line_width) / 2.0;
+    // Keep the existing diagonal-to-vertical junction for each cell aspect ratio.
+    let y_offset = if image_params.width == image_params.height {
+        f64::from(image_params.height) / 10.0
+    } else {
+        f64::from(image_params.height) / 2.0 - f64::from(image_params.corner_radius())
+    };
+    let turns_up = matches!(
+        corner.edge_type,
+        EdgeType::RightBottom | EdgeType::LeftBottom
+    );
+    let start = Point::new(
+        (side.pos_x * image_params.width as usize) as f64 + f64::from(image_params.width) / 2.0,
+        f64::from(image_params.height) / 2.0,
+    );
+    let end = Point::new(
+        (corner.pos_x * image_params.width as usize) as f64 + f64::from(image_params.width) / 2.0,
+        if turns_up {
+            y_offset
+        } else {
+            f64::from(image_params.height) - y_offset
+        },
+    );
+    let unit = (end - start).normalize();
+    let normal = unit.perpendicular();
+    let line_start = start + unit * f64::from(image_params.circle_outer_radius);
+    let line_start_1 = line_start + normal * half_width;
+    let line_start_2 = line_start - normal * half_width;
+    let slope = unit.y / unit.x;
+    let (x1, x2) = if turns_up {
+        (end.x + half_width, end.x - half_width)
+    } else {
+        (end.x - half_width, end.x + half_width)
+    };
+    let corner_1 = Point::new(x1, line_start_1.y + slope * (x1 - line_start_1.x));
+    let corner_2 = Point::new(x2, line_start_2.y + slope * (x2 - line_start_2.x));
+    let ys = if turns_up {
+        0..corner_1.y.max(corner_2.y) as u32
+    } else {
+        (corner_1.y.min(corner_2.y) as u32 + 1)..u32::from(image_params.height)
+    };
+    let x_start = end.x as i32 - i32::from(image_params.line_width) / 2;
+    (
+        [line_start_1, corner_1, corner_2, line_start_2],
+        ys,
+        x_start,
+    )
 }
 
 fn draw_curved_connected_edge(
@@ -944,37 +857,41 @@ fn draw_curved_connected_edge(
             continue;
         };
 
-        let direction = if side_type == EdgeType::Right {
-            1.0
-        } else {
-            -1.0
-        };
-        // Align stroke centers with the existing straight-edge pixel masks.
-        let pixel_offset = f64::from(image_params.line_width % 2) / 2.0;
-        let center_y = f64::from(image_params.height / 2) + pixel_offset;
-        let start_x = (side.pos_x * image_params.width as usize) as f64
-            + f64::from(image_params.width / 2)
-            + 0.5
-            + direction * (f64::from(image_params.circle_outer_radius) + 1.0);
-        let end_x = (corner.pos_x * image_params.width as usize) as f64
-            + f64::from(image_params.width / 2)
-            + pixel_offset;
-        let end_y = match corner.edge_type {
-            EdgeType::RightBottom | EdgeType::LeftBottom => 0.0,
-            _ => f64::from(image_params.height),
-        };
-
-        // Leave the circle horizontally and meet the row boundary vertically.
-        // Control points stay within the connection's existing row and columns.
-        let points = [
-            Point::new(start_x, center_y),
-            Point::new(start_x + (end_x - start_x) * 0.60, center_y),
-            Point::new(end_x, end_y + (center_y - end_y) * 0.65),
-            Point::new(end_x, end_y),
-        ];
+        let points = curved_connection_points(side, corner, image_params);
         let color = image_params.edge_color(corner.associated_line_pos_x);
         draw_bezier_curve(img_buf, points, image_params.line_width, color);
     }
+}
+
+fn curved_connection_points(side: &Edge, corner: &Edge, image_params: &ImageParams) -> [Point; 4] {
+    let direction = if side.edge_type == EdgeType::Right {
+        1.0
+    } else {
+        -1.0
+    };
+    // Align stroke centers with the existing straight-edge pixel masks.
+    let pixel_offset = f64::from(image_params.line_width % 2) / 2.0;
+    let center_y = f64::from(image_params.height / 2) + pixel_offset;
+    let start_x = (side.pos_x * image_params.width as usize) as f64
+        + f64::from(image_params.width / 2)
+        + 0.5
+        + direction * (f64::from(image_params.circle_outer_radius) + 1.0);
+    let end_x = (corner.pos_x * image_params.width as usize) as f64
+        + f64::from(image_params.width / 2)
+        + pixel_offset;
+    let end_y = match corner.edge_type {
+        EdgeType::RightBottom | EdgeType::LeftBottom => 0.0,
+        _ => f64::from(image_params.height),
+    };
+
+    // Leave the circle horizontally and meet the row boundary vertically.
+    // Control points stay within the connection's existing row and columns.
+    [
+        Point::new(start_x, center_y),
+        Point::new(start_x + (end_x - start_x) * 0.60, center_y),
+        Point::new(end_x, end_y + (center_y - end_y) * 0.65),
+        Point::new(end_x, end_y),
+    ]
 }
 
 fn draw_bezier_curve(
