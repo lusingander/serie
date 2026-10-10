@@ -8,6 +8,7 @@ protocol = "auto"
 order = "chrono"
 graph_width = "auto"
 graph_style = "rounded"
+graph_antialias = false
 initial_selection = "latest"
 
 [core.git]
@@ -161,6 +162,15 @@ The commit graph image edge style.
   - `rounded`
   - `angular`
   - `curved`
+
+The value specified in the command line argument takes precedence.
+
+### `core.option.graph_antialias`
+
+Whether to antialias commit graph images.
+
+- type: `boolean`
+- default: `false`
 
 The value specified in the command line argument takes precedence.
 

@@ -74,6 +74,8 @@ Options:
   -o, --order <TYPE>              Commit ordering algorithm [default: chrono] [possible values: chrono, topo]
   -g, --graph-width <TYPE>        Commit graph image cell width [default: auto] [possible values: auto, double, single]
   -s, --graph-style <TYPE>        Commit graph image edge style [default: rounded] [possible values: rounded, angular, curved]
+      --graph-antialias           Enable antialiasing for commit graph images
+      --no-graph-antialias        Disable antialiasing for commit graph images
   -i, --initial-selection <TYPE>  Initial selection of commit [default: latest] [possible values: latest, head]
   -b, --primary-branch <BRANCH>   Primary branch to keep on the leftmost column
   -h, --help                      Print help
