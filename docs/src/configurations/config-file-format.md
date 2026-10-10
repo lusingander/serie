@@ -160,6 +160,7 @@ The commit graph image edge style.
 - possible values:
   - `rounded`
   - `angular`
+  - `curved`
 
 The value specified in the command line argument takes precedence.
 

@@ -47,16 +47,20 @@ If not specified or `auto` is specified, `double` will be used automatically if 
 
 The commit graph image edge style.
 
-_Possible values:_ `rounded`, `angular`
+_Possible values:_ `rounded`, `angular`, `curved`
 
 `rounded` will use rounded edges for the graph lines.
 
-<img src="https://raw.githubusercontent.com/lusingander/serie/master/img/graph-width-double.png" width=300>
+<img src="https://raw.githubusercontent.com/lusingander/serie/master/img/style-rounded.png" width=400>
 
 `angular` will use angular edges for the graph lines.
 
-<img src="https://raw.githubusercontent.com/lusingander/serie/master/img/style-angular.png" width=300>
+<img src="https://raw.githubusercontent.com/lusingander/serie/master/img/style-angular.png" width=400>
 
+`curved` will use curved edges for the graph lines.
+
+<img src="https://raw.githubusercontent.com/lusingander/serie/master/img/style-curved.png" width=400>
+    
 ## -i, --initial-selection \<TYPE\>
 
 The initial selection of commit when starting the application.

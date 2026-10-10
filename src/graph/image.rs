@@ -22,6 +22,7 @@ use crate::{
 pub enum GraphStyle {
     Rounded,
     Angular,
+    Curved,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
@@ -628,6 +629,12 @@ pub fn calc_graph_row_image(
     draw_commit_circle(&mut img_buf, commit_pos_x, image_params, drawing_pixels);
 
     match graph_style {
+        GraphStyle::Curved => {
+            for edge in edges.iter().filter(|e| e.edge_type.is_vertically_related()) {
+                draw_edge(&mut img_buf, edge, image_params, drawing_pixels);
+            }
+            draw_curved_connected_edge(&mut img_buf, edges, image_params);
+        }
         GraphStyle::Rounded => {
             for edge in edges {
                 draw_edge(&mut img_buf, edge, image_params, drawing_pixels)
@@ -914,6 +921,140 @@ fn draw_diagonal_connected_edge(
     }
 }
 
+fn draw_curved_connected_edge(
+    img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+    edges: &[Edge],
+    image_params: &ImageParams,
+) {
+    let corner_edges = edges.iter().filter(|e| {
+        matches!(
+            e.edge_type,
+            EdgeType::RightBottom | EdgeType::LeftBottom | EdgeType::RightTop | EdgeType::LeftTop
+        )
+    });
+
+    for corner in corner_edges {
+        let side_type = match corner.edge_type {
+            EdgeType::RightBottom | EdgeType::RightTop => EdgeType::Right,
+            _ => EdgeType::Left,
+        };
+        let Some(side) = edges.iter().find(|e| {
+            e.associated_line_pos_x == corner.associated_line_pos_x && e.edge_type == side_type
+        }) else {
+            continue;
+        };
+
+        let direction = if side_type == EdgeType::Right {
+            1.0
+        } else {
+            -1.0
+        };
+        // Align stroke centers with the existing straight-edge pixel masks.
+        let pixel_offset = f64::from(image_params.line_width % 2) / 2.0;
+        let center_y = f64::from(image_params.height / 2) + pixel_offset;
+        let start_x = (side.pos_x * image_params.width as usize) as f64
+            + f64::from(image_params.width / 2)
+            + 0.5
+            + direction * (f64::from(image_params.circle_outer_radius) + 1.0);
+        let end_x = (corner.pos_x * image_params.width as usize) as f64
+            + f64::from(image_params.width / 2)
+            + pixel_offset;
+        let end_y = match corner.edge_type {
+            EdgeType::RightBottom | EdgeType::LeftBottom => 0.0,
+            _ => f64::from(image_params.height),
+        };
+
+        // Leave the circle horizontally and meet the row boundary vertically.
+        // Control points stay within the connection's existing row and columns.
+        let points = [
+            Point::new(start_x, center_y),
+            Point::new(start_x + (end_x - start_x) * 0.60, center_y),
+            Point::new(end_x, end_y + (center_y - end_y) * 0.65),
+            Point::new(end_x, end_y),
+        ];
+        let color = image_params.edge_color(corner.associated_line_pos_x);
+        draw_bezier_curve(img_buf, points, image_params.line_width, color);
+    }
+}
+
+fn draw_bezier_curve(
+    img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+    points: [Point; 4],
+    line_width: u16,
+    color: image::Rgba<u8>,
+) {
+    let radius = f64::from(line_width) / 2.0;
+    let direction = (points[3].x - points[0].x).signum();
+    let steps = (((points[3].x - points[0].x).abs() + (points[3].y - points[0].y).abs()) * 3.0)
+        .ceil() as usize;
+    let boundary_y = if points[3].y == 0.0 {
+        0
+    } else {
+        img_buf.height() - 1
+    };
+    let curve_point = |t: f64| {
+        let u = 1.0 - t;
+        Point::new(
+            u * u * u * points[0].x
+                + 3.0 * u * u * t * points[1].x
+                + 3.0 * u * t * t * points[2].x
+                + t * t * t * points[3].x,
+            u * u * u * points[0].y
+                + 3.0 * u * u * t * points[1].y
+                + 3.0 * u * t * t * points[2].y
+                + t * t * t * points[3].y,
+        )
+    };
+
+    // Approximate the curve with short segments and fill pixels within the stroke.
+    let steps = steps.max(32);
+    let mut start = points[0];
+    for step in 1..=steps {
+        let end = curve_point(step as f64 / steps as f64);
+        let segment = end - start;
+        let length_squared = segment.dot(segment);
+        let bounds = [
+            Point::new(
+                start.x.min(end.x) - radius - 1.0,
+                start.y.min(end.y) - radius - 1.0,
+            ),
+            Point::new(
+                start.x.max(end.x) + radius + 1.0,
+                start.y.max(end.y) + radius + 1.0,
+            ),
+        ];
+        let (min_x, min_y, max_x, max_y) = bounding_box_u32(&bounds);
+        for y in min_y..max_y.min(img_buf.height()) {
+            if y == boundary_y {
+                continue;
+            }
+            for x in min_x..max_x.min(img_buf.width()) {
+                let pixel_center = Point::new(x as f64 + 0.5, y as f64 + 0.5);
+                // Keep the same circle-side endpoint, with a flat stroke cap.
+                if (pixel_center.x - points[0].x) * direction < 0.0 {
+                    continue;
+                }
+                let t = if length_squared == 0.0 {
+                    0.0
+                } else {
+                    ((pixel_center - start).dot(segment) / length_squared).clamp(0.0, 1.0)
+                };
+                let distance = (pixel_center - (start + segment * t)).length();
+                if distance <= radius {
+                    *img_buf.get_pixel_mut(x, y) = color;
+                }
+            }
+        }
+        start = end;
+    }
+
+    // Match the existing vertical mask exactly at the row boundary.
+    let x_start = (points[3].x - radius) as u32;
+    for x in x_start..(x_start + u32::from(line_width)).min(img_buf.width()) {
+        *img_buf.get_pixel_mut(x, boundary_y) = color;
+    }
+}
+
 fn build_image(img_buf: &[u8], image_width: u32, image_height: u32) -> Vec<u8> {
     let mut bytes = Cursor::new(Vec::new());
     image::write_buffer_with_format(
@@ -949,6 +1090,7 @@ mod tests {
     #[rstest]
     #[case("default_params_rounded", GraphStyle::Rounded)]
     #[case("default_params_angular", GraphStyle::Angular)]
+    #[case("default_params_curved", GraphStyle::Curved)]
     fn test_calc_graph_row_image_default_params(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
@@ -974,6 +1116,7 @@ mod tests {
     #[rstest]
     #[case("wide_image_rounded", GraphStyle::Rounded)]
     #[case("wide_image_angular", GraphStyle::Angular)]
+    #[case("wide_image_curved", GraphStyle::Curved)]
     fn test_calc_graph_row_image_wide_image(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
@@ -1000,6 +1143,7 @@ mod tests {
     #[rstest]
     #[case("tall_image_rounded", GraphStyle::Rounded)]
     #[case("tall_image_angular", GraphStyle::Angular)]
+    #[case("tall_image_curved", GraphStyle::Curved)]
     fn test_calc_graph_row_image_tall_image(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
@@ -1026,6 +1170,7 @@ mod tests {
     #[rstest]
     #[case("single_cell_width_rounded", GraphStyle::Rounded)]
     #[case("single_cell_width_angular", GraphStyle::Angular)]
+    #[case("single_cell_width_curved", GraphStyle::Curved)]
     fn test_calc_graph_row_image_single_cell_width(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
@@ -1051,6 +1196,7 @@ mod tests {
     #[rstest]
     #[case("circle_radius_rounded", GraphStyle::Rounded)]
     #[case("circle_radius_angular", GraphStyle::Angular)]
+    #[case("circle_radius_curved", GraphStyle::Curved)]
     fn test_calc_graph_row_image_circle_radius(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
@@ -1078,6 +1224,7 @@ mod tests {
     #[rstest]
     #[case("line_width_rounded", GraphStyle::Rounded)]
     #[case("line_width_angular", GraphStyle::Angular)]
+    #[case("line_width_curved", GraphStyle::Curved)]
     fn test_calc_graph_row_image_line_width(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
@@ -1104,6 +1251,7 @@ mod tests {
     #[rstest]
     #[case("color_rounded", GraphStyle::Rounded)]
     #[case("color_angular", GraphStyle::Angular)]
+    #[case("color_curved", GraphStyle::Curved)]
     fn test_calc_graph_row_image_color(#[case] file_name: &str, #[case] graph_style: GraphStyle) {
         let params = branches_test_params();
         let cell_count = 7;
@@ -1130,6 +1278,67 @@ mod tests {
             graph_style,
             file_name,
         );
+    }
+
+    #[rstest]
+    #[case(CellWidthType::Double)]
+    #[case(CellWidthType::Single)]
+    fn test_curved_connection_positions(#[case] cell_width_type: CellWidthType) {
+        let colors = GraphColorSet::new(&GraphColorConfig::default());
+        let params = ImageParams::new(&colors, cell_width_type);
+        let pixels = DrawingPixels::new(&params);
+
+        for (commit_pos_x, edges) in simple_test_params() {
+            let edges: Vec<Edge> = edges
+                .into_iter()
+                .map(|(t, x, line)| Edge::new(t, x, line))
+                .collect();
+            let rounded = calc_graph_row_image(
+                commit_pos_x,
+                4,
+                &edges,
+                &params,
+                &pixels,
+                GraphStyle::Rounded,
+            );
+            let curved = calc_graph_row_image(
+                commit_pos_x,
+                4,
+                &edges,
+                &params,
+                &pixels,
+                GraphStyle::Curved,
+            );
+            assert_eq!(rounded.cell_count, curved.cell_count);
+            let rounded = image::load_from_memory(&rounded.bytes).unwrap().to_rgba8();
+            let curved = image::load_from_memory(&curved.bytes).unwrap().to_rgba8();
+            assert_eq!(rounded.dimensions(), curved.dimensions());
+            assert!(curved.pixels().all(|pixel| matches!(pixel[3], 0 | 255)));
+
+            for y in [0, rounded.height() - 1] {
+                for x in 0..rounded.width() {
+                    assert_eq!(rounded.get_pixel(x, y), curved.get_pixel(x, y));
+                }
+            }
+            let x_offset = (commit_pos_x * params.width as usize) as u32;
+            for &(x, y) in pixels.circle.union(&pixels.circle_edge) {
+                let (x, y) = (x as u32 + x_offset, y as u32);
+                assert_eq!(rounded.get_pixel(x, y), curved.get_pixel(x, y));
+            }
+            // Circle-side endpoints stay at the existing left/right positions.
+            for edge in edges.iter().filter(|e| matches!(e.edge_type, Left | Right)) {
+                let center_x =
+                    (edge.pos_x * params.width as usize) as u32 + u32::from(params.width / 2);
+                let offset = u32::from(params.circle_outer_radius) + 1;
+                let x = if edge.edge_type == Right {
+                    center_x + offset
+                } else {
+                    center_x - offset
+                };
+                let y = u32::from(params.height / 2);
+                assert_eq!(rounded.get_pixel(x, y), curved.get_pixel(x, y));
+            }
+        }
     }
 
     #[rustfmt::skip]
