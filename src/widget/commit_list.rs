@@ -851,7 +851,15 @@ impl CommitList<'_> {
         }
         let items: Vec<ListItem> = self
             .rendering_commit_info_iter(state)
-            .map(|(_, commit_info)| ListItem::new("│".fg(commit_info.graph_color)))
+            .map(|(_, commit_info)| {
+                let marker = if state.marked_commit_hash() == Some(&commit_info.commit.commit_hash)
+                {
+                    "*"
+                } else {
+                    "│"
+                };
+                ListItem::new(marker.fg(commit_info.graph_color))
+            })
             .collect();
         Widget::render(List::new(items), area, buf)
     }
@@ -1228,9 +1236,10 @@ mod tests {
 
     use crate::{
         color::GraphColorSet,
-        config::GraphColorConfig,
+        config::{CoreConfig, GraphColorConfig, UiConfig},
         git::Repository,
         graph::{calc_graph, CellWidthType, GraphImageWidthMode, GraphStyle},
+        keybind::KeyBind,
         protocol::ImageProtocol,
         view::ListRefreshViewContext,
     };
@@ -1351,6 +1360,45 @@ mod tests {
             state.toggle_mark();
             state.restore_marked_commit_hash(context.marked_commit_hash);
             assert_eq!(state.marked_commit_hash(), None);
+        });
+    }
+
+    #[test]
+    fn test_mark_only_changes_marker_symbol_at_narrow_and_wide_widths() {
+        with_commit_list_state(&["first", "second", "third"], |state| {
+            state.commits[0].graph_color = Color::Green;
+            state.select_next();
+            let mut ui_config = UiConfig::default();
+            ui_config.list.columns = vec![
+                UserListColumnType::Marker,
+                UserListColumnType::Subject,
+                UserListColumnType::Name,
+                UserListColumnType::Hash,
+                UserListColumnType::Date,
+            ];
+            let ctx = Rc::new(AppContext {
+                keybind: KeyBind::new(None),
+                core_config: CoreConfig::default(),
+                ui_config,
+                color_theme: ColorTheme::default(),
+                image_protocol: ImageProtocol::Iterm2,
+            });
+            for width in [1, 80] {
+                let area = Rect::new(0, 0, width, 3);
+                let mut before = Buffer::empty(area);
+                CommitList::new(ctx.clone()).render(area, &mut before, state);
+                state.select_prev();
+                state.toggle_mark();
+                state.select_next();
+                let mut after = Buffer::empty(area);
+                CommitList::new(ctx.clone()).render(area, &mut after, state);
+                assert_eq!(before[(0, 0)].symbol(), "│");
+                assert_eq!(after[(0, 0)].symbol(), "*");
+                assert_eq!(after[(0, 0)].fg, Color::Green);
+                before[(0, 0)].set_symbol("*");
+                assert_eq!(after, before);
+                state.restore_marked_commit_hash(None);
+            }
         });
     }
 
