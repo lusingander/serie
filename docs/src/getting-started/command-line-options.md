@@ -47,7 +47,7 @@ If not specified or `auto` is specified, `double` will be used automatically if 
 
 The commit graph image edge style.
 
-_Possible values:_ `rounded`, `angular`
+_Possible values:_ `rounded`, `angular`, `curved`
 
 `rounded` will use rounded edges for the graph lines.
 
@@ -56,6 +56,8 @@ _Possible values:_ `rounded`, `angular`
 `angular` will use angular edges for the graph lines.
 
 <img src="https://raw.githubusercontent.com/lusingander/serie/master/img/style-angular.png" width=300>
+
+`curved` will use curved edges for the graph lines.
 
 ## -i, --initial-selection \<TYPE\>
 
