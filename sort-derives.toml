@@ -1,0 +1,17 @@
+order = [
+    "Debug",
+    "Default",
+    "Clone",
+    "Copy",
+    "PartialEq",
+    "Eq",
+    "PartialOrd",
+    "Ord",
+    "Hash",
+    "...",
+    "ValueEnum",
+    "Serialize",
+    "Deserialize",
+    "SmartDefault",
+    "Validate",
+]

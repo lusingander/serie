@@ -30,7 +30,7 @@ impl Edge {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum EdgeType {
     Vertical,    // │
     Horizontal,  // ─
