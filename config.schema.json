@@ -47,7 +47,8 @@
               "description": "The commit graph image edge style. The value specified in the command line argument takes precedence.",
               "enum": [
                 "rounded",
-                "angular"
+                "angular",
+                "curved"
               ],
               "default": "rounded"
             },

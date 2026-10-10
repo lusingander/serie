@@ -117,6 +117,7 @@ enum GraphWidthType {
 enum GraphStyle {
     Rounded,
     Angular,
+    Curved,
 }
 
 impl From<Option<GraphStyle>> for graph::GraphStyle {
@@ -124,6 +125,7 @@ impl From<Option<GraphStyle>> for graph::GraphStyle {
         match style {
             Some(GraphStyle::Rounded) => graph::GraphStyle::Rounded,
             Some(GraphStyle::Angular) => graph::GraphStyle::Angular,
+            Some(GraphStyle::Curved) => graph::GraphStyle::Curved,
             None => graph::GraphStyle::Rounded,
         }
     }
