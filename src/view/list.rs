@@ -290,6 +290,7 @@ impl<'a> ListView<'a> {
     pub fn reset_commit_list_with(&mut self, list_context: &ListRefreshViewContext) {
         let ListRefreshViewContext {
             commit_hash,
+            marked_commit_hash,
             selected,
             height,
             scroll_to_top,
@@ -297,6 +298,7 @@ impl<'a> ListView<'a> {
             search_context,
         } = list_context;
         let list_state = self.as_mut_list_state();
+        list_state.restore_marked_commit_hash(marked_commit_hash.clone());
         list_state.restore_search_options(*search_options);
         list_state.reset_height(*height);
         if *scroll_to_top {
