@@ -18,6 +18,8 @@ use crate::{
     protocol::{ImageProtocol, PreparedImage},
 };
 
+mod antialias;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GraphStyle {
     Rounded,
@@ -54,10 +56,11 @@ impl<'a> GraphImageManager<'a> {
         graph_color_set: &GraphColorSet,
         cell_width_type: CellWidthType,
         graph_style: GraphStyle,
+        antialias: bool,
         image_width_mode: GraphImageWidthMode,
         image_protocol: ImageProtocol,
     ) -> Self {
-        let image_params = ImageParams::new(graph_color_set, cell_width_type);
+        let image_params = ImageParams::new(graph_color_set, cell_width_type, antialias);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         GraphImageManager {
@@ -181,6 +184,7 @@ pub struct ImageParams {
     edge_colors: Vec<image::Rgba<u8>>,
     circle_edge_color: image::Rgba<u8>,
     background_color: image::Rgba<u8>,
+    antialias: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -190,7 +194,11 @@ pub enum CellWidthType {
 }
 
 impl ImageParams {
-    pub fn new(graph_color_set: &GraphColorSet, cell_width_type: CellWidthType) -> Self {
+    pub fn new(
+        graph_color_set: &GraphColorSet,
+        cell_width_type: CellWidthType,
+        antialias: bool,
+    ) -> Self {
         let (width, height, line_width, circle_inner_radius, circle_outer_radius) =
             match cell_width_type {
                 CellWidthType::Double => (50, 50, 5, 10, 13),
@@ -212,6 +220,7 @@ impl ImageParams {
             edge_colors,
             circle_edge_color,
             background_color,
+            antialias,
         }
     }
 
@@ -260,6 +269,7 @@ type Pixels = FxHashSet<(i32, i32)>;
 
 #[derive(Debug)]
 pub struct DrawingPixels {
+    antialias: Option<antialias::Masks>,
     circle: Pixels,
     circle_edge: Pixels,
     vertical_edge: Pixels,
@@ -290,6 +300,9 @@ impl DrawingPixels {
         let left_bottom_edge = calc_left_bottom_edge_drawing_pixels(image_params);
 
         Self {
+            antialias: image_params
+                .antialias
+                .then(|| antialias::Masks::new(image_params)),
             circle,
             circle_edge,
             vertical_edge,
@@ -623,6 +636,21 @@ pub fn calc_graph_row_image(
     let image_width = (image_params.width as usize * cell_count) as u32;
     let image_height = image_params.height as u32;
 
+    if image_params.antialias {
+        let image = antialias::render(
+            commit_pos_x,
+            cell_count,
+            edges,
+            image_params,
+            drawing_pixels,
+            graph_style,
+        );
+        return GraphRowImage {
+            bytes: build_image(&image, image_width, image_height),
+            cell_count,
+        };
+    }
+
     let mut img_buf = image::ImageBuffer::new(image_width, image_height);
 
     draw_background(&mut img_buf, image_params);
@@ -746,179 +774,92 @@ fn draw_diagonal_connected_edge(
     edges: &[&Edge],
     image_params: &ImageParams,
 ) {
-    let corner_edges = edges.iter().filter(|e| {
-        matches!(
-            e.edge_type,
-            EdgeType::RightBottom | EdgeType::LeftBottom | EdgeType::RightTop | EdgeType::LeftTop
-        )
-    });
-
-    for corner_edge in corner_edges {
-        let expected_side_edge_type = match corner_edge.edge_type {
+    for corner in edges
+        .iter()
+        .filter(|e| !e.edge_type.is_vertically_related())
+    {
+        let side_type = match corner.edge_type {
             EdgeType::RightBottom | EdgeType::RightTop => EdgeType::Right,
             EdgeType::LeftBottom | EdgeType::LeftTop => EdgeType::Left,
-            _ => unreachable!("unexpected edge type for corner edge"),
+            _ => continue,
         };
-        let side_edge_opt = edges
-            .iter()
-            .find(|e| e.edge_type == expected_side_edge_type);
-        // No side edge found, nothing to draw (should not happen)
-        if let Some(side_edge) = side_edge_opt {
-            let line_width_f64 = image_params.line_width as f64;
-            let line_width_i32 = image_params.line_width as i32;
-
-            // NOTE: Select y_offset of the corner edge based on the cell width.
-            // The hard-coded value `height / 10.0` is based on the assumption that the cell
-            // has a 1:1 aspect ratio, and does not work well for non-1:1 ratios.
-            let y_offset = if image_params.width == image_params.height {
-                image_params.height as f64 / 10.0
-            } else {
-                image_params.height as f64 / 2.0 - image_params.corner_radius() as f64
-            };
-
-            match corner_edge.edge_type {
-                EdgeType::RightBottom | EdgeType::LeftBottom => {
-                    let start_pos_center = Point::new(
-                        (side_edge.pos_x * image_params.width as usize) as f64
-                            + (image_params.width as f64 / 2.0),
-                        image_params.height as f64 / 2.0,
-                    );
-                    let end_pos_center = Point::new(
-                        (corner_edge.pos_x * image_params.width as usize) as f64
-                            + (image_params.width as f64 / 2.0),
-                        y_offset,
-                    );
-
-                    let line_vec = end_pos_center - start_pos_center;
-                    let unit_vec = line_vec.normalize();
-                    let normal_vec = unit_vec.perpendicular();
-
-                    let line_start =
-                        start_pos_center + unit_vec * (image_params.circle_outer_radius as f64);
-                    let line_start_1 = line_start + normal_vec * (line_width_f64 / 2.0);
-                    let line_start_2 = line_start - normal_vec * (line_width_f64 / 2.0);
-
-                    let half_width = line_width_f64 / 2.0;
-                    let slope = unit_vec.y / unit_vec.x;
-
-                    let vertical_left_x = end_pos_center.x - half_width;
-                    let vertical_right_x = end_pos_center.x + half_width;
-
-                    let corner_1 = Point::new(
-                        vertical_right_x,
-                        line_start_1.y + slope * (vertical_right_x - line_start_1.x),
-                    );
-                    let corner_2 = Point::new(
-                        vertical_left_x,
-                        line_start_2.y + slope * (vertical_left_x - line_start_2.x),
-                    );
-
-                    let vertices = [line_start_1, corner_1, corner_2, line_start_2];
-
-                    let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
-                    for y in min_y..max_y {
-                        for x in min_x..max_x {
-                            if x < img_buf.width() && y < img_buf.height() {
-                                let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
-
-                                if p.is_inside_polygon(&vertices) {
-                                    let pixel = img_buf.get_pixel_mut(x, y);
-                                    let color =
-                                        image_params.edge_color(side_edge.associated_line_pos_x);
-                                    *pixel = color;
-                                }
-                            }
-                        }
-                    }
-
-                    let y_end = corner_1.y.max(corner_2.y) as u32;
-                    let end_center_x_i32 = end_pos_center.x as i32;
-                    let x_start = end_center_x_i32 - line_width_i32 / 2;
-                    for y in 0..y_end {
-                        for i in 0..line_width_i32 {
-                            let x = (x_start + i) as u32;
-                            if x < img_buf.width() && y < img_buf.height() {
-                                let pixel = img_buf.get_pixel_mut(x, y);
-                                let color =
-                                    image_params.edge_color(side_edge.associated_line_pos_x);
-                                *pixel = color;
-                            }
-                        }
-                    }
+        let Some(side) = edges.iter().find(|e| e.edge_type == side_type) else {
+            continue;
+        };
+        let (vertices, ys, x_start) = diagonal_connection(side, corner, image_params);
+        let color = image_params.edge_color(side.associated_line_pos_x);
+        let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
+        for y in min_y..max_y.min(img_buf.height()) {
+            for x in min_x..max_x.min(img_buf.width()) {
+                let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
+                if p.is_inside_polygon(&vertices) {
+                    *img_buf.get_pixel_mut(x, y) = color;
                 }
-                EdgeType::RightTop | EdgeType::LeftTop => {
-                    let start_pos_center = Point::new(
-                        (side_edge.pos_x * image_params.width as usize) as f64
-                            + (image_params.width as f64 / 2.0),
-                        image_params.height as f64 / 2.0,
-                    );
-                    let end_pos_center = Point::new(
-                        (corner_edge.pos_x * image_params.width as usize) as f64
-                            + (image_params.width as f64 / 2.0),
-                        image_params.height as f64 - y_offset,
-                    );
-
-                    let line_vec = end_pos_center - start_pos_center;
-                    let unit_vec = line_vec.normalize();
-                    let normal_vec = unit_vec.perpendicular();
-
-                    let line_start =
-                        start_pos_center + unit_vec * (image_params.circle_outer_radius as f64);
-                    let line_start_1 = line_start + normal_vec * (line_width_f64 / 2.0);
-                    let line_start_2 = line_start - normal_vec * (line_width_f64 / 2.0);
-
-                    let half_width = line_width_f64 / 2.0;
-                    let slope = unit_vec.y / unit_vec.x;
-
-                    let vertical_left_x = end_pos_center.x - half_width;
-                    let vertical_right_x = end_pos_center.x + half_width;
-
-                    let corner_1 = Point::new(
-                        vertical_left_x,
-                        line_start_1.y + slope * (vertical_left_x - line_start_1.x),
-                    );
-                    let corner_2 = Point::new(
-                        vertical_right_x,
-                        line_start_2.y + slope * (vertical_right_x - line_start_2.x),
-                    );
-
-                    let vertices = [line_start_1, corner_1, corner_2, line_start_2];
-
-                    let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
-                    for y in min_y..max_y {
-                        for x in min_x..max_x {
-                            if x < img_buf.width() && y < img_buf.height() {
-                                let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
-
-                                if p.is_inside_polygon(&vertices) {
-                                    let pixel = img_buf.get_pixel_mut(x, y);
-                                    let color =
-                                        image_params.edge_color(side_edge.associated_line_pos_x);
-                                    *pixel = color;
-                                }
-                            }
-                        }
-                    }
-
-                    let y_start = corner_1.y.min(corner_2.y) as u32;
-                    let end_center_x_i32 = end_pos_center.x as i32;
-                    let x_start = end_center_x_i32 - line_width_i32 / 2;
-                    for y in (y_start + 1)..image_params.height as u32 {
-                        for i in 0..line_width_i32 {
-                            let x = (x_start + i) as u32;
-                            if x < img_buf.width() && y < img_buf.height() {
-                                let pixel = img_buf.get_pixel_mut(x, y);
-                                let color =
-                                    image_params.edge_color(side_edge.associated_line_pos_x);
-                                *pixel = color;
-                            }
-                        }
-                    }
+            }
+        }
+        for y in ys {
+            for i in 0..i32::from(image_params.line_width) {
+                let x = (x_start + i) as u32;
+                if x < img_buf.width() && y < img_buf.height() {
+                    *img_buf.get_pixel_mut(x, y) = color;
                 }
-                _ => unreachable!("unexpected edge type for corner edge"),
             }
         }
     }
+}
+
+fn diagonal_connection(
+    side: &Edge,
+    corner: &Edge,
+    image_params: &ImageParams,
+) -> ([Point; 4], std::ops::Range<u32>, i32) {
+    let half_width = f64::from(image_params.line_width) / 2.0;
+    // Keep the existing diagonal-to-vertical junction for each cell aspect ratio.
+    let y_offset = if image_params.width == image_params.height {
+        f64::from(image_params.height) / 10.0
+    } else {
+        f64::from(image_params.height) / 2.0 - f64::from(image_params.corner_radius())
+    };
+    let turns_up = matches!(
+        corner.edge_type,
+        EdgeType::RightBottom | EdgeType::LeftBottom
+    );
+    let start = Point::new(
+        (side.pos_x * image_params.width as usize) as f64 + f64::from(image_params.width) / 2.0,
+        f64::from(image_params.height) / 2.0,
+    );
+    let end = Point::new(
+        (corner.pos_x * image_params.width as usize) as f64 + f64::from(image_params.width) / 2.0,
+        if turns_up {
+            y_offset
+        } else {
+            f64::from(image_params.height) - y_offset
+        },
+    );
+    let unit = (end - start).normalize();
+    let normal = unit.perpendicular();
+    let line_start = start + unit * f64::from(image_params.circle_outer_radius);
+    let line_start_1 = line_start + normal * half_width;
+    let line_start_2 = line_start - normal * half_width;
+    let slope = unit.y / unit.x;
+    let (x1, x2) = if turns_up {
+        (end.x + half_width, end.x - half_width)
+    } else {
+        (end.x - half_width, end.x + half_width)
+    };
+    let corner_1 = Point::new(x1, line_start_1.y + slope * (x1 - line_start_1.x));
+    let corner_2 = Point::new(x2, line_start_2.y + slope * (x2 - line_start_2.x));
+    let ys = if turns_up {
+        0..corner_1.y.max(corner_2.y) as u32
+    } else {
+        (corner_1.y.min(corner_2.y) as u32 + 1)..u32::from(image_params.height)
+    };
+    let x_start = end.x as i32 - i32::from(image_params.line_width) / 2;
+    (
+        [line_start_1, corner_1, corner_2, line_start_2],
+        ys,
+        x_start,
+    )
 }
 
 fn draw_curved_connected_edge(
@@ -944,37 +885,55 @@ fn draw_curved_connected_edge(
             continue;
         };
 
-        let direction = if side_type == EdgeType::Right {
-            1.0
-        } else {
-            -1.0
-        };
-        // Align stroke centers with the existing straight-edge pixel masks.
-        let pixel_offset = f64::from(image_params.line_width % 2) / 2.0;
-        let center_y = f64::from(image_params.height / 2) + pixel_offset;
-        let start_x = (side.pos_x * image_params.width as usize) as f64
-            + f64::from(image_params.width / 2)
-            + 0.5
-            + direction * (f64::from(image_params.circle_outer_radius) + 1.0);
-        let end_x = (corner.pos_x * image_params.width as usize) as f64
-            + f64::from(image_params.width / 2)
-            + pixel_offset;
-        let end_y = match corner.edge_type {
-            EdgeType::RightBottom | EdgeType::LeftBottom => 0.0,
-            _ => f64::from(image_params.height),
-        };
-
-        // Leave the circle horizontally and meet the row boundary vertically.
-        // Control points stay within the connection's existing row and columns.
-        let points = [
-            Point::new(start_x, center_y),
-            Point::new(start_x + (end_x - start_x) * 0.60, center_y),
-            Point::new(end_x, end_y + (center_y - end_y) * 0.65),
-            Point::new(end_x, end_y),
-        ];
+        let points = curved_connection_points(side, corner, image_params);
         let color = image_params.edge_color(corner.associated_line_pos_x);
         draw_bezier_curve(img_buf, points, image_params.line_width, color);
     }
+}
+
+fn curved_connection_points(side: &Edge, corner: &Edge, image_params: &ImageParams) -> [Point; 4] {
+    let direction = if side.edge_type == EdgeType::Right {
+        1.0
+    } else {
+        -1.0
+    };
+    // Align stroke centers with the existing straight-edge pixel masks.
+    let pixel_offset = f64::from(image_params.line_width % 2) / 2.0;
+    let center_y = f64::from(image_params.height / 2) + pixel_offset;
+    let start_x = (side.pos_x * image_params.width as usize) as f64
+        + f64::from(image_params.width / 2)
+        + 0.5
+        + direction * (f64::from(image_params.circle_outer_radius) + 1.0);
+    let end_x = (corner.pos_x * image_params.width as usize) as f64
+        + f64::from(image_params.width / 2)
+        + pixel_offset;
+    let end_y = match corner.edge_type {
+        EdgeType::RightBottom | EdgeType::LeftBottom => 0.0,
+        _ => f64::from(image_params.height),
+    };
+
+    // Leave the circle horizontally and meet the row boundary vertically.
+    // Control points stay within the connection's existing row and columns.
+    [
+        Point::new(start_x, center_y),
+        Point::new(start_x + (end_x - start_x) * 0.60, center_y),
+        Point::new(end_x, end_y + (center_y - end_y) * 0.65),
+        Point::new(end_x, end_y),
+    ]
+}
+
+fn bezier_point(points: &[Point; 4], t: f64) -> Point {
+    let u = 1.0 - t;
+    Point::new(
+        u * u * u * points[0].x
+            + 3.0 * u * u * t * points[1].x
+            + 3.0 * u * t * t * points[2].x
+            + t * t * t * points[3].x,
+        u * u * u * points[0].y
+            + 3.0 * u * u * t * points[1].y
+            + 3.0 * u * t * t * points[2].y
+            + t * t * t * points[3].y,
+    )
 }
 
 fn draw_bezier_curve(
@@ -992,25 +951,11 @@ fn draw_bezier_curve(
     } else {
         img_buf.height() - 1
     };
-    let curve_point = |t: f64| {
-        let u = 1.0 - t;
-        Point::new(
-            u * u * u * points[0].x
-                + 3.0 * u * u * t * points[1].x
-                + 3.0 * u * t * t * points[2].x
-                + t * t * t * points[3].x,
-            u * u * u * points[0].y
-                + 3.0 * u * u * t * points[1].y
-                + 3.0 * u * t * t * points[2].y
-                + t * t * t * points[3].y,
-        )
-    };
-
     // Approximate the curve with short segments and fill pixels within the stroke.
     let steps = steps.max(32);
     let mut start = points[0];
     for step in 1..=steps {
-        let end = curve_point(step as f64 / steps as f64);
+        let end = bezier_point(&points, step as f64 / steps as f64);
         let segment = end - start;
         let length_squared = segment.dot(segment);
         let bounds = [
@@ -1094,13 +1039,14 @@ mod tests {
     fn test_calc_graph_row_image_default_params(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         test_calc_graph_row_image(
@@ -1120,13 +1066,14 @@ mod tests {
     fn test_calc_graph_row_image_wide_image(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         image_params.width = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
 
@@ -1147,13 +1094,14 @@ mod tests {
     fn test_calc_graph_row_image_tall_image(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         image_params.height = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
 
@@ -1174,13 +1122,14 @@ mod tests {
     fn test_calc_graph_row_image_single_cell_width(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Single;
-        let image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         test_calc_graph_row_image(
@@ -1200,13 +1149,14 @@ mod tests {
     fn test_calc_graph_row_image_circle_radius(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = straight_test_params();
         let cell_count = 2;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         image_params.circle_inner_radius = 5;
         image_params.circle_outer_radius = 12;
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -1228,13 +1178,14 @@ mod tests {
     fn test_calc_graph_row_image_line_width(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = straight_test_params();
         let cell_count = 2;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         image_params.line_width = 1;
         let drawing_pixels = DrawingPixels::new(&image_params);
 
@@ -1252,7 +1203,11 @@ mod tests {
     #[case("color_rounded", GraphStyle::Rounded)]
     #[case("color_angular", GraphStyle::Angular)]
     #[case("color_curved", GraphStyle::Curved)]
-    fn test_calc_graph_row_image_color(#[case] file_name: &str, #[case] graph_style: GraphStyle) {
+    fn test_calc_graph_row_image_color(
+        #[case] file_name: &str,
+        #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
+    ) {
         let params = branches_test_params();
         let cell_count = 7;
         let graph_color_config = GraphColorConfig {
@@ -1267,7 +1222,7 @@ mod tests {
         };
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         test_calc_graph_row_image(
@@ -1285,7 +1240,7 @@ mod tests {
     #[case(CellWidthType::Single)]
     fn test_curved_connection_positions(#[case] cell_width_type: CellWidthType) {
         let colors = GraphColorSet::new(&GraphColorConfig::default());
-        let params = ImageParams::new(&colors, cell_width_type);
+        let params = ImageParams::new(&colors, cell_width_type, false);
         let pixels = DrawingPixels::new(&params);
 
         for (commit_pos_x, edges) in simple_test_params() {
@@ -1339,6 +1294,67 @@ mod tests {
                 assert_eq!(rounded.get_pixel(x, y), curved.get_pixel(x, y));
             }
         }
+    }
+
+    #[rstest]
+    #[case(GraphStyle::Rounded)]
+    #[case(GraphStyle::Angular)]
+    #[case(GraphStyle::Curved)]
+    fn test_antialias_connection_boundaries(
+        #[case] style: GraphStyle,
+        #[values(CellWidthType::Double, CellWidthType::Single)] cell_width_type: CellWidthType,
+    ) {
+        let colors = GraphColorSet::new(&GraphColorConfig::default());
+        let params = ImageParams::new(&colors, cell_width_type, false);
+        let pixels = DrawingPixels::new(&params);
+        let aa_params = ImageParams::new(&colors, cell_width_type, true);
+        let aa_pixels = DrawingPixels::new(&aa_params);
+        for (pos, edges) in simple_test_params() {
+            let mut edges: Vec<_> = edges
+                .into_iter()
+                .map(|(t, x, line)| Edge::new(t, x, line))
+                .collect();
+            let aliased = calc_graph_row_image(pos, 4, &edges, &params, &pixels, style);
+            let aa = calc_graph_row_image(pos, 4, &edges, &aa_params, &aa_pixels, style);
+            assert_eq!(aliased.cell_count, aa.cell_count);
+            let aliased = image::load_from_memory(&aliased.bytes).unwrap().to_rgba8();
+            let aa_image = image::load_from_memory(&aa.bytes).unwrap().to_rgba8();
+            assert_eq!(aliased.dimensions(), aa_image.dimensions());
+            assert!(aa_image.pixels().any(|p| p[3] > 0 && p[3] < 255));
+            for y in [0, aa_image.height() - 1] {
+                for x in 0..aa_image.width() {
+                    assert_eq!(
+                        aliased.get_pixel(x, y),
+                        aa_image.get_pixel(x, y),
+                        "boundary at ({x}, {y})"
+                    );
+                }
+            }
+            edges.reverse();
+            let reordered = calc_graph_row_image(pos, 4, &edges, &aa_params, &aa_pixels, style);
+            assert_eq!(aa.bytes, reordered.bytes);
+        }
+    }
+
+    #[rstest]
+    fn test_antialias_circle_colors(#[values("#ffffff90", "#00000000")] edge: &str) {
+        let config = GraphColorConfig {
+            branches: vec!["#c8c86480".into()],
+            edge: edge.into(),
+            background: "#00ff0070".into(),
+        };
+        let colors = GraphColorSet::new(&config);
+        let params = ImageParams::new(&colors, CellWidthType::Double, true);
+        let pixels = DrawingPixels::new(&params);
+        let row = calc_graph_row_image(0, 1, &[], &params, &pixels, GraphStyle::Rounded);
+        let image = image::load_from_memory(&row.bytes).unwrap().to_rgba8();
+        assert_eq!(*image.get_pixel(25, 25), params.edge_color(0));
+        let outline = if params.circle_edge_color[3] == 0 {
+            params.background_color
+        } else {
+            params.circle_edge_color
+        };
+        assert_eq!(*image.get_pixel(25, 13), outline);
     }
 
     #[rustfmt::skip]
@@ -1400,7 +1416,12 @@ mod tests {
             })
             .collect();
 
-        save_image(&graph_row_images, &image_params, cell_count, file_name);
+        let file_name = if image_params.antialias {
+            format!("{file_name}_antialias")
+        } else {
+            file_name.to_owned()
+        };
+        save_image(&graph_row_images, &image_params, cell_count, &file_name);
     }
 
     fn save_image(

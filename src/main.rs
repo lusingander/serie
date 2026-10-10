@@ -26,10 +26,13 @@ mod test_git;
 
 use std::{path::Path, rc::Rc};
 
-use app::{App, Ret};
 use clap::{Parser, ValueEnum};
-use graph::GraphImageManager;
 use serde::Deserialize;
+
+use crate::{
+    app::{App, Ret},
+    graph::GraphImageManager,
+};
 
 /// Serie - A rich git commit graph in your terminal, like magic 📚
 #[derive(Parser)]
@@ -55,6 +58,14 @@ struct Args {
     #[arg(short = 's', long, value_name = "TYPE")]
     graph_style: Option<GraphStyle>,
 
+    /// Enable antialiasing for commit graph images
+    #[arg(long, conflicts_with = "no_graph_antialias")]
+    graph_antialias: bool,
+
+    /// Disable antialiasing for commit graph images
+    #[arg(long, conflicts_with = "graph_antialias")]
+    no_graph_antialias: bool,
+
     /// Initial selection of commit [default: latest]
     #[arg(short, long, value_name = "TYPE")]
     initial_selection: Option<InitialSelection>,
@@ -62,6 +73,18 @@ struct Args {
     /// Primary branch to keep on the leftmost column
     #[arg(short = 'b', long, value_name = "BRANCH")]
     primary_branch: Option<String>,
+}
+
+impl Args {
+    fn resolve_graph_antialias(&self, configured: Option<bool>) -> bool {
+        if self.graph_antialias {
+            true
+        } else if self.no_graph_antialias {
+            false
+        } else {
+            configured.unwrap_or(false)
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
@@ -160,6 +183,7 @@ fn main() -> Result<()> {
     let order = args.order.or(core_config.option.order).into();
     let graph_width = args.graph_width.or(core_config.option.graph_width);
     let graph_style = args.graph_style.or(core_config.option.graph_style).into();
+    let graph_antialias = args.resolve_graph_antialias(core_config.option.graph_antialias);
     let graph_image_width_mode = graph_config.row_image_width;
     let initial_selection = args
         .initial_selection
@@ -194,6 +218,7 @@ fn main() -> Result<()> {
             &graph_color_set,
             cell_width_type,
             graph_style,
+            graph_antialias,
             graph_image_width_mode,
             image_protocol,
         );

@@ -130,6 +130,7 @@ pub struct CoreOptionConfig {
     pub order: Option<CommitOrderType>,
     pub graph_width: Option<GraphWidthType>,
     pub graph_style: Option<GraphStyle>,
+    pub graph_antialias: Option<bool>,
     pub initial_selection: Option<InitialSelection>,
 }
 
@@ -451,6 +452,7 @@ mod tests {
                     order: None,
                     graph_width: None,
                     graph_style: None,
+                    graph_antialias: None,
                     initial_selection: None,
                 },
                 git: CoreGitConfig { mailmap: false },
@@ -539,6 +541,7 @@ mod tests {
             order = "topo"
             graph_width = "single"
             graph_style = "angular"
+            graph_antialias = true
             initial_selection = "head"
             [core.git]
             mailmap = true
@@ -585,6 +588,7 @@ mod tests {
                     order: Some(CommitOrderType::Topo),
                     graph_width: Some(GraphWidthType::Single),
                     graph_style: Some(GraphStyle::Angular),
+                    graph_antialias: Some(true),
                     initial_selection: Some(InitialSelection::Head),
                 },
                 git: CoreGitConfig { mailmap: true },
@@ -699,6 +703,7 @@ mod tests {
                     order: None,
                     graph_width: None,
                     graph_style: None,
+                    graph_antialias: None,
                     initial_selection: None,
                 },
                 git: CoreGitConfig { mailmap: false },

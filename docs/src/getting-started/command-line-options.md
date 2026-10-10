@@ -61,6 +61,14 @@ _Possible values:_ `rounded`, `angular`, `curved`
 
 <img src="https://raw.githubusercontent.com/lusingander/serie/master/img/style-curved.png" width=400>
     
+## --graph-antialias, --no-graph-antialias
+
+`--graph-antialias` enables antialiasing for graph lines and commit circles. It is disabled by default.
+
+`--no-graph-antialias` disables antialiasing even when enabled in the config file.
+
+These flags cannot be used together.
+
 ## -i, --initial-selection \<TYPE\>
 
 The initial selection of commit when starting the application.

@@ -52,6 +52,11 @@
               ],
               "default": "rounded"
             },
+            "graph_antialias": {
+              "type": "boolean",
+              "description": "Whether to antialias commit graph images. The value specified in the command line argument takes precedence.",
+              "default": false
+            },
             "initial_selection": {
               "type": "string",
               "description": "The initial selection of commit when starting the application. The value specified in the command line argument takes precedence.",

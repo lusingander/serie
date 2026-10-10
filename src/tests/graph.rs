@@ -128,6 +128,24 @@ fn branch_001() -> TestResult {
             graph::GraphStyle::Curved,
         ),
         GenerateGraphOption::new(
+            "branch_001_rounded_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "branch_001_angular_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "branch_001_curved_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
             "branch_001_max_count",
             git::SortCommit::Chronological,
             graph::GraphStyle::Rounded,
@@ -284,6 +302,24 @@ fn branch_003() -> TestResult {
             git::SortCommit::Chronological,
             graph::GraphStyle::Curved,
         ),
+        GenerateGraphOption::new(
+            "branch_003_rounded_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "branch_003_angular_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "branch_003_curved_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        )
+        .with_antialias(),
     ];
 
     copy_git_dir(repo_path, "branch_003");
@@ -908,6 +944,24 @@ fn merge_004() -> TestResult {
             git::SortCommit::Chronological,
             graph::GraphStyle::Curved,
         ),
+        GenerateGraphOption::new(
+            "merge_004_rounded_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "merge_004_angular_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "merge_004_curved_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        )
+        .with_antialias(),
     ];
 
     copy_git_dir(repo_path, "merge_004");
@@ -1517,6 +1571,24 @@ fn complex_001() -> TestResult {
             git::SortCommit::Chronological,
             graph::GraphStyle::Curved,
         ),
+        GenerateGraphOption::new(
+            "complex_001_rounded_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "complex_001_angular_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "complex_001_curved_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        )
+        .with_antialias(),
     ];
 
     copy_git_dir(repo_path, "complex_001");
@@ -1789,6 +1861,7 @@ struct GenerateGraphOption {
     output_name: &'static str,
     sort: git::SortCommit,
     style: graph::GraphStyle,
+    antialias: bool,
     max_count: Option<usize>,
     primary_branch: Option<String>,
 }
@@ -1803,9 +1876,15 @@ impl GenerateGraphOption {
             output_name,
             sort,
             style,
+            antialias: false,
             max_count: None,
             primary_branch: None,
         }
+    }
+
+    fn with_antialias(mut self) -> GenerateGraphOption {
+        self.antialias = true;
+        self
     }
 
     fn with_max_count(mut self, max_count: usize) -> GenerateGraphOption {
@@ -1833,7 +1912,7 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     let cell_width_type = graph::CellWidthType::Double;
     let repository = git::Repository::load(path.as_ref(), option.sort, max_count, true).unwrap();
     let graph = graph::calc_graph(&repository, option.primary_branch.as_deref());
-    let image_params = graph::ImageParams::new(&graph_color_set, cell_width_type);
+    let image_params = graph::ImageParams::new(&graph_color_set, cell_width_type, option.antialias);
     let drawing_pixels = graph::DrawingPixels::new(&image_params);
     let graph_image = build_graph_image(&graph, &image_params, &drawing_pixels, option.style);
 
