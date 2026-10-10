@@ -3,7 +3,10 @@ use rustc_hash::FxHashMap;
 
 use crate::graph::{
     geometry::Point,
-    image::{DrawingPixels, ImageParams, Pixels},
+    image::{
+        bezier_point, curved_connection_points, diagonal_connection, DrawingPixels, GraphStyle,
+        ImageParams, Pixels,
+    },
     Edge, EdgeType,
 };
 
@@ -102,12 +105,13 @@ fn rounded_corner_contains(p: Point, edge_type: EdgeType, params: &ImageParams) 
     (radius - half_width).max(0.0) <= distance && distance <= radius + half_width
 }
 
-pub fn render_rounded(
+pub fn render(
     commit_pos_x: usize,
     cell_count: usize,
     edges: &[Edge],
     params: &ImageParams,
     pixels: &DrawingPixels,
+    style: GraphStyle,
 ) -> RgbaImage {
     let background = if params.background_color[3] == 0 {
         Rgba([0; 4])
@@ -125,7 +129,12 @@ pub fn render_rounded(
     if params.circle_edge_color[3] != 0 {
         image.paint(&masks.circle_edge, offset, params.circle_edge_color);
     }
-    for edge in edges {
+    let mut ordered_edges: Vec<_> = edges.iter().collect();
+    ordered_edges.sort_by_key(|e| (e.associated_line_pos_x, e.pos_x, e.edge_type));
+    for edge in &ordered_edges {
+        if style != GraphStyle::Rounded && !edge.edge_type.is_vertically_related() {
+            continue;
+        }
         let offset = (edge.pos_x * params.width as usize) as i32;
         let color = params.edge_color(edge.associated_line_pos_x);
         match edge.edge_type {
@@ -148,7 +157,109 @@ pub fn render_rounded(
             ),
         }
     }
+    if style != GraphStyle::Rounded {
+        for corner in ordered_edges {
+            let side_type = match corner.edge_type {
+                EdgeType::RightTop | EdgeType::RightBottom => EdgeType::Right,
+                EdgeType::LeftTop | EdgeType::LeftBottom => EdgeType::Left,
+                _ => continue,
+            };
+            let Some(side) = edges.iter().find(|e| {
+                e.edge_type == side_type && e.associated_line_pos_x == corner.associated_line_pos_x
+            }) else {
+                continue;
+            };
+            let coverage = match style {
+                GraphStyle::Angular => diagonal_coverage(side, corner, params),
+                GraphStyle::Curved => curved_coverage(side, corner, params),
+                GraphStyle::Rounded => unreachable!(),
+            };
+            image.paint(
+                &coverage,
+                0,
+                params.edge_color(corner.associated_line_pos_x),
+            );
+        }
+    }
     image.resolve()
+}
+
+fn diagonal_coverage(side: &Edge, corner: &Edge, params: &ImageParams) -> Coverage {
+    let (vertices, ys, x_start) = diagonal_connection(side, corner, params);
+    let bounds = [
+        Point::new(
+            vertices.iter().map(|p| p.x).fold(f64::INFINITY, f64::min),
+            vertices.iter().map(|p| p.y).fold(f64::INFINITY, f64::min),
+        ),
+        Point::new(
+            vertices
+                .iter()
+                .map(|p| p.x)
+                .fold(f64::NEG_INFINITY, f64::max),
+            vertices
+                .iter()
+                .map(|p| p.y)
+                .fold(f64::NEG_INFINITY, f64::max),
+        ),
+    ];
+    let mut coverage = Coverage::default();
+    sample_shape(&mut coverage, bounds, |p| p.is_inside_polygon(&vertices));
+    for y in ys {
+        for x in x_start..x_start + i32::from(params.line_width) {
+            coverage.insert((x, y as i32), FULL_COVERAGE);
+        }
+    }
+    coverage
+}
+
+fn curved_coverage(side: &Edge, corner: &Edge, params: &ImageParams) -> Coverage {
+    let points = curved_connection_points(side, corner, params);
+    let radius = f64::from(params.line_width) / 2.0;
+    let direction = (points[3].x - points[0].x).signum();
+    let boundary_y = if points[3].y == 0.0 {
+        0
+    } else {
+        i32::from(params.height) - 1
+    };
+    let steps = ((((points[3].x - points[0].x).abs() + (points[3].y - points[0].y).abs()) * 3.0)
+        .ceil() as usize)
+        .max(32);
+    let mut coverage = Coverage::default();
+    let mut start = points[0];
+    for step in 1..=steps {
+        let end = bezier_point(&points, step as f64 / steps as f64);
+        let segment = end - start;
+        let length_squared = segment.dot(segment);
+        let bounds = [
+            Point::new(
+                (start.x.min(end.x) - radius).max(0.0),
+                (start.y.min(end.y) - radius).max(0.0),
+            ),
+            Point::new(
+                end.x.max(start.x) + radius,
+                (end.y.max(start.y) + radius).min(f64::from(params.height)),
+            ),
+        ];
+        sample_shape(&mut coverage, bounds, |p| {
+            if p.y.floor() as i32 == boundary_y || (p.x - points[0].x) * direction < 0.0 {
+                return false;
+            }
+            let t = if length_squared == 0.0 {
+                0.0
+            } else {
+                ((p - start).dot(segment) / length_squared).clamp(0.0, 1.0)
+            };
+            let delta = p - (start + segment * t);
+            delta.dot(delta) <= radius * radius
+        });
+        start = end;
+    }
+    // Preserve the straight-edge mask at the boundary shared with the next row.
+    let x_start = (points[3].x - radius) as i32;
+    for x in x_start..x_start + i32::from(params.line_width) {
+        coverage.insert((x, boundary_y), FULL_COVERAGE);
+    }
+    coverage
 }
 
 fn sample_shape(coverage: &mut Coverage, bounds: [Point; 2], contains: impl Fn(Point) -> bool) {

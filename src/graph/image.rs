@@ -635,13 +635,14 @@ pub fn calc_graph_row_image(
     let image_width = (image_params.width as usize * cell_count) as u32;
     let image_height = image_params.height as u32;
 
-    if image_params.antialias && graph_style == GraphStyle::Rounded {
-        let image = antialias::render_rounded(
+    if image_params.antialias {
+        let image = antialias::render(
             commit_pos_x,
             cell_count,
             edges,
             image_params,
             drawing_pixels,
+            graph_style,
         );
         return GraphRowImage {
             bytes: build_image(&image, image_width, image_height),
@@ -920,6 +921,20 @@ fn curved_connection_points(side: &Edge, corner: &Edge, image_params: &ImagePara
     ]
 }
 
+fn bezier_point(points: &[Point; 4], t: f64) -> Point {
+    let u = 1.0 - t;
+    Point::new(
+        u * u * u * points[0].x
+            + 3.0 * u * u * t * points[1].x
+            + 3.0 * u * t * t * points[2].x
+            + t * t * t * points[3].x,
+        u * u * u * points[0].y
+            + 3.0 * u * u * t * points[1].y
+            + 3.0 * u * t * t * points[2].y
+            + t * t * t * points[3].y,
+    )
+}
+
 fn draw_bezier_curve(
     img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
     points: [Point; 4],
@@ -935,25 +950,11 @@ fn draw_bezier_curve(
     } else {
         img_buf.height() - 1
     };
-    let curve_point = |t: f64| {
-        let u = 1.0 - t;
-        Point::new(
-            u * u * u * points[0].x
-                + 3.0 * u * u * t * points[1].x
-                + 3.0 * u * t * t * points[2].x
-                + t * t * t * points[3].x,
-            u * u * u * points[0].y
-                + 3.0 * u * u * t * points[1].y
-                + 3.0 * u * t * t * points[2].y
-                + t * t * t * points[3].y,
-        )
-    };
-
     // Approximate the curve with short segments and fill pixels within the stroke.
     let steps = steps.max(32);
     let mut start = points[0];
     for step in 1..=steps {
-        let end = curve_point(step as f64 / steps as f64);
+        let end = bezier_point(&points, step as f64 / steps as f64);
         let segment = end - start;
         let length_squared = segment.dot(segment);
         let bounds = [
