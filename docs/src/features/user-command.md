@@ -39,6 +39,19 @@ commands_3 = { "name" = "delete branch", type = "silent", commands = ["git", "br
 commands_4 = { "name" = "amend commit", type = "suspend", commands = ["git", "commit", "--amend"], refresh = true }
 ```
 
+## Marked commits
+
+Press `m` to mark a commit and use `{{marked_hash}}` to refer to it in user commands.
+For example, mark a commit, select another commit, then press `D` to view the diff:
+
+```toml
+[keybind]
+user_command_2 = ["shift-d"]
+
+[core.user_command]
+commands_2 = { name = "diff from mark", commands = ["git", "--no-pager", "diff", "--color=always", "{{marked_hash}}", "{{target_hash}}"] }
+```
+
 ## Refresh
 
 For `silent` and `suspend` commands, you can set `refresh = true` to automatically reload the repository and refresh the display (e.g., commit list) after the command is executed.
@@ -56,6 +69,8 @@ They will be replaced with their respective values command is executed.
 - `{{target_hash}}`
   - The hash of the selected commit.
   - example: `b0ce4cb9c798576af9b4accc9f26ddce5e72063d`
+- `{{marked_hash}}`
+  - The full hash of the marked commit, or an empty string if no commit is marked.
 - `{{first_parent_hash}}`
   - The hash of the first parent of the selected commit.
   - example: `c103d9744df8ebf100773a11345f011152ec5581`
