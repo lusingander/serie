@@ -311,7 +311,7 @@ pub enum CursorType {
 }
 
 // Config values are lowercase; PascalCase aliases are kept for backward compatibility.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default, Validate)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Validate)]
 #[serde(rename_all = "lowercase")]
 pub enum ClipboardConfig {
     #[default]
