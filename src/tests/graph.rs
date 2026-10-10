@@ -123,6 +123,11 @@ fn branch_001() -> TestResult {
             graph::GraphStyle::Angular,
         ),
         GenerateGraphOption::new(
+            "branch_001_curved",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        ),
+        GenerateGraphOption::new(
             "branch_001_max_count",
             git::SortCommit::Chronological,
             graph::GraphStyle::Rounded,
@@ -273,6 +278,11 @@ fn branch_003() -> TestResult {
             "branch_003_angular",
             git::SortCommit::Chronological,
             graph::GraphStyle::Angular,
+        ),
+        GenerateGraphOption::new(
+            "branch_003_curved",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
         ),
     ];
 
@@ -893,6 +903,11 @@ fn merge_004() -> TestResult {
             git::SortCommit::Chronological,
             graph::GraphStyle::Angular,
         ),
+        GenerateGraphOption::new(
+            "merge_004_curved",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        ),
     ];
 
     copy_git_dir(repo_path, "merge_004");
@@ -1496,6 +1511,11 @@ fn complex_001() -> TestResult {
             "complex_001_angular",
             git::SortCommit::Chronological,
             graph::GraphStyle::Angular,
+        ),
+        GenerateGraphOption::new(
+            "complex_001_curved",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
         ),
     ];
 
