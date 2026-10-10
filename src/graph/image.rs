@@ -59,7 +59,7 @@ impl<'a> GraphImageManager<'a> {
         image_width_mode: GraphImageWidthMode,
         image_protocol: ImageProtocol,
     ) -> Self {
-        let image_params = ImageParams::new(graph_color_set, cell_width_type);
+        let image_params = ImageParams::new(graph_color_set, cell_width_type, false);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         GraphImageManager {
@@ -183,6 +183,7 @@ pub struct ImageParams {
     edge_colors: Vec<image::Rgba<u8>>,
     circle_edge_color: image::Rgba<u8>,
     background_color: image::Rgba<u8>,
+    antialias: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -192,7 +193,11 @@ pub enum CellWidthType {
 }
 
 impl ImageParams {
-    pub fn new(graph_color_set: &GraphColorSet, cell_width_type: CellWidthType) -> Self {
+    pub fn new(
+        graph_color_set: &GraphColorSet,
+        cell_width_type: CellWidthType,
+        antialias: bool,
+    ) -> Self {
         let (width, height, line_width, circle_inner_radius, circle_outer_radius) =
             match cell_width_type {
                 CellWidthType::Double => (50, 50, 5, 10, 13),
@@ -214,6 +219,7 @@ impl ImageParams {
             edge_colors,
             circle_edge_color,
             background_color,
+            antialias,
         }
     }
 
@@ -262,6 +268,7 @@ type Pixels = FxHashSet<(i32, i32)>;
 
 #[derive(Debug)]
 pub struct DrawingPixels {
+    antialias: Option<antialias::Masks>,
     circle: Pixels,
     circle_edge: Pixels,
     vertical_edge: Pixels,
@@ -292,6 +299,9 @@ impl DrawingPixels {
         let left_bottom_edge = calc_left_bottom_edge_drawing_pixels(image_params);
 
         Self {
+            antialias: image_params
+                .antialias
+                .then(|| antialias::Masks::new(image_params)),
             circle,
             circle_edge,
             vertical_edge,
@@ -624,6 +634,20 @@ pub fn calc_graph_row_image(
 ) -> GraphRowImage {
     let image_width = (image_params.width as usize * cell_count) as u32;
     let image_height = image_params.height as u32;
+
+    if image_params.antialias && graph_style == GraphStyle::Rounded {
+        let image = antialias::render_rounded(
+            commit_pos_x,
+            cell_count,
+            edges,
+            image_params,
+            drawing_pixels,
+        );
+        return GraphRowImage {
+            bytes: build_image(&image, image_width, image_height),
+            cell_count,
+        };
+    }
 
     let mut img_buf = image::ImageBuffer::new(image_width, image_height);
 
@@ -1019,7 +1043,7 @@ mod tests {
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         test_calc_graph_row_image(
@@ -1045,7 +1069,7 @@ mod tests {
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
         image_params.width = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
 
@@ -1072,7 +1096,7 @@ mod tests {
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
         image_params.height = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
 
@@ -1099,7 +1123,7 @@ mod tests {
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Single;
-        let image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         test_calc_graph_row_image(
@@ -1125,7 +1149,7 @@ mod tests {
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
         image_params.circle_inner_radius = 5;
         image_params.circle_outer_radius = 12;
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -1153,7 +1177,7 @@ mod tests {
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
         image_params.line_width = 1;
         let drawing_pixels = DrawingPixels::new(&image_params);
 
@@ -1186,7 +1210,7 @@ mod tests {
         };
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let image_params = ImageParams::new(&graph_color_set, cell_width_type);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         test_calc_graph_row_image(
@@ -1204,7 +1228,7 @@ mod tests {
     #[case(CellWidthType::Single)]
     fn test_curved_connection_positions(#[case] cell_width_type: CellWidthType) {
         let colors = GraphColorSet::new(&GraphColorConfig::default());
-        let params = ImageParams::new(&colors, cell_width_type);
+        let params = ImageParams::new(&colors, cell_width_type, false);
         let pixels = DrawingPixels::new(&params);
 
         for (commit_pos_x, edges) in simple_test_params() {
