@@ -18,6 +18,8 @@ use crate::{
     protocol::{ImageProtocol, PreparedImage},
 };
 
+mod antialias;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GraphStyle {
     Rounded,
