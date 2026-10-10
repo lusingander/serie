@@ -20,7 +20,7 @@ use crate::{
     external::{
         copy_to_clipboard, exec_user_command, exec_user_command_suspend, ExternalCommandParameters,
     },
-    git::{Commit, FileChange, Head, Ref, Repository},
+    git::{Commit, CommitHash, FileChange, Head, Ref, Repository},
     graph::GraphImageManager,
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -544,6 +544,7 @@ impl App<'_> {
         let result = build_external_command_parameters_and_exec_command(
             &commit,
             &refs,
+            commit_list_state.marked_commit_hash(),
             user_command_number,
             self.app_status.view_area,
             &self.ctx,
@@ -582,6 +583,7 @@ impl App<'_> {
         let result = build_external_command_parameters_and_exec_command(
             &commit,
             &refs,
+            commit_list_state.marked_commit_hash(),
             user_command_number,
             self.app_status.view_area,
             &self.ctx,
@@ -609,6 +611,7 @@ impl App<'_> {
         match build_external_command_parameters(
             &commit,
             &refs,
+            commit_list_state.marked_commit_hash(),
             user_command_number,
             self.app_status.view_area,
             &self.ctx,
@@ -850,17 +853,26 @@ fn extract_user_command_refresh_by_number(user_command_number: usize, ctx: &AppC
 fn build_external_command_parameters_and_exec_command(
     commit: &Commit,
     refs: &[Ref],
+    marked_commit_hash: Option<&CommitHash>,
     user_command_number: usize,
     view_area: Rect,
     ctx: &AppContext,
 ) -> Result<String, String> {
-    build_external_command_parameters(commit, refs, user_command_number, view_area, ctx)
-        .and_then(exec_user_command)
+    build_external_command_parameters(
+        commit,
+        refs,
+        marked_commit_hash,
+        user_command_number,
+        view_area,
+        ctx,
+    )
+    .and_then(exec_user_command)
 }
 
 fn build_external_command_parameters<'a>(
     commit: &'a Commit,
     refs: &'a [Ref],
+    marked_commit_hash: Option<&'a CommitHash>,
     user_command_number: usize,
     view_area: Rect,
     ctx: &'a AppContext,
@@ -898,6 +910,7 @@ fn build_external_command_parameters<'a>(
     Ok(ExternalCommandParameters {
         command,
         target_hash,
+        marked_hash: marked_commit_hash.map(CommitHash::as_str),
         parent_hashes,
         all_refs,
         branches,
