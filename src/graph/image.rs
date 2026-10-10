@@ -1039,13 +1039,14 @@ mod tests {
     fn test_calc_graph_row_image_default_params(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         test_calc_graph_row_image(
@@ -1065,13 +1066,14 @@ mod tests {
     fn test_calc_graph_row_image_wide_image(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         image_params.width = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
 
@@ -1092,13 +1094,14 @@ mod tests {
     fn test_calc_graph_row_image_tall_image(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         image_params.height = 100;
         let drawing_pixels = DrawingPixels::new(&image_params);
 
@@ -1119,13 +1122,14 @@ mod tests {
     fn test_calc_graph_row_image_single_cell_width(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = simple_test_params();
         let cell_count = 4;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Single;
-        let image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         test_calc_graph_row_image(
@@ -1145,13 +1149,14 @@ mod tests {
     fn test_calc_graph_row_image_circle_radius(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = straight_test_params();
         let cell_count = 2;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         image_params.circle_inner_radius = 5;
         image_params.circle_outer_radius = 12;
         let drawing_pixels = DrawingPixels::new(&image_params);
@@ -1173,13 +1178,14 @@ mod tests {
     fn test_calc_graph_row_image_line_width(
         #[case] file_name: &str,
         #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
         let params = straight_test_params();
         let cell_count = 2;
         let graph_color_config = GraphColorConfig::default();
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
+        let mut image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         image_params.line_width = 1;
         let drawing_pixels = DrawingPixels::new(&image_params);
 
@@ -1197,7 +1203,11 @@ mod tests {
     #[case("color_rounded", GraphStyle::Rounded)]
     #[case("color_angular", GraphStyle::Angular)]
     #[case("color_curved", GraphStyle::Curved)]
-    fn test_calc_graph_row_image_color(#[case] file_name: &str, #[case] graph_style: GraphStyle) {
+    fn test_calc_graph_row_image_color(
+        #[case] file_name: &str,
+        #[case] graph_style: GraphStyle,
+        #[values(false, true)] antialias: bool,
+    ) {
         let params = branches_test_params();
         let cell_count = 7;
         let graph_color_config = GraphColorConfig {
@@ -1212,7 +1222,7 @@ mod tests {
         };
         let graph_color_set = GraphColorSet::new(&graph_color_config);
         let cell_width_type = CellWidthType::Double;
-        let image_params = ImageParams::new(&graph_color_set, cell_width_type, false);
+        let image_params = ImageParams::new(&graph_color_set, cell_width_type, antialias);
         let drawing_pixels = DrawingPixels::new(&image_params);
 
         test_calc_graph_row_image(
@@ -1286,6 +1296,67 @@ mod tests {
         }
     }
 
+    #[rstest]
+    #[case(GraphStyle::Rounded)]
+    #[case(GraphStyle::Angular)]
+    #[case(GraphStyle::Curved)]
+    fn test_antialias_connection_boundaries(
+        #[case] style: GraphStyle,
+        #[values(CellWidthType::Double, CellWidthType::Single)] cell_width_type: CellWidthType,
+    ) {
+        let colors = GraphColorSet::new(&GraphColorConfig::default());
+        let params = ImageParams::new(&colors, cell_width_type, false);
+        let pixels = DrawingPixels::new(&params);
+        let aa_params = ImageParams::new(&colors, cell_width_type, true);
+        let aa_pixels = DrawingPixels::new(&aa_params);
+        for (pos, edges) in simple_test_params() {
+            let mut edges: Vec<_> = edges
+                .into_iter()
+                .map(|(t, x, line)| Edge::new(t, x, line))
+                .collect();
+            let aliased = calc_graph_row_image(pos, 4, &edges, &params, &pixels, style);
+            let aa = calc_graph_row_image(pos, 4, &edges, &aa_params, &aa_pixels, style);
+            assert_eq!(aliased.cell_count, aa.cell_count);
+            let aliased = image::load_from_memory(&aliased.bytes).unwrap().to_rgba8();
+            let aa_image = image::load_from_memory(&aa.bytes).unwrap().to_rgba8();
+            assert_eq!(aliased.dimensions(), aa_image.dimensions());
+            assert!(aa_image.pixels().any(|p| p[3] > 0 && p[3] < 255));
+            for y in [0, aa_image.height() - 1] {
+                for x in 0..aa_image.width() {
+                    assert_eq!(
+                        aliased.get_pixel(x, y),
+                        aa_image.get_pixel(x, y),
+                        "boundary at ({x}, {y})"
+                    );
+                }
+            }
+            edges.reverse();
+            let reordered = calc_graph_row_image(pos, 4, &edges, &aa_params, &aa_pixels, style);
+            assert_eq!(aa.bytes, reordered.bytes);
+        }
+    }
+
+    #[rstest]
+    fn test_antialias_circle_colors(#[values("#ffffff90", "#00000000")] edge: &str) {
+        let config = GraphColorConfig {
+            branches: vec!["#c8c86480".into()],
+            edge: edge.into(),
+            background: "#00ff0070".into(),
+        };
+        let colors = GraphColorSet::new(&config);
+        let params = ImageParams::new(&colors, CellWidthType::Double, true);
+        let pixels = DrawingPixels::new(&params);
+        let row = calc_graph_row_image(0, 1, &[], &params, &pixels, GraphStyle::Rounded);
+        let image = image::load_from_memory(&row.bytes).unwrap().to_rgba8();
+        assert_eq!(*image.get_pixel(25, 25), params.edge_color(0));
+        let outline = if params.circle_edge_color[3] == 0 {
+            params.background_color
+        } else {
+            params.circle_edge_color
+        };
+        assert_eq!(*image.get_pixel(25, 13), outline);
+    }
+
     #[rustfmt::skip]
     fn simple_test_params() -> Vec<TestParam> {
         vec![
@@ -1345,7 +1416,12 @@ mod tests {
             })
             .collect();
 
-        save_image(&graph_row_images, &image_params, cell_count, file_name);
+        let file_name = if image_params.antialias {
+            format!("{file_name}_antialias")
+        } else {
+            file_name.to_owned()
+        };
+        save_image(&graph_row_images, &image_params, cell_count, &file_name);
     }
 
     fn save_image(
