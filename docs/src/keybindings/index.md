@@ -33,6 +33,7 @@ The default key bindings can be overridden.
 | <kbd>Ctrl-t</kbd>                    | Toggle search target                               | `search_target_toggle`                       |
 | <kbd>Ctrl-g</kbd>                    | Toggle ignore case                                 | `ignore_case_toggle`                         |
 | <kbd>Ctrl-x</kbd>                    | Toggle fuzzy match                                 | `fuzzy_toggle`                               |
+| <kbd>m</kbd>                         | Toggle commit mark                                 | `mark_toggle`                                |
 | <kbd>R</kbd>                         | Refresh                                            | `refresh`                                    |
 | <kbd>c/C</kbd>                       | Copy commit short/full hash                        | `short_copy` `full_copy`                     |
 | <kbd>d</kbd>                         | Toggle custom user command view                    | `user_command_1`                             |
@@ -48,6 +49,7 @@ The default key bindings can be overridden.
 | <kbd>g/G</kbd>                       | Go to top/bottom                | `go_to_top` `go_to_bottom`      |
 | <kbd>J/K</kbd>                       | Select older/newer commit       | `select_down` `select_up`       |
 | <kbd>Alt-Down</kbd> <kbd>Alt-j</kbd> | Select parent commit            | `go_to_parent`                  |
+| <kbd>m</kbd>                         | Toggle commit mark              | `mark_toggle`                   |
 | <kbd>R</kbd>                         | Refresh                         | `refresh`                       |
 | <kbd>c/C</kbd>                       | Copy commit short/full hash     | `short_copy` `full_copy`        |
 | <kbd>d</kbd>                         | Toggle custom user command view | `user_command_1`                |
@@ -76,6 +78,7 @@ The default key bindings can be overridden.
 | <kbd>g/G</kbd>                       | Go to top/bottom            | `go_to_top` `go_to_bottom`      |
 | <kbd>J/K</kbd>                       | Select older/newer commit   | `select_down` `select_up`       |
 | <kbd>Alt-Down</kbd> <kbd>Alt-j</kbd> | Select parent commit        | `go_to_parent`                  |
+| <kbd>m</kbd>                         | Toggle commit mark          | `mark_toggle`                   |
 | <kbd>R</kbd>                         | Refresh                     | `refresh`                       |
 
 #### Help

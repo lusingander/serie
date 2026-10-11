@@ -198,6 +198,7 @@ pub struct CommitListState<'a> {
     search_input: Input,
     search_matches: Vec<SearchMatch>,
 
+    marked_commit_hash: Option<CommitHash>,
     selected: usize,
     offset: usize,
     total: usize,
@@ -228,6 +229,7 @@ impl<'a> CommitListState<'a> {
             search_options,
             search_input: Input::default(),
             search_matches: vec![SearchMatch::default(); total],
+            marked_commit_hash: None,
             selected: 0,
             offset: 0,
             total,
@@ -238,6 +240,27 @@ impl<'a> CommitListState<'a> {
 
     pub fn graph_area_cell_width(&self) -> u16 {
         self.graph_cell_width + 1 // right pad
+    }
+
+    pub fn marked_commit_hash(&self) -> Option<&CommitHash> {
+        self.marked_commit_hash.as_ref()
+    }
+
+    pub fn toggle_mark(&mut self) {
+        if self.total == 0 {
+            return;
+        }
+        let selected = self.selected_commit_hash();
+        self.marked_commit_hash = if self.marked_commit_hash() == Some(selected) {
+            None
+        } else {
+            Some(selected.clone())
+        };
+    }
+
+    pub fn restore_marked_commit_hash(&mut self, marked_commit_hash: Option<CommitHash>) {
+        self.marked_commit_hash =
+            marked_commit_hash.filter(|hash| self.commit_hash_set.contains(hash));
     }
 
     pub fn update_height(&mut self, height: usize) {
@@ -828,7 +851,15 @@ impl CommitList<'_> {
         }
         let items: Vec<ListItem> = self
             .rendering_commit_info_iter(state)
-            .map(|(_, commit_info)| ListItem::new("│".fg(commit_info.graph_color)))
+            .map(|(_, commit_info)| {
+                let marker = if state.marked_commit_hash() == Some(&commit_info.commit.commit_hash)
+                {
+                    "*"
+                } else {
+                    "│"
+                };
+                ListItem::new(marker.fg(commit_info.graph_color))
+            })
             .collect();
         Widget::render(List::new(items), area, buf)
     }
@@ -1205,10 +1236,12 @@ mod tests {
 
     use crate::{
         color::GraphColorSet,
-        config::GraphColorConfig,
+        config::{CoreConfig, GraphColorConfig, UiConfig},
         git::Repository,
         graph::{calc_graph, CellWidthType, GraphImageWidthMode, GraphStyle},
+        keybind::KeyBind,
         protocol::ImageProtocol,
+        view::ListRefreshViewContext,
     };
 
     use super::*;
@@ -1276,6 +1309,97 @@ mod tests {
         for c in query.chars() {
             state.handle_search_input(KeyEvent::from(KeyCode::Char(c)));
         }
+    }
+
+    #[test]
+    fn test_mark_is_independent_of_selection_and_can_be_replaced_or_removed() {
+        with_commit_list_state(&["first", "second", "third"], |state| {
+            assert_eq!(state.marked_commit_hash(), None);
+            let first = state.selected_commit_hash().clone();
+            let status = state.current_list_status();
+            state.toggle_mark();
+            assert_eq!(state.marked_commit_hash(), Some(&first));
+            assert_eq!(state.current_list_status(), status);
+
+            state.select_next();
+            assert_eq!(state.marked_commit_hash(), Some(&first));
+            let second = state.selected_commit_hash().clone();
+            let status = state.current_list_status();
+            state.toggle_mark();
+            assert_eq!(state.marked_commit_hash(), Some(&second));
+            assert_eq!(state.current_list_status(), status);
+
+            state.toggle_mark();
+            assert_eq!(state.marked_commit_hash(), None);
+            assert_eq!(state.current_list_status(), status);
+        });
+    }
+
+    #[test]
+    fn test_mark_refresh_preserves_loaded_hash_and_drops_missing_hash() {
+        let context = with_commit_list_state(&["first", "second"], |state| {
+            state.select_next();
+            state.toggle_mark();
+            state.select_first();
+            ListRefreshViewContext::from(&*state)
+        });
+        assert_ne!(
+            context.marked_commit_hash.as_ref().unwrap().as_str(),
+            context.commit_hash
+        );
+
+        with_commit_list_state(&["first", "second"], |state| {
+            assert_eq!(state.marked_commit_hash(), None);
+            state.restore_marked_commit_hash(context.marked_commit_hash.clone());
+            assert_eq!(
+                state.marked_commit_hash(),
+                context.marked_commit_hash.as_ref()
+            );
+        });
+        with_commit_list_state(&["first"], |state| {
+            state.toggle_mark();
+            state.restore_marked_commit_hash(context.marked_commit_hash);
+            assert_eq!(state.marked_commit_hash(), None);
+        });
+    }
+
+    #[test]
+    fn test_mark_only_changes_marker_symbol_at_narrow_and_wide_widths() {
+        with_commit_list_state(&["first", "second", "third"], |state| {
+            state.commits[0].graph_color = Color::Green;
+            state.select_next();
+            let mut ui_config = UiConfig::default();
+            ui_config.list.columns = vec![
+                UserListColumnType::Marker,
+                UserListColumnType::Subject,
+                UserListColumnType::Name,
+                UserListColumnType::Hash,
+                UserListColumnType::Date,
+            ];
+            let ctx = Rc::new(AppContext {
+                keybind: KeyBind::new(None),
+                core_config: CoreConfig::default(),
+                ui_config,
+                color_theme: ColorTheme::default(),
+                image_protocol: ImageProtocol::Iterm2,
+            });
+            for width in [1, 80] {
+                let area = Rect::new(0, 0, width, 3);
+                let mut before = Buffer::empty(area);
+                CommitList::new(ctx.clone()).render(area, &mut before, state);
+                state.select_prev();
+                state.toggle_mark();
+                state.select_next();
+                let mut after = Buffer::empty(area);
+                CommitList::new(ctx.clone()).render(area, &mut after, state);
+                assert_eq!(before[(0, 0)].symbol(), "│");
+                assert_eq!(after[(0, 0)].symbol(), "*");
+                assert_eq!(after[(0, 0)].fg, Color::Green);
+                before[(0, 0)].set_symbol("*");
+                assert_eq!(after, before);
+                state.restore_marked_commit_hash(None);
+            }
+        });
     }
 
     #[test]

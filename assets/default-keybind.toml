@@ -32,6 +32,7 @@ search = ["/"]
 search_target_toggle = ["ctrl-t"]
 ignore_case_toggle = ["ctrl-g"]
 fuzzy_toggle = ["ctrl-x"]
+mark_toggle = ["m"]
 refresh = ["shift-r"]
 
 user_command_1 = ["d"]

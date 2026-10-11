@@ -11,7 +11,7 @@ use ratatui::{
 use crate::{
     app::AppContext,
     event::{AppEvent, Sender, UserEvent, UserEventWithCount},
-    git::{Commit, Ref, Repository},
+    git::{Commit, CommitHash, Ref, Repository},
     view::{ListRefreshViewContext, RefreshViewContext, UserCommandRefreshViewContext},
     widget::{
         commit_list::{CommitList, CommitListState},
@@ -19,7 +19,8 @@ use crate::{
     },
 };
 
-type ExecCommandFn = fn(&Commit, &[Ref], usize, Rect, &AppContext) -> Result<String, String>;
+type ExecCommandFn =
+    fn(&Commit, &[Ref], Option<&CommitHash>, usize, Rect, &AppContext) -> Result<String, String>;
 
 #[derive(Debug)]
 pub struct UserCommandView<'a> {
@@ -123,6 +124,9 @@ impl<'a> UserCommandView<'a> {
             }
             UserEvent::Cancel | UserEvent::Close => {
                 self.tx.send(AppEvent::CloseUserCommand);
+            }
+            UserEvent::MarkToggle => {
+                self.as_mut_list_state().toggle_mark();
             }
             UserEvent::Refresh => {
                 self.refresh();
@@ -229,11 +233,13 @@ impl<'a> UserCommandView<'a> {
         update_commit_list_state(commit_list_state);
 
         let selected = commit_list_state.selected_commit_hash().clone();
+        let marked_commit_hash = commit_list_state.marked_commit_hash().cloned();
         let (commit, _) = repository.commit_detail(&selected);
         let refs: Vec<Ref> = repository.refs(&selected).into_iter().cloned().collect();
         self.user_command_output_lines = exec_command(
             &commit,
             &refs,
+            marked_commit_hash.as_ref(),
             self.user_command_number,
             view_area,
             &self.ctx,

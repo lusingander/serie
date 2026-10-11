@@ -6,6 +6,7 @@ use crate::config::ClipboardConfig;
 
 const USER_COMMAND_MARKER_PREFIX: &str = "{{";
 const USER_COMMAND_TARGET_HASH_MARKER: &str = "{{target_hash}}";
+const USER_COMMAND_MARKED_HASH_MARKER: &str = "{{marked_hash}}";
 const USER_COMMAND_FIRST_PARENT_HASH_MARKER: &str = "{{first_parent_hash}}";
 const USER_COMMAND_PARENT_HASHES_MARKER: &str = "{{parent_hashes}}";
 const USER_COMMAND_REFS_MARKER: &str = "{{refs}}";
@@ -74,6 +75,7 @@ fn copy_to_clipboard_auto(value: String) -> Result<(), String> {
 pub struct ExternalCommandParameters<'a> {
     pub command: &'a [String],
     pub target_hash: &'a str,
+    pub marked_hash: Option<&'a str>,
     pub parent_hashes: Vec<&'a str>,
     pub all_refs: Vec<&'a str>,
     pub branches: Vec<&'a str>,
@@ -148,6 +150,7 @@ fn build_user_command(params: &ExternalCommandParameters) -> Vec<String> {
 fn replace_command_arg(s: &str, params: &ExternalCommandParameters) -> String {
     let sep = " ";
     let target_hash = params.target_hash;
+    let marked_hash = params.marked_hash.unwrap_or_default();
     let first_parent_hash = &params.parent_hashes.first().cloned().unwrap_or_default();
     let parent_hashes = &params.parent_hashes.join(sep);
     let all_refs = &params.all_refs.join(sep);
@@ -159,6 +162,7 @@ fn replace_command_arg(s: &str, params: &ExternalCommandParameters) -> String {
     let area_height = &params.area_height.to_string();
 
     s.replace(USER_COMMAND_TARGET_HASH_MARKER, target_hash)
+        .replace(USER_COMMAND_MARKED_HASH_MARKER, marked_hash)
         .replace(USER_COMMAND_FIRST_PARENT_HASH_MARKER, first_parent_hash)
         .replace(USER_COMMAND_PARENT_HASHES_MARKER, parent_hashes)
         .replace(USER_COMMAND_REFS_MARKER, all_refs)

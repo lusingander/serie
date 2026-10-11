@@ -5,7 +5,7 @@ use ratatui::{crossterm::event::KeyEvent, layout::Rect, Frame};
 use crate::{
     app::AppContext,
     event::{Sender, UserEventWithCount},
-    git::{Commit, FileChange, Ref},
+    git::{Commit, CommitHash, FileChange, Ref},
     search::SearchOptions,
     view::{
         detail::DetailView, help::HelpView, list::ListView, refs::RefsView,
@@ -191,6 +191,7 @@ impl RefreshViewContext {
 #[derive(Debug, Clone)]
 pub struct ListRefreshViewContext {
     pub commit_hash: String,
+    pub marked_commit_hash: Option<CommitHash>,
     pub selected: usize,
     pub height: usize,
     pub scroll_to_top: bool,
@@ -209,6 +210,7 @@ impl From<&CommitListState<'_>> for ListRefreshViewContext {
         let search_context = list_state.search_refresh_context();
         ListRefreshViewContext {
             commit_hash,
+            marked_commit_hash: list_state.marked_commit_hash().cloned(),
             selected,
             height,
             scroll_to_top,
