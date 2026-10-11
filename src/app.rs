@@ -163,7 +163,7 @@ impl<'a> App<'a> {
 impl App<'_> {
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<Ret, std::io::Error> {
         // Clearing the screen here, as it should be cleared upon refresh
-        self.clear_image(None)?;
+        self.ctx.image_protocol.clear();
         terminal.clear()?;
 
         loop {
@@ -240,16 +240,16 @@ impl App<'_> {
                     return Ok(Ret::Quit);
                 }
                 AppEvent::OpenDetail => {
-                    self.clear_image(Some(terminal))?;
                     self.open_detail();
+                    self.clear_view_image_area(terminal)?;
                 }
                 AppEvent::CloseDetail => {
                     terminal.clear()?;
                     self.close_detail();
                 }
                 AppEvent::OpenUserCommand(n) => {
-                    self.clear_image(Some(terminal))?;
                     self.open_user_command(n, Some(terminal));
+                    self.clear_view_image_area(terminal)?;
                 }
                 AppEvent::CloseUserCommand => {
                     terminal.clear()?;
@@ -262,8 +262,8 @@ impl App<'_> {
                     self.close_refs();
                 }
                 AppEvent::OpenHelp => {
-                    self.clear_image(None)?;
                     self.open_help();
+                    self.clear_view_image_area(terminal)?;
                 }
                 AppEvent::CloseHelp => {
                     terminal.clear()?;
@@ -461,15 +461,12 @@ impl App<'_> {
         self.app_status.view_area = view_area;
     }
 
-    fn clear_image(&self, terminal: Option<&mut DefaultTerminal>) -> Result<(), std::io::Error> {
-        // Sometimes the first image fails to render after a full screen clear
-        // As a workaround, the first area is preserved when a full clear is not required
-        if let Some(t) = terminal {
-            for y in 1..t.size()?.height {
+    fn clear_view_image_area(&self, terminal: &mut DefaultTerminal) -> Result<(), std::io::Error> {
+        if let Some(area) = self.view.image_clear_area(self.app_status.view_area) {
+            let area = area.intersection(terminal.size()?.into());
+            for y in area.top()..area.bottom() {
                 self.ctx.image_protocol.clear_line(y);
             }
-        } else {
-            self.ctx.image_protocol.clear();
         }
         Ok(())
     }

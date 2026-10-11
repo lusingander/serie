@@ -92,6 +92,15 @@ impl<'a> View<'a> {
         }
     }
 
+    pub fn image_clear_area(&self, area: Rect) -> Option<Rect> {
+        match self {
+            View::Default | View::List(_) | View::Refs(_) => None,
+            View::Detail(view) => Some(view.image_clear_area(area)),
+            View::UserCommand(view) => Some(view.image_clear_area(area)),
+            View::Help(_) => Some(area),
+        }
+    }
+
     pub fn of_list(
         commit_list_state: CommitListState<'a>,
         ctx: Rc<AppContext>,

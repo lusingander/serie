@@ -168,6 +168,11 @@ impl<'a> DetailView<'a> {
         self.as_list_state().graph_image_ids_sorted()
     }
 
+    pub fn image_clear_area(&self, area: Rect) -> Rect {
+        let [_, detail_area] = self.split_areas(area);
+        detail_area
+    }
+
     fn split_areas(&self, area: Rect) -> [Rect; 2] {
         let detail_height = (area.height - 1).min(self.ctx.ui_config.detail.height);
         Layout::vertical([Constraint::Min(0), Constraint::Length(detail_height)]).areas(area)
