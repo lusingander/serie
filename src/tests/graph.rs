@@ -41,8 +41,7 @@ fn straight_001() -> TestResult {
 
     copy_git_dir(repo_path, "straight_001");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -152,8 +151,7 @@ fn branch_001() -> TestResult {
 
     copy_git_dir(repo_path, "branch_001");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -239,8 +237,7 @@ fn branch_002() -> TestResult {
 
     copy_git_dir(repo_path, "branch_002");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -321,8 +318,7 @@ fn branch_003() -> TestResult {
 
     copy_git_dir(repo_path, "branch_003");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -415,8 +411,7 @@ fn branch_004() -> TestResult {
 
     copy_git_dir(repo_path, "branch_004");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -476,8 +471,7 @@ fn branch_005() -> TestResult {
 
     copy_git_dir(repo_path, "branch_005");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -546,8 +540,7 @@ fn branch_006() -> TestResult {
 
     copy_git_dir(repo_path, "branch_006");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -597,8 +590,7 @@ fn branch_007() -> TestResult {
 
     copy_git_dir(repo_path, "branch_007");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -658,8 +650,7 @@ fn branch_008() -> TestResult {
 
     copy_git_dir(repo_path, "branch_008");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -738,8 +729,7 @@ fn merge_001() -> TestResult {
 
     copy_git_dir(repo_path, "merge_001");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -800,8 +790,7 @@ fn merge_002() -> TestResult {
 
     copy_git_dir(repo_path, "merge_002");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -864,8 +853,7 @@ fn merge_003() -> TestResult {
 
     copy_git_dir(repo_path, "merge_003");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -963,8 +951,7 @@ fn merge_004() -> TestResult {
 
     copy_git_dir(repo_path, "merge_004");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1045,8 +1032,7 @@ fn merge_005() -> TestResult {
 
     copy_git_dir(repo_path, "merge_005");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1096,8 +1082,7 @@ fn merge_006() -> TestResult {
 
     copy_git_dir(repo_path, "merge_006");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1155,8 +1140,7 @@ fn stash_001() -> TestResult {
 
     copy_git_dir(repo_path, "stash_001");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1211,8 +1195,7 @@ fn stash_002() -> TestResult {
 
     copy_git_dir(repo_path, "stash_002");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1260,8 +1243,7 @@ fn stash_003() -> TestResult {
 
     copy_git_dir(repo_path, "stash_003");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1305,8 +1287,7 @@ fn stash_004() -> TestResult {
 
     copy_git_dir(repo_path, "stash_004");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1361,8 +1342,7 @@ fn orphan_001() -> TestResult {
 
     copy_git_dir(repo_path, "orphan_001");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1417,8 +1397,7 @@ fn orphan_002() -> TestResult {
 
     copy_git_dir(repo_path, "orphan_002");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1455,8 +1434,7 @@ fn orphan_003() -> TestResult {
         graph::GraphStyle::Rounded,
     )];
     copy_git_dir(repo_path, "orphan_003");
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1509,8 +1487,7 @@ fn head_001() -> TestResult {
 
     copy_git_dir(repo_path, "head_001");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1628,8 +1605,7 @@ fn complex_001() -> TestResult {
 
     copy_git_dir(repo_path, "complex_001");
 
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
@@ -1761,8 +1737,7 @@ fn complex_002() -> TestResult {
         .with_antialias(),
     ];
     copy_git_dir(repo_path, "complex_002");
-    generate_and_output_graph_images(repo_path, options);
-    assert_graph_images(options);
+    assert_graph_snapshots(repo_path, options);
     Ok(())
 }
 
@@ -1816,7 +1791,7 @@ fn primary_branch_001() -> TestResult {
 
     copy_git_dir(repo_path, "primary_branch_001");
 
-    generate_and_output_graph_images(repo_path, options);
+    assert_graph_snapshots(repo_path, options);
 
     let normal_repository =
         git::Repository::load(repo_path, git::SortCommit::Chronological, None, true)?;
@@ -1863,8 +1838,6 @@ fn primary_branch_001() -> TestResult {
             );
         }
     }
-
-    assert_graph_images(options);
 
     Ok(())
 }
@@ -2072,19 +2045,29 @@ impl GenerateGraphOption {
     }
 }
 
-fn generate_and_output_graph_images(repo_path: &Path, options: &[GenerateGraphOption]) {
-    for option in options {
-        generate_and_output_graph_image(repo_path, option);
+fn assert_graph_snapshots(repo_path: &Path, options: &[GenerateGraphOption]) {
+    create_output_dirs(OUTPUT_DIR);
+    let errors: Vec<_> = options
+        .iter()
+        .filter_map(|option| {
+            let actual_img = render_graph_image(repo_path, option);
+            let actual_file = format!("{}/{}.png", OUTPUT_DIR, option.output_name);
+            actual_img.save(actual_file).unwrap();
+            compare_graph_image(option, &actual_img).err()
+        })
+        .collect();
+    if !errors.is_empty() {
+        panic!("{}", errors.join("\n"));
     }
 }
 
-fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGraphOption) {
+fn render_graph_image(path: &Path, option: &GenerateGraphOption) -> image::RgbaImage {
     // Build graphs in the same way as application
     let max_count = option.max_count;
     let graph_color_config = config::GraphColorConfig::default();
     let graph_color_set = color::GraphColorSet::new(&graph_color_config);
     let cell_width_type = option.cell_width_type;
-    let repository = git::Repository::load(path.as_ref(), option.sort, max_count, true).unwrap();
+    let repository = git::Repository::load(path, option.sort, max_count, true).unwrap();
     let graph = graph::calc_graph(&repository, option.primary_branch.as_deref());
     let image_params = graph::ImageParams::new(&graph_color_set, cell_width_type, option.antialias);
     let mut drawing_pixels = graph::DrawingPixels::new(&image_params);
@@ -2138,17 +2121,7 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
         y += height;
     }
 
-    // Save
-    create_output_dirs(OUTPUT_DIR);
-    let file_name = format!("{}/{}.png", OUTPUT_DIR, option.output_name);
-    image::save_buffer(
-        file_name,
-        &img_buf,
-        image_width,
-        image_height,
-        image::ColorType::Rgba8,
-    )
-    .unwrap();
+    img_buf
 }
 
 fn draw_text(img_buf: &mut image::RgbaImage, text: &str, x: u32, y: u32) {
@@ -2201,27 +2174,16 @@ fn copy_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-fn assert_graph_images(options: &[GenerateGraphOption]) {
-    let errors: Vec<_> = options
-        .iter()
-        .map(compare_graph_image)
-        .filter_map(Result::err)
-        .collect();
-    if !errors.is_empty() {
-        panic!("{}", errors.join("\n"));
-    }
-}
-
-fn compare_graph_image(option: &GenerateGraphOption) -> Result<(), String> {
+fn compare_graph_image(
+    option: &GenerateGraphOption,
+    actual_img: &image::RgbaImage,
+) -> Result<(), String> {
     let expected_file = format!("{}/{}.png", SNAPSHOT_DIR, option.output_name);
-    let expected_img = image::open(expected_file).unwrap();
-
-    let actual_file = format!("{}/{}.png", OUTPUT_DIR, option.output_name);
-    let actual_img = image::open(actual_file).unwrap();
+    let expected_img = image::open(&expected_file).unwrap();
 
     if actual_img.dimensions() != expected_img.dimensions() {
         return Err(format!(
-            "Image dimensions are different. expected: {:?}, actual: {:?}",
+            "Image dimensions are different. snapshot: {expected_file}, expected: {:?}, actual: {:?}",
             expected_img.dimensions(),
             actual_img.dimensions()
         ));
@@ -2233,7 +2195,7 @@ fn compare_graph_image(option: &GenerateGraphOption) -> Result<(), String> {
 
     for y in 0..image_height {
         for x in 0..image_width {
-            let actual_pixel = actual_img.get_pixel(x, y);
+            let actual_pixel = *actual_img.get_pixel(x, y);
             let expected_pixel = expected_img.get_pixel(x, y);
 
             if actual_pixel != expected_pixel {
