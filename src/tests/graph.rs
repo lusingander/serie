@@ -1601,6 +1601,138 @@ fn complex_001() -> TestResult {
 }
 
 #[test]
+fn complex_002() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+    let git = &GitRepository::new(repo_path);
+    git.init();
+
+    let mut date = Utc.with_ymd_and_hms(2024, 1, 1, 1, 2, 3).unwrap();
+    let mut next_date = || {
+        let result = date.format("%Y-%m-%d").to_string();
+        date = date.checked_add_days(Days::new(1)).unwrap();
+        result
+    };
+    git.commit("Root", &next_date());
+    for lane in 0..6 {
+        git.checkout("master");
+        git.checkout_b(&format!("lane-{lane}"));
+        git.commit(&format!("Lane {lane}"), &next_date());
+    }
+
+    // Repeated forks at different columns, with cross-lane merges to create
+    // both left/right connections of different lengths.
+    for round in 0..2 {
+        for lane in 0..6 {
+            let branch = format!("lane-{lane}");
+            let spur = format!("spur-{round}-{lane}");
+            git.checkout(&branch);
+            git.checkout_b(&spur);
+            git.commit(&format!("Fork {round}-{lane}"), &next_date());
+            git.checkout(&branch);
+            git.commit(&format!("Advance {round}-{lane}"), &next_date());
+            git.merge(&[&spur], &next_date());
+            git.merge(&[&format!("lane-{}", (lane + 2) % 6)], &next_date());
+        }
+    }
+
+    let repository = git::Repository::load(repo_path, git::SortCommit::Chronological, None, true)?;
+    let graph = graph::calc_graph(&repository, None);
+    let mut connections: FxHashMap<(graph::EdgeType, usize), FxHashSet<(usize, usize)>> =
+        FxHashMap::default();
+    for edges in &graph.edges {
+        for corner in edges {
+            let side_type = match corner.edge_type {
+                graph::EdgeType::RightTop | graph::EdgeType::RightBottom => graph::EdgeType::Right,
+                graph::EdgeType::LeftTop | graph::EdgeType::LeftBottom => graph::EdgeType::Left,
+                _ => continue,
+            };
+            let side = edges
+                .iter()
+                .find(|e| {
+                    e.edge_type == side_type
+                        && e.associated_line_pos_x == corner.associated_line_pos_x
+                })
+                .unwrap();
+            connections
+                .entry((corner.edge_type, side.pos_x.abs_diff(corner.pos_x)))
+                .or_default()
+                .insert((side.pos_x.min(corner.pos_x), corner.associated_line_pos_x));
+        }
+    }
+    for corner_type in [
+        graph::EdgeType::RightTop,
+        graph::EdgeType::RightBottom,
+        graph::EdgeType::LeftTop,
+    ] {
+        assert!(
+            connections.iter().any(|(&(t, _), placements)| {
+                t == corner_type
+                    && placements.iter().map(|p| p.0).collect::<FxHashSet<_>>().len() > 1
+                    && placements.iter().map(|p| p.1).collect::<FxHashSet<_>>().len() > 1
+            }),
+            "missing repeated {corner_type:?} connections at different columns/colors: {connections:?}"
+        );
+    }
+    assert!(connections.keys().any(|&(_, distance)| distance >= 4));
+
+    let options = &[
+        GenerateGraphOption::new(
+            "complex_002_angular",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        ),
+        GenerateGraphOption::new(
+            "complex_002_curved",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        ),
+        GenerateGraphOption::new(
+            "complex_002_angular_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "complex_002_curved_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "complex_002_angular_single",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        )
+        .with_cell_width_type(graph::CellWidthType::Single),
+        GenerateGraphOption::new(
+            "complex_002_curved_single",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        )
+        .with_cell_width_type(graph::CellWidthType::Single),
+        GenerateGraphOption::new(
+            "complex_002_angular_single_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        )
+        .with_cell_width_type(graph::CellWidthType::Single)
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "complex_002_curved_single_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        )
+        .with_cell_width_type(graph::CellWidthType::Single)
+        .with_antialias(),
+    ];
+    copy_git_dir(repo_path, "complex_002");
+    generate_and_output_graph_images(repo_path, options);
+    assert_graph_images(options);
+    Ok(())
+}
+
+#[test]
 fn primary_branch_001() -> TestResult {
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
@@ -1863,6 +1995,7 @@ struct GenerateGraphOption {
     sort: git::SortCommit,
     style: graph::GraphStyle,
     antialias: bool,
+    cell_width_type: graph::CellWidthType,
     max_count: Option<usize>,
     primary_branch: Option<String>,
 }
@@ -1878,6 +2011,7 @@ impl GenerateGraphOption {
             sort,
             style,
             antialias: false,
+            cell_width_type: graph::CellWidthType::Double,
             max_count: None,
             primary_branch: None,
         }
@@ -1885,6 +2019,11 @@ impl GenerateGraphOption {
 
     fn with_antialias(mut self) -> GenerateGraphOption {
         self.antialias = true;
+        self
+    }
+
+    fn with_cell_width_type(mut self, cell_width_type: graph::CellWidthType) -> Self {
+        self.cell_width_type = cell_width_type;
         self
     }
 
@@ -1910,7 +2049,7 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     let max_count = option.max_count;
     let graph_color_config = config::GraphColorConfig::default();
     let graph_color_set = color::GraphColorSet::new(&graph_color_config);
-    let cell_width_type = graph::CellWidthType::Double;
+    let cell_width_type = option.cell_width_type;
     let repository = git::Repository::load(path.as_ref(), option.sort, max_count, true).unwrap();
     let graph = graph::calc_graph(&repository, option.primary_branch.as_deref());
     let image_params = graph::ImageParams::new(&graph_color_set, cell_width_type, option.antialias);
@@ -1918,8 +2057,12 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     let graph_image = build_graph_image(&graph, &image_params, &drawing_pixels, option.style);
 
     // Create concatenated image
-    let (width, height) = (50, 50);
-    let image_width = ((width * (graph.max_pos_x + 1)) + (width * 7)) as u32;
+    let width = match cell_width_type {
+        graph::CellWidthType::Double => 50,
+        graph::CellWidthType::Single => 25,
+    };
+    let height = 50;
+    let image_width = ((width * (graph.max_pos_x + 1)) + 350) as u32;
     let image_height = (height * graph.commits.len()) as u32;
     let mut img_buf: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
         image::ImageBuffer::new(image_width, image_height);
