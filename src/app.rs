@@ -5,7 +5,10 @@ use std::{
 
 use ratatui::{
     backend::Backend,
-    crossterm::event::{KeyCode, KeyEvent},
+    crossterm::{
+        event::{KeyCode, KeyEvent},
+        SynchronizedUpdate,
+    },
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
     text::{Line, Span},
@@ -76,10 +79,19 @@ pub struct AppContext {
 }
 
 #[derive(Debug, Default)]
+enum PendingClear {
+    #[default]
+    None,
+    ViewImages,
+    Screen,
+}
+
+#[derive(Debug, Default)]
 struct AppStatus {
     status_line: StatusLine,
     numeric_prefix: String,
     view_area: Rect,
+    pending_clear: PendingClear,
 }
 
 #[derive(Debug)]
@@ -163,14 +175,13 @@ impl<'a> App<'a> {
 
 impl App<'_> {
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<Ret, std::io::Error> {
-        // Clearing the screen here, as it should be cleared upon refresh
-        self.ctx.image_protocol.clear();
-        clear_fullscreen(terminal)?;
+        self.app_status.pending_clear = PendingClear::Screen;
 
         loop {
             self.prepare_render(terminal)?;
-            self.flush_pending_graph_uploads()?;
-            terminal.draw(|f| self.render(f))?;
+            // Keep image deletion, uploads, and text updates in the same frame.
+            // Preparation and event handling stay outside the synchronized update.
+            io::stdout().sync_update(|_| self.draw(terminal))??;
             match self.ec.recv() {
                 AppEvent::Key(key) => {
                     match self.app_status.status_line {
@@ -242,19 +253,18 @@ impl App<'_> {
                 }
                 AppEvent::OpenDetail => {
                     self.open_detail();
-                    self.clear_view_image_area(terminal)?;
+                    self.app_status.pending_clear = PendingClear::ViewImages;
                 }
                 AppEvent::CloseDetail => {
-                    clear_fullscreen(terminal)?;
                     self.close_detail();
+                    self.app_status.pending_clear = PendingClear::Screen;
                 }
                 AppEvent::OpenUserCommand(n) => {
-                    self.open_user_command(n, Some(terminal));
-                    self.clear_view_image_area(terminal)?;
+                    self.open_user_command(n);
                 }
                 AppEvent::CloseUserCommand => {
-                    clear_fullscreen(terminal)?;
                     self.close_user_command();
+                    self.app_status.pending_clear = PendingClear::Screen;
                 }
                 AppEvent::OpenRefs => {
                     self.open_refs();
@@ -264,11 +274,11 @@ impl App<'_> {
                 }
                 AppEvent::OpenHelp => {
                     self.open_help();
-                    self.clear_view_image_area(terminal)?;
+                    self.app_status.pending_clear = PendingClear::ViewImages;
                 }
                 AppEvent::CloseHelp => {
-                    clear_fullscreen(terminal)?;
                     self.close_help();
+                    self.app_status.pending_clear = PendingClear::Screen;
                 }
                 AppEvent::SelectOlderCommit => {
                     self.select_older_commit();
@@ -329,6 +339,21 @@ impl App<'_> {
         self.update_state(view_area);
         self.view.update_layout(view_area);
         self.view.prepare_graph_uploads();
+        Ok(())
+    }
+
+    fn draw(&mut self, terminal: &mut DefaultTerminal) -> Result<(), std::io::Error> {
+        match self.app_status.pending_clear {
+            PendingClear::None => {}
+            PendingClear::ViewImages => self.clear_view_image_area(terminal)?,
+            PendingClear::Screen => {
+                self.ctx.image_protocol.clear();
+                clear_fullscreen(terminal)?;
+            }
+        }
+        self.app_status.pending_clear = PendingClear::None;
+        self.flush_pending_graph_uploads()?;
+        terminal.draw(|f| self.render(f))?;
         Ok(())
     }
 
@@ -506,39 +531,24 @@ impl App<'_> {
         }
     }
 
-    fn open_user_command(
-        &mut self,
-        user_command_number: usize,
-        terminal: Option<&mut DefaultTerminal>,
-    ) {
-        let clear = match extract_user_command_by_number(user_command_number, &self.ctx)
-            .map(|c| &c.r#type)
-        {
+    fn open_user_command(&mut self, user_command_number: usize) {
+        match extract_user_command_by_number(user_command_number, &self.ctx).map(|c| &c.r#type) {
             Ok(UserCommandType::Inline) => {
                 self.open_user_command_inline(user_command_number);
-                false
+                self.app_status.pending_clear = PendingClear::ViewImages;
             }
             Ok(UserCommandType::Silent) => {
                 self.open_user_command_silent(user_command_number);
-                true
+                self.app_status.pending_clear = PendingClear::Screen;
             }
             Ok(UserCommandType::Suspend) => {
                 self.open_user_command_suspend(user_command_number);
-                true
+                self.app_status.pending_clear = PendingClear::Screen;
             }
             Err(err) => {
                 self.ec.send(AppEvent::NotifyError(err));
-                false
             }
         };
-        if clear {
-            if let Some(t) = terminal {
-                if let Err(err) = clear_fullscreen(t) {
-                    let msg = format!("Failed to clear terminal: {err:?}");
-                    self.ec.send(AppEvent::NotifyError(msg));
-                }
-            }
-        }
     }
 
     fn open_user_command_inline(&mut self, user_command_number: usize) {
@@ -726,7 +736,7 @@ impl App<'_> {
                 user_command_context,
                 ..
             } => {
-                self.open_user_command(user_command_context.n, None);
+                self.open_user_command(user_command_context.n);
             }
             RefreshViewContext::Refs { refs_context, .. } => {
                 self.open_refs();
