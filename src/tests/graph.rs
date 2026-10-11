@@ -2088,34 +2088,37 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     let graph = graph::calc_graph(&repository, option.primary_branch.as_deref());
     let image_params = graph::ImageParams::new(&graph_color_set, cell_width_type, option.antialias);
     let mut drawing_pixels = graph::DrawingPixels::new(&image_params);
+    let row_images: Vec<_> = graph
+        .commits
+        .iter()
+        .map(|commit| {
+            let graph_row_image = graph::build_single_graph_row_image(
+                &graph,
+                &image_params,
+                &mut drawing_pixels,
+                option.style,
+                graph::GraphImageWidthMode::Fixed,
+                &commit.commit_hash,
+            );
+            image::load_from_memory(&graph_row_image.bytes).unwrap()
+        })
+        .collect();
 
     // Create concatenated image
-    let width = match cell_width_type {
-        graph::CellWidthType::Double => 50,
-        graph::CellWidthType::Single => 25,
-    };
-    let height = 50;
-    let image_width = ((width * (graph.max_pos_x + 1)) + 350) as u32;
-    let image_height = (height * graph.commits.len()) as u32;
-    let mut img_buf: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
-        image::ImageBuffer::new(image_width, image_height);
+    let graph_width = row_images
+        .iter()
+        .map(|image| image.width())
+        .max()
+        .unwrap_or(0);
+    let image_width = graph_width + 350;
+    let image_height = row_images.iter().map(|image| image.height()).sum();
+    let mut img_buf = image::RgbaImage::new(image_width, image_height);
 
-    let text_x = (width * (graph.max_pos_x + 1)) as u32;
-
-    for (i, commit) in graph.commits.iter().enumerate() {
-        let y = (height * i) as u32;
-
+    let mut y = 0;
+    for (commit, image) in graph.commits.iter().zip(&row_images) {
+        let height = image.height();
         // write graph
-        let graph_row_image = graph::build_single_graph_row_image(
-            &graph,
-            &image_params,
-            &mut drawing_pixels,
-            option.style,
-            graph::GraphImageWidthMode::Fixed,
-            &commit.commit_hash,
-        );
-        let image = image::load_from_memory(&graph_row_image.bytes).unwrap();
-        img_buf.copy_from(&image, 0, y).unwrap();
+        img_buf.copy_from(image, 0, y).unwrap();
 
         // write hash and date
         let text = format!(
@@ -2123,15 +2126,16 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
             commit.commit_hash.as_short_hash(),
             commit.committer_date.naive_utc().format("%Y-%m-%d")
         );
-        draw_text(&mut img_buf, &text, text_x, y + (height as u32 / 4));
+        draw_text(&mut img_buf, &text, graph_width, y + (height / 4));
 
         // write subject
         draw_text(
             &mut img_buf,
             &commit.subject,
-            text_x,
-            y + ((height as u32 / 4) * 2),
+            graph_width,
+            y + ((height / 4) * 2),
         );
+        y += height;
     }
 
     // Save
