@@ -1,10 +1,14 @@
 use std::{
     env,
     io::{self, Write},
+    num::NonZeroU16,
 };
 
 use base64::Engine;
-use ratatui::style::{Color, Style};
+use ratatui::{
+    buffer::CellDiffOption,
+    style::{Color, Style},
+};
 
 // By default assume the Iterm2 is the best protocol to use for all terminals *unless* an env
 // variable is set that suggests the terminal is probably Kitty.
@@ -47,7 +51,7 @@ pub enum ImageProtocol {
 pub struct PreparedImageCell {
     symbol: String,
     style: Style,
-    skip: bool,
+    diff_option: CellDiffOption,
 }
 
 impl PreparedImageCell {
@@ -59,8 +63,8 @@ impl PreparedImageCell {
         self.style
     }
 
-    pub fn skip(&self) -> bool {
-        self.skip
+    pub fn diff_option(&self) -> CellDiffOption {
+        self.diff_option
     }
 }
 
@@ -93,13 +97,15 @@ impl ImageProtocol {
         cells.push(PreparedImageCell {
             symbol,
             style: Style::default(),
-            skip: false,
+            // The escape sequence occupies one buffer cell. Covered cells are skipped below,
+            // so its string width must not make diffing jump past the image or into another row.
+            diff_option: CellDiffOption::ForcedWidth(NonZeroU16::MIN),
         });
         for _ in 1..cell_width {
             cells.push(PreparedImageCell {
                 symbol: String::new(),
                 style: Style::default(),
-                skip: true,
+                diff_option: CellDiffOption::Skip,
             });
         }
         PreparedImage {
@@ -504,7 +510,7 @@ fn kitty_unicode_prepare(
         cells.push(PreparedImageCell {
             symbol,
             style: Style::default().fg(foreground),
-            skip: false,
+            diff_option: CellDiffOption::ForcedWidth(NonZeroU16::MIN),
         });
     }
 

@@ -840,7 +840,7 @@ impl CommitList<'_> {
                     let cell = &mut buf[(area.left() + x as u16, y)];
                     cell.set_symbol(image_cell.symbol());
                     cell.set_style(image_cell.style());
-                    cell.set_skip(image_cell.skip());
+                    cell.set_diff_option(image_cell.diff_option());
                 }
             });
     }
@@ -1250,6 +1250,14 @@ mod tests {
         subjects: &[&str],
         f: impl FnOnce(&mut CommitListState<'_>) -> R,
     ) -> R {
+        with_commit_list_state_and_protocol(subjects, ImageProtocol::Iterm2, f)
+    }
+
+    fn with_commit_list_state_and_protocol<R>(
+        subjects: &[&str],
+        image_protocol: ImageProtocol,
+        f: impl FnOnce(&mut CommitListState<'_>) -> R,
+    ) -> R {
         let commits: Vec<Commit> = subjects
             .iter()
             .enumerate()
@@ -1282,7 +1290,7 @@ mod tests {
             GraphStyle::Rounded,
             false,
             GraphImageWidthMode::Compact,
-            ImageProtocol::Iterm2,
+            image_protocol,
         );
         let commit_infos = graph
             .commits
@@ -1308,6 +1316,46 @@ mod tests {
         state.start_search();
         for c in query.chars() {
             state.handle_search_input(KeyEvent::from(KeyCode::Char(c)));
+        }
+    }
+
+    #[test]
+    fn test_graph_diff_preserves_neighboring_cells_and_skips_unchanged_images() {
+        for image_protocol in [
+            ImageProtocol::Iterm2,
+            ImageProtocol::Kitty,
+            ImageProtocol::KittyUnicode { tmux: false },
+            ImageProtocol::KittyUnicode { tmux: true },
+        ] {
+            with_commit_list_state_and_protocol(&["first", "second"], image_protocol, |state| {
+                state.ensure_visible_graph_uploaded();
+                let ctx = Rc::new(AppContext {
+                    keybind: KeyBind::new(None),
+                    core_config: CoreConfig::default(),
+                    ui_config: UiConfig::default(),
+                    color_theme: ColorTheme::default(),
+                    image_protocol,
+                });
+                let list = CommitList::new(ctx);
+                // Width 2 clips the image cells. Its escape sequence must not skip the next row.
+                for width in [2, 10] {
+                    let area = Rect::new(0, 0, width, 2);
+                    let mut before = Buffer::empty(area);
+                    list.render_graph(&mut before, area, state);
+                    let mut after = Buffer::empty(area);
+                    list.render_graph(&mut after, area, state);
+                    assert!(before.diff(&after).is_empty());
+
+                    after[(width - 1, 0)].set_symbol("x");
+                    after[(0, 1)].set_fg(Color::Red);
+                    let positions: Vec<_> = before
+                        .diff(&after)
+                        .into_iter()
+                        .map(|(x, y, _)| (x, y))
+                        .collect();
+                    assert_eq!(positions, vec![(width - 1, 0), (0, 1)]);
+                }
+            });
         }
     }
 
