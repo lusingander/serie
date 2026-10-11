@@ -103,6 +103,19 @@ Set `SERIE_TEST_DUMP_GRAPH_REPOS=1` to also save the temporary Git repositories 
 If you add new test cases, please add these images under `./tests/graph/`.
 If existing graphs are modified, overwrite the images and ensure no unexpected changes have occurred.
 
+Individual row rendering tests are in [./src/graph/image.rs](./src/graph/image.rs).
+Run `cargo test graph::image::tests::test_calc_graph_row_image_` to compare their output with snapshots under `./tests/graph/image/`.
+The images under `./out/ut/graph/image/` include `<name>.png` for comparison, `<name>_borders.png` for inspecting cell boundaries, and `<name>_diff.png` when pixels differ.
+Snapshots contain the rendered image before the red cell borders are added.
+
+Update expected images manually after inspecting an intentional rendering change. For example:
+
+```sh
+cp out/ut/graph/image/default_params_rounded.png tests/graph/image/default_params_rounded.png
+```
+
+Use the rendered `<name>.png` when updating a snapshot. The border and diff images are diagnostic output.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE). By contributing, contributors agree to abide by the terms of the applicable license.
