@@ -5,11 +5,7 @@ use font8x8::{UnicodeFonts, BASIC_FONTS};
 use image::{GenericImage, GenericImageView};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{
-    color, config, git,
-    graph::{self, Edge, GraphRowImage},
-    test_git::GitRepository,
-};
+use crate::{color, config, git, graph, test_git::GitRepository};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -1428,6 +1424,44 @@ fn orphan_002() -> TestResult {
 }
 
 #[test]
+fn orphan_003() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+    git.commit("Root 1", "2024-01-01");
+    git.checkout_orphan("o1");
+    git.commit("Root 2", "2024-01-02");
+    git.checkout_orphan("o2");
+    git.commit("Root 3", "2024-01-03");
+
+    // Every row has the same empty edge list, but its commit is in a different column.
+    let repository = git::Repository::load(repo_path, git::SortCommit::Chronological, None, true)?;
+    let graph = graph::calc_graph(&repository, None);
+    assert!(graph.edges.iter().all(Vec::is_empty));
+    assert_eq!(
+        graph
+            .commits
+            .iter()
+            .map(|commit| graph.commit_pos_map[&commit.commit_hash].0)
+            .collect::<Vec<_>>(),
+        vec![0, 1, 2]
+    );
+
+    let options = &[GenerateGraphOption::new(
+        "orphan_003",
+        git::SortCommit::Chronological,
+        graph::GraphStyle::Rounded,
+    )];
+    copy_git_dir(repo_path, "orphan_003");
+    generate_and_output_graph_images(repo_path, options);
+    assert_graph_images(options);
+
+    Ok(())
+}
+
+#[test]
 fn head_001() -> TestResult {
     // Test case for detached HEAD
     let dir = tempfile::tempdir()?;
@@ -2054,7 +2088,6 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     let graph = graph::calc_graph(&repository, option.primary_branch.as_deref());
     let image_params = graph::ImageParams::new(&graph_color_set, cell_width_type, option.antialias);
     let mut drawing_pixels = graph::DrawingPixels::new(&image_params);
-    let graph_image = build_graph_image(&graph, &image_params, &mut drawing_pixels, option.style);
 
     // Create concatenated image
     let width = match cell_width_type {
@@ -2069,16 +2102,23 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
 
     let text_x = (width * (graph.max_pos_x + 1)) as u32;
 
-    for (i, edges) in graph.edges.iter().enumerate() {
+    for (i, commit) in graph.commits.iter().enumerate() {
         let y = (height * i) as u32;
 
         // write graph
-        let graph_row_image = &graph_image.images[edges];
+        let (pos_x, pos_y) = graph.commit_pos_map[&commit.commit_hash];
+        let graph_row_image = graph::calc_graph_row_image(
+            pos_x,
+            graph.max_pos_x + 1,
+            &graph.edges[pos_y],
+            &image_params,
+            &mut drawing_pixels,
+            option.style,
+        );
         let image = image::load_from_memory(&graph_row_image.bytes).unwrap();
         img_buf.copy_from(&image, 0, y).unwrap();
 
         // write hash and date
-        let commit = &graph.commits[i];
         let text = format!(
             "{} / {}",
             commit.commit_hash.as_short_hash(),
@@ -2125,47 +2165,6 @@ fn draw_text(img_buf: &mut image::RgbaImage, text: &str, x: u32, y: u32) {
             }
         }
     }
-}
-
-#[derive(Debug, Default)]
-pub struct GraphImage {
-    pub images: FxHashMap<Vec<Edge>, GraphRowImage>,
-}
-
-fn build_graph_image(
-    graph: &graph::Graph<'_>,
-    image_params: &graph::ImageParams,
-    drawing_pixels: &mut graph::DrawingPixels,
-    graph_style: graph::GraphStyle,
-) -> GraphImage {
-    let graph_row_sources: FxHashSet<(usize, &Vec<graph::Edge>)> = graph
-        .commits
-        .iter()
-        .map(|commit| {
-            let (pos_x, pos_y) = graph.commit_pos_map[&commit.commit_hash];
-            let edges = &graph.edges[pos_y];
-            (pos_x, edges)
-        })
-        .collect();
-
-    let cell_count = graph.max_pos_x + 1;
-
-    let images = graph_row_sources
-        .into_iter()
-        .map(|(pos_x, edges)| {
-            let graph_row_image = graph::calc_graph_row_image(
-                pos_x,
-                cell_count,
-                edges,
-                image_params,
-                drawing_pixels,
-                graph_style,
-            );
-            (edges.clone(), graph_row_image)
-        })
-        .collect();
-
-    GraphImage { images }
 }
 
 fn create_output_dirs(path: &str) {
