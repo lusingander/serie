@@ -298,6 +298,7 @@ impl ConnectionKey {
 pub struct DrawingPixels {
     antialias: Option<antialias::Masks>,
     diagonal_connections: FxHashMap<ConnectionKey, Pixels>,
+    curved_connections: FxHashMap<ConnectionKey, Pixels>,
     circle: Pixels,
     circle_edge: Pixels,
     vertical_edge: Pixels,
@@ -329,6 +330,7 @@ impl DrawingPixels {
 
         Self {
             diagonal_connections: FxHashMap::default(),
+            curved_connections: FxHashMap::default(),
             antialias: image_params
                 .antialias
                 .then(|| antialias::Masks::new(image_params)),
@@ -357,6 +359,19 @@ impl DrawingPixels {
         self.diagonal_connections.entry(key).or_insert_with(|| {
             let (side, corner) = key.normalized_edges();
             calc_diagonal_connection_drawing_pixels(&side, &corner, params)
+        })
+    }
+
+    fn curved_connection_pixels(
+        &mut self,
+        side: &Edge,
+        corner: &Edge,
+        params: &ImageParams,
+    ) -> &Pixels {
+        let key = ConnectionKey::new(side, corner);
+        self.curved_connections.entry(key).or_insert_with(|| {
+            let (side, corner) = key.normalized_edges();
+            calc_curved_connection_drawing_pixels(&side, &corner, params)
         })
     }
 }
@@ -703,7 +718,7 @@ pub fn calc_graph_row_image(
             for edge in edges.iter().filter(|e| e.edge_type.is_vertically_related()) {
                 draw_edge(&mut img_buf, edge, image_params, drawing_pixels);
             }
-            draw_curved_connected_edge(&mut img_buf, edges, image_params);
+            draw_curved_connected_edge(&mut img_buf, edges, image_params, drawing_pixels);
         }
         GraphStyle::Rounded => {
             for edge in edges {
@@ -931,6 +946,7 @@ fn draw_curved_connected_edge(
     img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
     edges: &[Edge],
     image_params: &ImageParams,
+    drawing_pixels: &mut DrawingPixels,
 ) {
     let corner_edges = edges.iter().filter(|e| {
         matches!(
@@ -950,9 +966,10 @@ fn draw_curved_connected_edge(
             continue;
         };
 
-        let points = curved_connection_points(side, corner, image_params);
         let color = image_params.edge_color(corner.associated_line_pos_x);
-        draw_bezier_curve(img_buf, points, image_params.line_width, color);
+        let x_offset = (side.pos_x.min(corner.pos_x) * image_params.width as usize) as i32;
+        let pixels = drawing_pixels.curved_connection_pixels(side, corner, image_params);
+        draw_connection_pixels(img_buf, pixels, x_offset, color);
     }
 }
 
@@ -1001,20 +1018,21 @@ fn bezier_point(points: &[Point; 4], t: f64) -> Point {
     )
 }
 
-fn draw_bezier_curve(
-    img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-    points: [Point; 4],
-    line_width: u16,
-    color: image::Rgba<u8>,
-) {
-    let radius = f64::from(line_width) / 2.0;
+fn calc_curved_connection_drawing_pixels(
+    side: &Edge,
+    corner: &Edge,
+    params: &ImageParams,
+) -> Pixels {
+    let points = curved_connection_points(side, corner, params);
+    let radius = f64::from(params.line_width) / 2.0;
+    let mut pixels = Pixels::default();
     let direction = (points[3].x - points[0].x).signum();
     let steps = (((points[3].x - points[0].x).abs() + (points[3].y - points[0].y).abs()) * 3.0)
         .ceil() as usize;
     let boundary_y = if points[3].y == 0.0 {
         0
     } else {
-        img_buf.height() - 1
+        u32::from(params.height) - 1
     };
     // Approximate the curve with short segments and fill pixels within the stroke.
     let steps = steps.max(32);
@@ -1034,11 +1052,11 @@ fn draw_bezier_curve(
             ),
         ];
         let (min_x, min_y, max_x, max_y) = bounding_box_u32(&bounds);
-        for y in min_y..max_y.min(img_buf.height()) {
+        for y in min_y..max_y.min(u32::from(params.height)) {
             if y == boundary_y {
                 continue;
             }
-            for x in min_x..max_x.min(img_buf.width()) {
+            for x in min_x..max_x {
                 let pixel_center = Point::new(x as f64 + 0.5, y as f64 + 0.5);
                 // Keep the same circle-side endpoint, with a flat stroke cap.
                 if (pixel_center.x - points[0].x) * direction < 0.0 {
@@ -1051,7 +1069,7 @@ fn draw_bezier_curve(
                 };
                 let distance = (pixel_center - (start + segment * t)).length();
                 if distance <= radius {
-                    *img_buf.get_pixel_mut(x, y) = color;
+                    pixels.insert((x as i32, y as i32));
                 }
             }
         }
@@ -1059,10 +1077,11 @@ fn draw_bezier_curve(
     }
 
     // Match the existing vertical mask exactly at the row boundary.
-    let x_start = (points[3].x - radius) as u32;
-    for x in x_start..(x_start + u32::from(line_width)).min(img_buf.width()) {
-        *img_buf.get_pixel_mut(x, boundary_y) = color;
+    let x_start = (points[3].x - radius) as i32;
+    for x in x_start..x_start + i32::from(params.line_width) {
+        pixels.insert((x, boundary_y as i32));
     }
+    pixels
 }
 
 fn build_image(img_buf: &[u8], image_width: u32, image_height: u32) -> Vec<u8> {
@@ -1305,15 +1324,17 @@ mod tests {
     #[case(RightBottom)]
     #[case(LeftTop)]
     #[case(LeftBottom)]
-    fn test_diagonal_connection_cache(
+    fn test_connection_cache(
         #[case] corner_type: EdgeType,
         #[values(CellWidthType::Double, CellWidthType::Single)] cell_width_type: CellWidthType,
         #[values(1, 2, 6)] distance: usize,
+        #[values(GraphStyle::Angular, GraphStyle::Curved)] style: GraphStyle,
     ) {
         let colors = GraphColorSet::new(&GraphColorConfig::default());
         let params = ImageParams::new(&colors, cell_width_type, false);
         let mut pixels = DrawingPixels::new(&params);
         assert!(pixels.diagonal_connections.is_empty());
+        assert!(pixels.curved_connections.is_empty());
 
         for offset in [0, 3, 1] {
             let (side_type, side_x, corner_x) = match corner_type {
@@ -1327,24 +1348,23 @@ mod tests {
             // Reuse the shape across colors, placements and image widths,
             // including after a first rendering that clips the connection.
             for cell_count in [side_x + 1, offset + distance + 1, offset + distance + 4] {
-                let cached = calc_graph_row_image(
-                    side_x,
-                    cell_count,
-                    &edges,
-                    &params,
-                    &mut pixels,
-                    GraphStyle::Angular,
-                );
+                let cached =
+                    calc_graph_row_image(side_x, cell_count, &edges, &params, &mut pixels, style);
                 let fresh = calc_graph_row_image(
                     side_x,
                     cell_count,
                     &edges,
                     &params,
                     &mut DrawingPixels::new(&params),
-                    GraphStyle::Angular,
+                    style,
                 );
                 assert_eq!(cached.bytes, fresh.bytes);
-                assert_eq!(pixels.diagonal_connections.len(), 1);
+                let cache = match style {
+                    GraphStyle::Angular => &pixels.diagonal_connections,
+                    GraphStyle::Curved => &pixels.curved_connections,
+                    GraphStyle::Rounded => unreachable!(),
+                };
+                assert_eq!(cache.len(), 1);
             }
         }
     }
