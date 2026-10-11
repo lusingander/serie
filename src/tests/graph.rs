@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use chrono::{Days, TimeZone, Utc};
+use font8x8::{UnicodeFonts, BASIC_FONTS};
 use image::{GenericImage, GenericImageView};
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -1923,7 +1924,6 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     let mut img_buf: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
         image::ImageBuffer::new(image_width, image_height);
 
-    let text_renderer = text_to_png::TextRenderer::default();
     let text_x = (width * (graph.max_pos_x + 1)) as u32;
 
     for (i, edges) in graph.edges.iter().enumerate() {
@@ -1941,23 +1941,15 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
             commit.commit_hash.as_short_hash(),
             commit.committer_date.naive_utc().format("%Y-%m-%d")
         );
-        let text_png = text_renderer
-            .render_text_to_png_data(text, height / 4, 0x888888)
-            .unwrap();
-        let text_image = image::load_from_memory(&text_png.data).unwrap();
-        img_buf
-            .copy_from(&text_image, text_x, y + (height as u32 / 4))
-            .unwrap();
+        draw_text(&mut img_buf, &text, text_x, y + (height as u32 / 4));
 
         // write subject
-        let text = &commit.subject;
-        let text_png = text_renderer
-            .render_text_to_png_data(text, height / 4, 0x888888)
-            .unwrap();
-        let text_image = image::load_from_memory(&text_png.data).unwrap();
-        img_buf
-            .copy_from(&text_image, text_x, y + ((height as u32 / 4) * 2))
-            .unwrap();
+        draw_text(
+            &mut img_buf,
+            &commit.subject,
+            text_x,
+            y + ((height as u32 / 4) * 2),
+        );
     }
 
     // Save
@@ -1971,6 +1963,25 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
         image::ColorType::Rgba8,
     )
     .unwrap();
+}
+
+fn draw_text(img_buf: &mut image::RgbaImage, text: &str, x: u32, y: u32) {
+    for (i, ch) in text.chars().enumerate() {
+        let glyph = BASIC_FONTS
+            .get(ch)
+            .unwrap_or_else(|| panic!("unsupported graph test character: {ch:?}"));
+        for (row, bits) in glyph.iter().enumerate() {
+            for col in 0..8 {
+                if bits & (1 << col) != 0 {
+                    img_buf.put_pixel(
+                        x + i as u32 * 8 + col,
+                        y + row as u32,
+                        image::Rgba([0x88, 0x88, 0x88, 0xff]),
+                    );
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Default)]
