@@ -4,12 +4,13 @@ use std::{
 };
 
 use ratatui::{
+    backend::Backend,
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Padding, Paragraph},
-    DefaultTerminal, Frame,
+    DefaultTerminal, Frame, Terminal,
 };
 use rustc_hash::FxHashMap;
 
@@ -164,7 +165,7 @@ impl App<'_> {
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<Ret, std::io::Error> {
         // Clearing the screen here, as it should be cleared upon refresh
         self.ctx.image_protocol.clear();
-        terminal.clear()?;
+        clear_fullscreen(terminal)?;
 
         loop {
             self.prepare_render(terminal)?;
@@ -244,7 +245,7 @@ impl App<'_> {
                     self.clear_view_image_area(terminal)?;
                 }
                 AppEvent::CloseDetail => {
-                    terminal.clear()?;
+                    clear_fullscreen(terminal)?;
                     self.close_detail();
                 }
                 AppEvent::OpenUserCommand(n) => {
@@ -252,7 +253,7 @@ impl App<'_> {
                     self.clear_view_image_area(terminal)?;
                 }
                 AppEvent::CloseUserCommand => {
-                    terminal.clear()?;
+                    clear_fullscreen(terminal)?;
                     self.close_user_command();
                 }
                 AppEvent::OpenRefs => {
@@ -266,7 +267,7 @@ impl App<'_> {
                     self.clear_view_image_area(terminal)?;
                 }
                 AppEvent::CloseHelp => {
-                    terminal.clear()?;
+                    clear_fullscreen(terminal)?;
                     self.close_help();
                 }
                 AppEvent::SelectOlderCommit => {
@@ -456,6 +457,16 @@ fn split_app_areas(area: Rect) -> [Rect; 2] {
     Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(area)
 }
 
+fn clear_fullscreen<B: Backend>(terminal: &mut Terminal<B>) -> Result<(), B::Error> {
+    // Terminal::clear queries the cursor position, competing with our input thread.
+    // A fullscreen redraw positions the cursor itself, so only clear the screen and
+    // reset both diff buffers. Swapping twice preserves the current buffer index.
+    terminal.backend_mut().clear()?;
+    terminal.swap_buffers();
+    terminal.swap_buffers();
+    Ok(())
+}
+
 impl App<'_> {
     fn update_state(&mut self, view_area: Rect) {
         self.app_status.view_area = view_area;
@@ -522,7 +533,7 @@ impl App<'_> {
         };
         if clear {
             if let Some(t) = terminal {
-                if let Err(err) = t.clear() {
+                if let Err(err) = clear_fullscreen(t) {
                     let msg = format!("Failed to clear terminal: {err:?}");
                     self.ec.send(AppEvent::NotifyError(msg));
                 }
@@ -921,9 +932,32 @@ fn build_external_command_parameters<'a>(
 
 #[cfg(test)]
 mod tests {
+    use ratatui::{backend::TestBackend, buffer::Buffer};
     use rstest::rstest;
 
     use super::*;
+
+    #[rstest]
+    #[case(1)]
+    #[case(2)]
+    fn test_fullscreen_clear_redraws_unchanged_content(#[case] frames_before_clear: usize) {
+        let mut terminal = Terminal::new(TestBackend::new(5, 1)).unwrap();
+        let draw = |terminal: &mut Terminal<TestBackend>| {
+            terminal
+                .draw(|frame| frame.render_widget(Paragraph::new("hello"), frame.area()))
+                .unwrap();
+        };
+        for _ in 0..frames_before_clear {
+            draw(&mut terminal);
+        }
+
+        clear_fullscreen(&mut terminal).unwrap();
+        assert_eq!(terminal.backend().buffer(), &Buffer::with_lines(["     "]));
+        for _ in 0..2 {
+            draw(&mut terminal);
+            assert_eq!(terminal.backend().buffer(), &Buffer::with_lines(["hello"]));
+        }
+    }
 
     #[rustfmt::skip]
     #[rstest]
