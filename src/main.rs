@@ -13,10 +13,6 @@ mod view;
 mod widget;
 
 #[cfg(test)]
-#[path = "tests/graph.rs"]
-mod graph_tests;
-
-#[cfg(test)]
 #[path = "tests/mailmap.rs"]
 mod mailmap_tests;
 

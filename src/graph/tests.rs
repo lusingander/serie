@@ -3,7 +3,6 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{git, graph, test_support::git::GitRepository};
 
-#[path = "graph/snapshot.rs"]
 mod snapshot;
 
 use snapshot::{assert_graph_snapshots, copy_git_dir, GenerateGraphOption};
