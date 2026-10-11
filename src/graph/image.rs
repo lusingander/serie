@@ -1106,16 +1106,15 @@ mod tests {
     use image::GenericImage;
     use rstest::rstest;
 
-    use crate::config::GraphColorConfig;
+    use crate::{config::GraphColorConfig, test_support::image_snapshot::compare_image_snapshot};
 
     use super::*;
     use EdgeType::*;
 
     const OUTPUT_DIR: &str = "./out/ut/graph/image";
+    const SNAPSHOT_DIR: &str = "./tests/graph/image";
 
     type TestParam = (usize, Vec<(EdgeType, usize, usize)>);
-
-    // Note: The output contents are not verified by the code.
 
     #[rstest]
     #[case("default_params_rounded", GraphStyle::Rounded)]
@@ -1567,11 +1566,14 @@ mod tests {
             file_name.to_owned()
         };
         let image = build_test_image(&graph_row_images, &image_params, cell_count);
-        std::fs::create_dir_all(OUTPUT_DIR).unwrap();
-        image
-            .save(Path::new(OUTPUT_DIR).join(format!("{file_name}.png")))
-            .unwrap();
+        let result = compare_image_snapshot(
+            &image,
+            Path::new(SNAPSHOT_DIR),
+            Path::new(OUTPUT_DIR),
+            &file_name,
+        );
         save_border_image(&image, &image_params, cell_count, &file_name);
+        result.unwrap_or_else(|error| panic!("{error}"));
     }
 
     fn build_test_image(
