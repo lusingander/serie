@@ -237,7 +237,7 @@ impl ImageParams {
     }
 }
 
-fn build_single_graph_row_image(
+pub fn build_single_graph_row_image(
     graph: &Graph<'_>,
     image_params: &ImageParams,
     drawing_pixels: &mut DrawingPixels,

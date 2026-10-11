@@ -2106,14 +2106,13 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
         let y = (height * i) as u32;
 
         // write graph
-        let (pos_x, pos_y) = graph.commit_pos_map[&commit.commit_hash];
-        let graph_row_image = graph::calc_graph_row_image(
-            pos_x,
-            graph.max_pos_x + 1,
-            &graph.edges[pos_y],
+        let graph_row_image = graph::build_single_graph_row_image(
+            &graph,
             &image_params,
             &mut drawing_pixels,
             option.style,
+            graph::GraphImageWidthMode::Fixed,
+            &commit.commit_hash,
         );
         let image = image::load_from_memory(&graph_row_image.bytes).unwrap();
         img_buf.copy_from(&image, 0, y).unwrap();
