@@ -1,9 +1,9 @@
 use std::path::Path;
 
 use font8x8::{UnicodeFonts, BASIC_FONTS};
-use image::{GenericImage, GenericImageView};
+use image::GenericImage;
 
-use crate::{color, config, git, graph};
+use crate::{color, config, git, graph, test_support::image_snapshot::compare_image_snapshot};
 
 const OUTPUT_DIR: &str = "./out/graph";
 const SNAPSHOT_DIR: &str = "./tests/graph";
@@ -59,14 +59,17 @@ impl GenerateGraphOption {
 }
 
 pub fn assert_graph_snapshots(repo_path: &Path, options: &[GenerateGraphOption]) {
-    create_output_dirs(OUTPUT_DIR);
     let errors: Vec<_> = options
         .iter()
         .filter_map(|option| {
             let actual_img = render_graph_image(repo_path, option);
-            let actual_file = format!("{}/{}.png", OUTPUT_DIR, option.output_name);
-            actual_img.save(actual_file).unwrap();
-            compare_graph_image(option, &actual_img).err()
+            compare_image_snapshot(
+                &actual_img,
+                Path::new(SNAPSHOT_DIR),
+                Path::new(OUTPUT_DIR),
+                option.output_name,
+            )
+            .err()
         })
         .collect();
     if !errors.is_empty() {
@@ -156,11 +159,6 @@ fn draw_text(img_buf: &mut image::RgbaImage, text: &str, x: u32, y: u32) {
     }
 }
 
-fn create_output_dirs(path: &str) {
-    let path = Path::new(path);
-    std::fs::create_dir_all(path).unwrap();
-}
-
 pub fn copy_git_dir(path: &Path, name: &str) {
     if std::env::var_os(DUMP_GRAPH_TEST_REPOS_ENV).is_none() {
         return;
@@ -184,55 +182,5 @@ fn copy_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
             std::fs::copy(entry.path(), dst_path)?;
         }
     }
-    Ok(())
-}
-
-fn compare_graph_image(
-    option: &GenerateGraphOption,
-    actual_img: &image::RgbaImage,
-) -> Result<(), String> {
-    let expected_file = format!("{}/{}.png", SNAPSHOT_DIR, option.output_name);
-    let expected_img = image::open(&expected_file).unwrap();
-
-    if actual_img.dimensions() != expected_img.dimensions() {
-        return Err(format!(
-            "Image dimensions are different. snapshot: {expected_file}, expected: {:?}, actual: {:?}",
-            expected_img.dimensions(),
-            actual_img.dimensions()
-        ));
-    }
-
-    let (image_width, image_height) = actual_img.dimensions();
-    let mut img_buf = image::ImageBuffer::new(image_width, image_height);
-    let mut diff = false;
-
-    for y in 0..image_height {
-        for x in 0..image_width {
-            let actual_pixel = *actual_img.get_pixel(x, y);
-            let expected_pixel = expected_img.get_pixel(x, y);
-
-            if actual_pixel != expected_pixel {
-                img_buf.put_pixel(x, y, image::Rgba([255, 0, 0, 255]));
-                diff = true;
-            } else {
-                img_buf.put_pixel(x, y, actual_pixel);
-            }
-        }
-    }
-
-    if diff {
-        let diff_file = format!("{}/{}_diff.png", OUTPUT_DIR, option.output_name);
-        image::save_buffer(
-            diff_file.clone(),
-            &img_buf,
-            image_width,
-            image_height,
-            image::ColorType::Rgba8,
-        )
-        .unwrap();
-
-        return Err(format!("Images are different. diff: {diff_file}"));
-    }
-
     Ok(())
 }
