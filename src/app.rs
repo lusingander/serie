@@ -4,12 +4,16 @@ use std::{
 };
 
 use ratatui::{
-    crossterm::event::{KeyCode, KeyEvent},
+    backend::Backend,
+    crossterm::{
+        event::{KeyCode, KeyEvent},
+        SynchronizedUpdate,
+    },
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Padding, Paragraph},
-    DefaultTerminal, Frame,
+    DefaultTerminal, Frame, Terminal,
 };
 use rustc_hash::FxHashMap;
 
@@ -75,10 +79,19 @@ pub struct AppContext {
 }
 
 #[derive(Debug, Default)]
+enum PendingClear {
+    #[default]
+    None,
+    ViewImages,
+    Screen,
+}
+
+#[derive(Debug, Default)]
 struct AppStatus {
     status_line: StatusLine,
     numeric_prefix: String,
     view_area: Rect,
+    pending_clear: PendingClear,
 }
 
 #[derive(Debug)]
@@ -162,14 +175,13 @@ impl<'a> App<'a> {
 
 impl App<'_> {
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<Ret, std::io::Error> {
-        // Clearing the screen here, as it should be cleared upon refresh
-        self.clear_image(None)?;
-        terminal.clear()?;
+        self.app_status.pending_clear = PendingClear::Screen;
 
         loop {
             self.prepare_render(terminal)?;
-            self.flush_pending_graph_uploads()?;
-            terminal.draw(|f| self.render(f))?;
+            // Keep image deletion, uploads, and text updates in the same frame.
+            // Preparation and event handling stay outside the synchronized update.
+            io::stdout().sync_update(|_| self.draw(terminal))??;
             match self.ec.recv() {
                 AppEvent::Key(key) => {
                     match self.app_status.status_line {
@@ -240,20 +252,19 @@ impl App<'_> {
                     return Ok(Ret::Quit);
                 }
                 AppEvent::OpenDetail => {
-                    self.clear_image(Some(terminal))?;
                     self.open_detail();
+                    self.app_status.pending_clear = PendingClear::ViewImages;
                 }
                 AppEvent::CloseDetail => {
-                    terminal.clear()?;
                     self.close_detail();
+                    self.app_status.pending_clear = PendingClear::Screen;
                 }
                 AppEvent::OpenUserCommand(n) => {
-                    self.clear_image(Some(terminal))?;
-                    self.open_user_command(n, Some(terminal));
+                    self.open_user_command(n);
                 }
                 AppEvent::CloseUserCommand => {
-                    terminal.clear()?;
                     self.close_user_command();
+                    self.app_status.pending_clear = PendingClear::Screen;
                 }
                 AppEvent::OpenRefs => {
                     self.open_refs();
@@ -262,12 +273,12 @@ impl App<'_> {
                     self.close_refs();
                 }
                 AppEvent::OpenHelp => {
-                    self.clear_image(None)?;
                     self.open_help();
+                    self.app_status.pending_clear = PendingClear::ViewImages;
                 }
                 AppEvent::CloseHelp => {
-                    terminal.clear()?;
                     self.close_help();
+                    self.app_status.pending_clear = PendingClear::Screen;
                 }
                 AppEvent::SelectOlderCommit => {
                     self.select_older_commit();
@@ -328,6 +339,21 @@ impl App<'_> {
         self.update_state(view_area);
         self.view.update_layout(view_area);
         self.view.prepare_graph_uploads();
+        Ok(())
+    }
+
+    fn draw(&mut self, terminal: &mut DefaultTerminal) -> Result<(), std::io::Error> {
+        match self.app_status.pending_clear {
+            PendingClear::None => {}
+            PendingClear::ViewImages => self.clear_view_image_area(terminal)?,
+            PendingClear::Screen => {
+                self.ctx.image_protocol.clear();
+                clear_fullscreen(terminal)?;
+            }
+        }
+        self.app_status.pending_clear = PendingClear::None;
+        self.flush_pending_graph_uploads()?;
+        terminal.draw(|f| self.render(f))?;
         Ok(())
     }
 
@@ -456,20 +482,27 @@ fn split_app_areas(area: Rect) -> [Rect; 2] {
     Layout::vertical([Constraint::Min(0), Constraint::Length(2)]).areas(area)
 }
 
+fn clear_fullscreen<B: Backend>(terminal: &mut Terminal<B>) -> Result<(), B::Error> {
+    // Terminal::clear queries the cursor position, competing with our input thread.
+    // A fullscreen redraw positions the cursor itself, so only clear the screen and
+    // reset both diff buffers. Swapping twice preserves the current buffer index.
+    terminal.backend_mut().clear()?;
+    terminal.swap_buffers();
+    terminal.swap_buffers();
+    Ok(())
+}
+
 impl App<'_> {
     fn update_state(&mut self, view_area: Rect) {
         self.app_status.view_area = view_area;
     }
 
-    fn clear_image(&self, terminal: Option<&mut DefaultTerminal>) -> Result<(), std::io::Error> {
-        // Sometimes the first image fails to render after a full screen clear
-        // As a workaround, the first area is preserved when a full clear is not required
-        if let Some(t) = terminal {
-            for y in 1..t.size()?.height {
+    fn clear_view_image_area(&self, terminal: &mut DefaultTerminal) -> Result<(), std::io::Error> {
+        if let Some(area) = self.view.image_clear_area(self.app_status.view_area) {
+            let area = area.intersection(terminal.size()?.into());
+            for y in area.top()..area.bottom() {
                 self.ctx.image_protocol.clear_line(y);
             }
-        } else {
-            self.ctx.image_protocol.clear();
         }
         Ok(())
     }
@@ -498,39 +531,24 @@ impl App<'_> {
         }
     }
 
-    fn open_user_command(
-        &mut self,
-        user_command_number: usize,
-        terminal: Option<&mut DefaultTerminal>,
-    ) {
-        let clear = match extract_user_command_by_number(user_command_number, &self.ctx)
-            .map(|c| &c.r#type)
-        {
+    fn open_user_command(&mut self, user_command_number: usize) {
+        match extract_user_command_by_number(user_command_number, &self.ctx).map(|c| &c.r#type) {
             Ok(UserCommandType::Inline) => {
                 self.open_user_command_inline(user_command_number);
-                false
+                self.app_status.pending_clear = PendingClear::ViewImages;
             }
             Ok(UserCommandType::Silent) => {
                 self.open_user_command_silent(user_command_number);
-                true
+                self.app_status.pending_clear = PendingClear::Screen;
             }
             Ok(UserCommandType::Suspend) => {
                 self.open_user_command_suspend(user_command_number);
-                true
+                self.app_status.pending_clear = PendingClear::Screen;
             }
             Err(err) => {
                 self.ec.send(AppEvent::NotifyError(err));
-                false
             }
         };
-        if clear {
-            if let Some(t) = terminal {
-                if let Err(err) = t.clear() {
-                    let msg = format!("Failed to clear terminal: {err:?}");
-                    self.ec.send(AppEvent::NotifyError(msg));
-                }
-            }
-        }
     }
 
     fn open_user_command_inline(&mut self, user_command_number: usize) {
@@ -718,7 +736,7 @@ impl App<'_> {
                 user_command_context,
                 ..
             } => {
-                self.open_user_command(user_command_context.n, None);
+                self.open_user_command(user_command_context.n);
             }
             RefreshViewContext::Refs { refs_context, .. } => {
                 self.open_refs();
@@ -924,9 +942,32 @@ fn build_external_command_parameters<'a>(
 
 #[cfg(test)]
 mod tests {
+    use ratatui::{backend::TestBackend, buffer::Buffer};
     use rstest::rstest;
 
     use super::*;
+
+    #[rstest]
+    #[case(1)]
+    #[case(2)]
+    fn test_fullscreen_clear_redraws_unchanged_content(#[case] frames_before_clear: usize) {
+        let mut terminal = Terminal::new(TestBackend::new(5, 1)).unwrap();
+        let draw = |terminal: &mut Terminal<TestBackend>| {
+            terminal
+                .draw(|frame| frame.render_widget(Paragraph::new("hello"), frame.area()))
+                .unwrap();
+        };
+        for _ in 0..frames_before_clear {
+            draw(&mut terminal);
+        }
+
+        clear_fullscreen(&mut terminal).unwrap();
+        assert_eq!(terminal.backend().buffer(), &Buffer::with_lines(["     "]));
+        for _ in 0..2 {
+            draw(&mut terminal);
+            assert_eq!(terminal.backend().buffer(), &Buffer::with_lines(["hello"]));
+        }
+    }
 
     #[rustfmt::skip]
     #[rstest]

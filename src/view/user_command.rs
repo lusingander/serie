@@ -182,6 +182,11 @@ impl<'a> UserCommandView<'a> {
         self.as_list_state().graph_image_ids_sorted()
     }
 
+    pub fn image_clear_area(&self, area: Rect) -> Rect {
+        let [_, user_command_area] = self.split_areas(area);
+        user_command_area
+    }
+
     fn split_areas(&self, area: Rect) -> [Rect; 2] {
         let user_command_height = (area.height - 1).min(self.ctx.ui_config.user_command.height);
         Layout::vertical([Constraint::Min(0), Constraint::Length(user_command_height)]).areas(area)
