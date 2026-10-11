@@ -267,6 +267,7 @@ fn build_single_graph_row_image(
 
 type Pixels = FxHashSet<(i32, i32)>;
 
+// For fixed ImageParams, colors and absolute columns do not affect the shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct ConnectionKey {
     corner_type: EdgeType,
@@ -1329,9 +1330,19 @@ mod tests {
         #[values(CellWidthType::Double, CellWidthType::Single)] cell_width_type: CellWidthType,
         #[values(1, 2, 6)] distance: usize,
         #[values(GraphStyle::Angular, GraphStyle::Curved)] style: GraphStyle,
+        #[values(false, true)] antialias: bool,
     ) {
-        let colors = GraphColorSet::new(&GraphColorConfig::default());
-        let params = ImageParams::new(&colors, cell_width_type, false);
+        let colors = GraphColorSet::new(&GraphColorConfig {
+            branches: vec![
+                "#c8646480".into(),
+                "#64c864c0".into(),
+                "#6464c840".into(),
+                "#c8c864ff".into(),
+            ],
+            edge: "#ffffff90".into(),
+            background: "#00ff0070".into(),
+        });
+        let params = ImageParams::new(&colors, cell_width_type, antialias);
         let mut pixels = DrawingPixels::new(&params);
         assert!(pixels.diagonal_connections.is_empty());
         assert!(pixels.curved_connections.is_empty());
@@ -1364,7 +1375,7 @@ mod tests {
                     GraphStyle::Curved => &pixels.curved_connections,
                     GraphStyle::Rounded => unreachable!(),
                 };
-                assert_eq!(cache.len(), 1);
+                assert_eq!(cache.len(), usize::from(!antialias));
             }
         }
     }

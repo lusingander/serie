@@ -4,8 +4,8 @@ use rustc_hash::FxHashMap;
 use crate::graph::{
     geometry::Point,
     image::{
-        bezier_point, curved_connection_points, diagonal_connection, DrawingPixels, GraphStyle,
-        ImageParams, Pixels,
+        bezier_point, curved_connection_points, diagonal_connection, ConnectionKey, DrawingPixels,
+        GraphStyle, ImageParams, Pixels,
     },
     Edge, EdgeType,
 };
@@ -23,6 +23,8 @@ pub struct Masks {
     circle: Coverage,
     circle_edge: Coverage,
     corners: [Coverage; 4],
+    diagonal_connections: FxHashMap<ConnectionKey, Coverage>,
+    curved_connections: FxHashMap<ConnectionKey, Coverage>,
 }
 
 impl Masks {
@@ -67,7 +69,32 @@ impl Masks {
             circle,
             circle_edge: outer,
             corners,
+            diagonal_connections: FxHashMap::default(),
+            curved_connections: FxHashMap::default(),
         }
+    }
+
+    fn connection_coverage(
+        &mut self,
+        side: &Edge,
+        corner: &Edge,
+        params: &ImageParams,
+        style: GraphStyle,
+    ) -> &Coverage {
+        let key = ConnectionKey::new(side, corner);
+        let cache = match style {
+            GraphStyle::Angular => &mut self.diagonal_connections,
+            GraphStyle::Curved => &mut self.curved_connections,
+            GraphStyle::Rounded => unreachable!(),
+        };
+        cache.entry(key).or_insert_with(|| {
+            let (side, corner) = key.normalized_edges();
+            match style {
+                GraphStyle::Angular => diagonal_coverage(&side, &corner, params),
+                GraphStyle::Curved => curved_coverage(&side, &corner, params),
+                GraphStyle::Rounded => unreachable!(),
+            }
+        })
     }
 }
 
@@ -110,7 +137,7 @@ pub fn render(
     cell_count: usize,
     edges: &[Edge],
     params: &ImageParams,
-    pixels: &DrawingPixels,
+    pixels: &mut DrawingPixels,
     style: GraphStyle,
 ) -> RgbaImage {
     let background = if params.background_color[3] == 0 {
@@ -123,7 +150,7 @@ pub fn render(
         u32::from(params.height),
         background,
     );
-    let masks = pixels.antialias.as_ref().unwrap();
+    let masks = pixels.antialias.as_mut().unwrap();
     let offset = (commit_pos_x * params.width as usize) as i32;
     image.paint(&masks.circle, offset, params.edge_color(commit_pos_x));
     if params.circle_edge_color[3] != 0 {
@@ -169,14 +196,11 @@ pub fn render(
             }) else {
                 continue;
             };
-            let coverage = match style {
-                GraphStyle::Angular => diagonal_coverage(side, corner, params),
-                GraphStyle::Curved => curved_coverage(side, corner, params),
-                GraphStyle::Rounded => unreachable!(),
-            };
+            let offset = (side.pos_x.min(corner.pos_x) * params.width as usize) as i32;
+            let coverage = masks.connection_coverage(side, corner, params, style);
             image.paint(
-                &coverage,
-                0,
+                coverage,
+                offset,
                 params.edge_color(corner.associated_line_pos_x),
             );
         }
@@ -352,7 +376,59 @@ impl SampledImage {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
+    use crate::{color::GraphColorSet, config::GraphColorConfig, graph::image::CellWidthType};
+
     use super::*;
+
+    #[rstest]
+    fn connection_masks_cache_shapes(
+        #[values(CellWidthType::Double, CellWidthType::Single)] cell_width_type: CellWidthType,
+    ) {
+        let colors = GraphColorSet::new(&GraphColorConfig::default());
+        let params = ImageParams::new(&colors, cell_width_type, true);
+        let mut masks = Masks::new(&params);
+        assert!(masks.diagonal_connections.is_empty());
+        assert!(masks.curved_connections.is_empty());
+
+        for style in [GraphStyle::Angular, GraphStyle::Curved] {
+            for corner_type in [
+                EdgeType::RightTop,
+                EdgeType::RightBottom,
+                EdgeType::LeftTop,
+                EdgeType::LeftBottom,
+            ] {
+                for distance in [1, 2, 6] {
+                    for offset in [0, 1, 3, 64] {
+                        let (side_type, side_x, corner_x) = match corner_type {
+                            EdgeType::RightTop | EdgeType::RightBottom => {
+                                (EdgeType::Right, offset, offset + distance)
+                            }
+                            _ => (EdgeType::Left, offset + distance, offset),
+                        };
+                        let side = Edge::new(side_type, side_x, offset + 1);
+                        let corner = Edge::new(corner_type, corner_x, offset + 1);
+                        let cached = masks.connection_coverage(&side, &corner, &params, style);
+                        let translated: Coverage = cached
+                            .iter()
+                            .map(|(&(x, y), &mask)| {
+                                ((x + (offset * params.width as usize) as i32, y), mask)
+                            })
+                            .collect();
+                        let direct = match style {
+                            GraphStyle::Angular => diagonal_coverage(&side, &corner, &params),
+                            GraphStyle::Curved => curved_coverage(&side, &corner, &params),
+                            GraphStyle::Rounded => unreachable!(),
+                        };
+                        assert_eq!(translated, direct);
+                    }
+                }
+            }
+        }
+        assert_eq!(masks.diagonal_connections.len(), 12);
+        assert_eq!(masks.curved_connections.len(), 12);
+    }
 
     #[test]
     fn coverage_preserves_color_and_combines_overlapping_samples() {
