@@ -21,8 +21,7 @@ mod graph_tests;
 mod mailmap_tests;
 
 #[cfg(test)]
-#[path = "tests/git.rs"]
-mod test_git;
+mod test_support;
 
 use std::{path::Path, rc::Rc};
 

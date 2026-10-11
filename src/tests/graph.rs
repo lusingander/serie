@@ -1,7 +1,7 @@
 use chrono::{Days, TimeZone, Utc};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{git, graph, test_git::GitRepository};
+use crate::{git, graph, test_support::git::GitRepository};
 
 #[path = "graph/snapshot.rs"]
 mod snapshot;
