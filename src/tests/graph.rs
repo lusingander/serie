@@ -2035,12 +2035,25 @@ fn copy_git_dir(path: &Path, name: &str) {
         return;
     }
 
-    let dst_path = format!("{OUTPUT_DIR}/{name}");
-    // dircpy overwrite doesn't seem to work as expected, so delete explicitly
-    if Path::new(&dst_path).is_dir() {
+    let dst_path = Path::new(OUTPUT_DIR).join(name);
+    if dst_path.is_dir() {
         std::fs::remove_dir_all(&dst_path).unwrap();
     }
-    dircpy::CopyBuilder::new(path, dst_path).run().unwrap();
+    copy_dir(path, &dst_path).unwrap();
+}
+
+fn copy_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let dst_path = dst.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir(&entry.path(), &dst_path)?;
+        } else {
+            std::fs::copy(entry.path(), dst_path)?;
+        }
+    }
+    Ok(())
 }
 
 fn assert_graph_images(options: &[GenerateGraphOption]) {
