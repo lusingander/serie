@@ -2053,8 +2053,8 @@ fn generate_and_output_graph_image<P: AsRef<Path>>(path: P, option: &GenerateGra
     let repository = git::Repository::load(path.as_ref(), option.sort, max_count, true).unwrap();
     let graph = graph::calc_graph(&repository, option.primary_branch.as_deref());
     let image_params = graph::ImageParams::new(&graph_color_set, cell_width_type, option.antialias);
-    let drawing_pixels = graph::DrawingPixels::new(&image_params);
-    let graph_image = build_graph_image(&graph, &image_params, &drawing_pixels, option.style);
+    let mut drawing_pixels = graph::DrawingPixels::new(&image_params);
+    let graph_image = build_graph_image(&graph, &image_params, &mut drawing_pixels, option.style);
 
     // Create concatenated image
     let width = match cell_width_type {
@@ -2135,7 +2135,7 @@ pub struct GraphImage {
 fn build_graph_image(
     graph: &graph::Graph<'_>,
     image_params: &graph::ImageParams,
-    drawing_pixels: &graph::DrawingPixels,
+    drawing_pixels: &mut graph::DrawingPixels,
     graph_style: graph::GraphStyle,
 ) -> GraphImage {
     let graph_row_sources: FxHashSet<(usize, &Vec<graph::Edge>)> = graph

@@ -110,7 +110,7 @@ impl<'a> GraphImageManager<'a> {
         let graph_row_image = build_single_graph_row_image(
             self.graph,
             &self.image_params,
-            &self.drawing_pixels,
+            &mut self.drawing_pixels,
             self.graph_style,
             self.image_width_mode,
             commit_hash,
@@ -240,7 +240,7 @@ impl ImageParams {
 fn build_single_graph_row_image(
     graph: &Graph<'_>,
     image_params: &ImageParams,
-    drawing_pixels: &DrawingPixels,
+    drawing_pixels: &mut DrawingPixels,
     graph_style: GraphStyle,
     image_width_mode: GraphImageWidthMode,
     commit_hash: &CommitHash,
@@ -267,9 +267,37 @@ fn build_single_graph_row_image(
 
 type Pixels = FxHashSet<(i32, i32)>;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct ConnectionKey {
+    corner_type: EdgeType,
+    distance: usize,
+}
+
+impl ConnectionKey {
+    fn new(side: &Edge, corner: &Edge) -> Self {
+        Self {
+            corner_type: corner.edge_type,
+            distance: side.pos_x.abs_diff(corner.pos_x),
+        }
+    }
+
+    fn normalized_edges(self) -> (Edge, Edge) {
+        let (side_type, side_x, corner_x) = match self.corner_type {
+            EdgeType::RightTop | EdgeType::RightBottom => (EdgeType::Right, 0, self.distance),
+            EdgeType::LeftTop | EdgeType::LeftBottom => (EdgeType::Left, self.distance, 0),
+            _ => unreachable!(),
+        };
+        (
+            Edge::new(side_type, side_x, 0),
+            Edge::new(self.corner_type, corner_x, 0),
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct DrawingPixels {
     antialias: Option<antialias::Masks>,
+    diagonal_connections: FxHashMap<ConnectionKey, Pixels>,
     circle: Pixels,
     circle_edge: Pixels,
     vertical_edge: Pixels,
@@ -300,6 +328,7 @@ impl DrawingPixels {
         let left_bottom_edge = calc_left_bottom_edge_drawing_pixels(image_params);
 
         Self {
+            diagonal_connections: FxHashMap::default(),
             antialias: image_params
                 .antialias
                 .then(|| antialias::Masks::new(image_params)),
@@ -316,6 +345,19 @@ impl DrawingPixels {
             right_bottom_edge,
             left_bottom_edge,
         }
+    }
+
+    fn diagonal_connection_pixels(
+        &mut self,
+        side: &Edge,
+        corner: &Edge,
+        params: &ImageParams,
+    ) -> &Pixels {
+        let key = ConnectionKey::new(side, corner);
+        self.diagonal_connections.entry(key).or_insert_with(|| {
+            let (side, corner) = key.normalized_edges();
+            calc_diagonal_connection_drawing_pixels(&side, &corner, params)
+        })
     }
 }
 
@@ -630,7 +672,7 @@ pub fn calc_graph_row_image(
     cell_count: usize,
     edges: &[Edge],
     image_params: &ImageParams,
-    drawing_pixels: &DrawingPixels,
+    drawing_pixels: &mut DrawingPixels,
     graph_style: GraphStyle,
 ) -> GraphRowImage {
     let image_width = (image_params.width as usize * cell_count) as u32;
@@ -683,7 +725,7 @@ pub fn calc_graph_row_image(
                     .push(edge);
             }
             for edges in horizontal_edges_map.values() {
-                draw_diagonal_connected_edge(&mut img_buf, edges, image_params);
+                draw_diagonal_connected_edge(&mut img_buf, edges, image_params, drawing_pixels);
             }
         }
     }
@@ -768,11 +810,11 @@ fn draw_edge(
     }
 }
 
-// fixme: cache edge drawing range calculations
 fn draw_diagonal_connected_edge(
     img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
     edges: &[&Edge],
     image_params: &ImageParams,
+    drawing_pixels: &mut DrawingPixels,
 ) {
     for corner in edges
         .iter()
@@ -786,26 +828,49 @@ fn draw_diagonal_connected_edge(
         let Some(side) = edges.iter().find(|e| e.edge_type == side_type) else {
             continue;
         };
-        let (vertices, ys, x_start) = diagonal_connection(side, corner, image_params);
         let color = image_params.edge_color(side.associated_line_pos_x);
-        let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
-        for y in min_y..max_y.min(img_buf.height()) {
-            for x in min_x..max_x.min(img_buf.width()) {
-                let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
-                if p.is_inside_polygon(&vertices) {
-                    *img_buf.get_pixel_mut(x, y) = color;
-                }
-            }
+        let x_offset = (side.pos_x.min(corner.pos_x) * image_params.width as usize) as i32;
+        let pixels = drawing_pixels.diagonal_connection_pixels(side, corner, image_params);
+        draw_connection_pixels(img_buf, pixels, x_offset, color);
+    }
+}
+
+fn draw_connection_pixels(
+    img_buf: &mut image::RgbaImage,
+    pixels: &Pixels,
+    x_offset: i32,
+    color: image::Rgba<u8>,
+) {
+    for &(x, y) in pixels {
+        let x = x + x_offset;
+        if x >= 0 && y >= 0 && x < img_buf.width() as i32 && y < img_buf.height() as i32 {
+            *img_buf.get_pixel_mut(x as u32, y as u32) = color;
         }
-        for y in ys {
-            for i in 0..i32::from(image_params.line_width) {
-                let x = (x_start + i) as u32;
-                if x < img_buf.width() && y < img_buf.height() {
-                    *img_buf.get_pixel_mut(x, y) = color;
-                }
+    }
+}
+
+fn calc_diagonal_connection_drawing_pixels(
+    side: &Edge,
+    corner: &Edge,
+    params: &ImageParams,
+) -> Pixels {
+    let (vertices, ys, x_start) = diagonal_connection(side, corner, params);
+    let (min_x, min_y, max_x, max_y) = bounding_box_u32(&vertices);
+    let mut pixels = Pixels::default();
+    for y in min_y..max_y.min(u32::from(params.height)) {
+        for x in min_x..max_x {
+            let p = Point::new(x as f64 + 0.5, y as f64 + 0.5);
+            if p.is_inside_polygon(&vertices) {
+                pixels.insert((x as i32, y as i32));
             }
         }
     }
+    for y in ys {
+        for x in x_start..x_start + i32::from(params.line_width) {
+            pixels.insert((x, y as i32));
+        }
+    }
+    pixels
 }
 
 fn diagonal_connection(
@@ -1236,12 +1301,61 @@ mod tests {
     }
 
     #[rstest]
+    #[case(RightTop)]
+    #[case(RightBottom)]
+    #[case(LeftTop)]
+    #[case(LeftBottom)]
+    fn test_diagonal_connection_cache(
+        #[case] corner_type: EdgeType,
+        #[values(CellWidthType::Double, CellWidthType::Single)] cell_width_type: CellWidthType,
+        #[values(1, 2, 6)] distance: usize,
+    ) {
+        let colors = GraphColorSet::new(&GraphColorConfig::default());
+        let params = ImageParams::new(&colors, cell_width_type, false);
+        let mut pixels = DrawingPixels::new(&params);
+        assert!(pixels.diagonal_connections.is_empty());
+
+        for offset in [0, 3, 1] {
+            let (side_type, side_x, corner_x) = match corner_type {
+                RightTop | RightBottom => (Right, offset, offset + distance),
+                _ => (Left, offset + distance, offset),
+            };
+            let edges = [
+                Edge::new(side_type, side_x, offset + 1),
+                Edge::new(corner_type, corner_x, offset + 1),
+            ];
+            // Reuse the shape across colors, placements and image widths,
+            // including after a first rendering that clips the connection.
+            for cell_count in [side_x + 1, offset + distance + 1, offset + distance + 4] {
+                let cached = calc_graph_row_image(
+                    side_x,
+                    cell_count,
+                    &edges,
+                    &params,
+                    &mut pixels,
+                    GraphStyle::Angular,
+                );
+                let fresh = calc_graph_row_image(
+                    side_x,
+                    cell_count,
+                    &edges,
+                    &params,
+                    &mut DrawingPixels::new(&params),
+                    GraphStyle::Angular,
+                );
+                assert_eq!(cached.bytes, fresh.bytes);
+                assert_eq!(pixels.diagonal_connections.len(), 1);
+            }
+        }
+    }
+
+    #[rstest]
     #[case(CellWidthType::Double)]
     #[case(CellWidthType::Single)]
     fn test_curved_connection_positions(#[case] cell_width_type: CellWidthType) {
         let colors = GraphColorSet::new(&GraphColorConfig::default());
         let params = ImageParams::new(&colors, cell_width_type, false);
-        let pixels = DrawingPixels::new(&params);
+        let mut pixels = DrawingPixels::new(&params);
 
         for (commit_pos_x, edges) in simple_test_params() {
             let edges: Vec<Edge> = edges
@@ -1253,7 +1367,7 @@ mod tests {
                 4,
                 &edges,
                 &params,
-                &pixels,
+                &mut pixels,
                 GraphStyle::Rounded,
             );
             let curved = calc_graph_row_image(
@@ -1261,7 +1375,7 @@ mod tests {
                 4,
                 &edges,
                 &params,
-                &pixels,
+                &mut pixels,
                 GraphStyle::Curved,
             );
             assert_eq!(rounded.cell_count, curved.cell_count);
@@ -1306,16 +1420,16 @@ mod tests {
     ) {
         let colors = GraphColorSet::new(&GraphColorConfig::default());
         let params = ImageParams::new(&colors, cell_width_type, false);
-        let pixels = DrawingPixels::new(&params);
+        let mut pixels = DrawingPixels::new(&params);
         let aa_params = ImageParams::new(&colors, cell_width_type, true);
-        let aa_pixels = DrawingPixels::new(&aa_params);
+        let mut aa_pixels = DrawingPixels::new(&aa_params);
         for (pos, edges) in simple_test_params() {
             let mut edges: Vec<_> = edges
                 .into_iter()
                 .map(|(t, x, line)| Edge::new(t, x, line))
                 .collect();
-            let aliased = calc_graph_row_image(pos, 4, &edges, &params, &pixels, style);
-            let aa = calc_graph_row_image(pos, 4, &edges, &aa_params, &aa_pixels, style);
+            let aliased = calc_graph_row_image(pos, 4, &edges, &params, &mut pixels, style);
+            let aa = calc_graph_row_image(pos, 4, &edges, &aa_params, &mut aa_pixels, style);
             assert_eq!(aliased.cell_count, aa.cell_count);
             let aliased = image::load_from_memory(&aliased.bytes).unwrap().to_rgba8();
             let aa_image = image::load_from_memory(&aa.bytes).unwrap().to_rgba8();
@@ -1331,7 +1445,7 @@ mod tests {
                 }
             }
             edges.reverse();
-            let reordered = calc_graph_row_image(pos, 4, &edges, &aa_params, &aa_pixels, style);
+            let reordered = calc_graph_row_image(pos, 4, &edges, &aa_params, &mut aa_pixels, style);
             assert_eq!(aa.bytes, reordered.bytes);
         }
     }
@@ -1345,8 +1459,8 @@ mod tests {
         };
         let colors = GraphColorSet::new(&config);
         let params = ImageParams::new(&colors, CellWidthType::Double, true);
-        let pixels = DrawingPixels::new(&params);
-        let row = calc_graph_row_image(0, 1, &[], &params, &pixels, GraphStyle::Rounded);
+        let mut pixels = DrawingPixels::new(&params);
+        let row = calc_graph_row_image(0, 1, &[], &params, &mut pixels, GraphStyle::Rounded);
         let image = image::load_from_memory(&row.bytes).unwrap().to_rgba8();
         assert_eq!(*image.get_pixel(25, 25), params.edge_color(0));
         let outline = if params.circle_edge_color[3] == 0 {
@@ -1394,7 +1508,7 @@ mod tests {
         params: Vec<TestParam>,
         cell_count: usize,
         image_params: ImageParams,
-        drawing_pixels: DrawingPixels,
+        mut drawing_pixels: DrawingPixels,
         graph_style: GraphStyle,
         file_name: &str,
     ) {
@@ -1410,7 +1524,7 @@ mod tests {
                     cell_count,
                     &edges,
                     &image_params,
-                    &drawing_pixels,
+                    &mut drawing_pixels,
                     graph_style,
                 )
             })
