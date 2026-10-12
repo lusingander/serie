@@ -1106,16 +1106,15 @@ mod tests {
     use image::GenericImage;
     use rstest::rstest;
 
-    use crate::config::GraphColorConfig;
+    use crate::{config::GraphColorConfig, test_support::image_snapshot::compare_image_snapshot};
 
     use super::*;
     use EdgeType::*;
 
     const OUTPUT_DIR: &str = "./out/ut/graph/image";
+    const SNAPSHOT_DIR: &str = "./tests/graph/image";
 
     type TestParam = (usize, Vec<(EdgeType, usize, usize)>);
-
-    // Note: The output contents are not verified by the code.
 
     #[rstest]
     #[case("default_params_rounded", GraphStyle::Rounded)]
@@ -1566,15 +1565,22 @@ mod tests {
         } else {
             file_name.to_owned()
         };
-        save_image(&graph_row_images, &image_params, cell_count, &file_name);
+        let image = build_test_image(&graph_row_images, &image_params, cell_count);
+        let result = compare_image_snapshot(
+            &image,
+            Path::new(SNAPSHOT_DIR),
+            Path::new(OUTPUT_DIR),
+            &file_name,
+        );
+        save_border_image(&image, &image_params, cell_count, &file_name);
+        result.unwrap_or_else(|error| panic!("{error}"));
     }
 
-    fn save_image(
+    fn build_test_image(
         graph_row_images: &[GraphRowImage],
         image_params: &ImageParams,
         cell_count: usize,
-        file_name: &str,
-    ) {
+    ) -> image::RgbaImage {
         let rows_len = graph_row_images.len() as u32;
         let image_width = image_params.width as u32 * cell_count as u32;
         let image_height = image_params.height as u32 * rows_len;
@@ -1586,24 +1592,28 @@ mod tests {
             let image = image::load_from_memory(&graph_row_image.bytes).unwrap();
             let y = image_params.height as u32 * (rows_len - (i as u32) - 1);
             img_buf.copy_from(&image, 0, y).unwrap();
+        }
 
+        img_buf
+    }
+
+    fn save_border_image(
+        image: &image::RgbaImage,
+        image_params: &ImageParams,
+        cell_count: usize,
+        file_name: &str,
+    ) {
+        let mut bordered_image = image.clone();
+        for y in (0..image.height()).step_by(image_params.height as usize) {
             for x in 0..cell_count {
                 let x_offset = x as u32 * image_params.width as u32;
-                let y_offset = y;
-                draw_border(&mut img_buf, image_params, x_offset, y_offset);
+                draw_border(&mut bordered_image, image_params, x_offset, y);
             }
         }
 
-        create_output_dirs(OUTPUT_DIR);
-        let file_name = format!("{OUTPUT_DIR}/{file_name}.png");
-        image::save_buffer(
-            file_name,
-            &img_buf,
-            image_width,
-            image_height,
-            image::ColorType::Rgba8,
-        )
-        .unwrap();
+        bordered_image
+            .save(Path::new(OUTPUT_DIR).join(format!("{file_name}_borders.png")))
+            .unwrap();
     }
 
     fn draw_border(
@@ -1623,10 +1633,5 @@ mod tests {
                 }
             }
         }
-    }
-
-    fn create_output_dirs(path: &str) {
-        let path = Path::new(path);
-        std::fs::create_dir_all(path).unwrap();
     }
 }
