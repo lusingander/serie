@@ -13,16 +13,11 @@ mod view;
 mod widget;
 
 #[cfg(test)]
-#[path = "tests/graph.rs"]
-mod graph_tests;
-
-#[cfg(test)]
 #[path = "tests/mailmap.rs"]
 mod mailmap_tests;
 
 #[cfg(test)]
-#[path = "tests/git.rs"]
-mod test_git;
+mod test_support;
 
 use std::{path::Path, rc::Rc};
 

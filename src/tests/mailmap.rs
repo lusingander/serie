@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use crate::{
     git::{self, Repository},
-    test_git::GitRepository,
+    test_support::git::GitRepository,
 };
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

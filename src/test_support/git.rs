@@ -2,7 +2,7 @@ use std::{path::Path, process::Command};
 
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 
-pub(crate) struct GitRepository<'a> {
+pub struct GitRepository<'a> {
     path: &'a Path,
     author_name: String,
     author_email: String,
@@ -11,7 +11,7 @@ pub(crate) struct GitRepository<'a> {
 }
 
 impl<'a> GitRepository<'a> {
-    pub(crate) fn new(path: &'a Path) -> GitRepository<'a> {
+    pub fn new(path: &'a Path) -> GitRepository<'a> {
         GitRepository {
             path,
             author_name: "Author Name".to_string(),
@@ -21,7 +21,7 @@ impl<'a> GitRepository<'a> {
         }
     }
 
-    pub(crate) fn with_identities(
+    pub fn with_identities(
         mut self,
         author_name: &str,
         author_email: &str,
@@ -35,39 +35,39 @@ impl<'a> GitRepository<'a> {
         self
     }
 
-    pub(crate) fn init(&self) {
+    pub fn init(&self) {
         self.run(&["init", "-b", "master"], "");
     }
 
-    pub(crate) fn commit(&self, message: &str, date: &str) {
+    pub fn commit(&self, message: &str, date: &str) {
         let datetime_str = parse_date(date).to_rfc3339();
         self.run(&["commit", "--allow-empty", "-m", message], &datetime_str);
     }
 
-    pub(crate) fn checkout(&self, branch_name: &str) {
+    pub fn checkout(&self, branch_name: &str) {
         self.run(&["checkout", branch_name], "");
     }
 
-    pub(crate) fn checkout_b(&self, branch_name: &str) {
+    pub fn checkout_b(&self, branch_name: &str) {
         self.run(&["checkout", "-b", branch_name], "");
     }
 
-    pub(crate) fn checkout_orphan(&self, branch_name: &str) {
+    pub fn checkout_orphan(&self, branch_name: &str) {
         self.run(&["checkout", "--orphan", branch_name], "");
     }
 
-    pub(crate) fn merge(&self, branch_names: &[&str], date: &str) {
+    pub fn merge(&self, branch_names: &[&str], date: &str) {
         let datetime_str = parse_date(date).to_rfc3339();
         let mut args = vec!["merge", "--no-ff", "--no-log"];
         args.extend_from_slice(branch_names);
         self.run(&args, &datetime_str);
     }
 
-    pub(crate) fn branch_d(&self, branch_name: &str) {
+    pub fn branch_d(&self, branch_name: &str) {
         self.run(&["branch", "-D", branch_name], "");
     }
 
-    pub(crate) fn stash(&self, date: &str) {
+    pub fn stash(&self, date: &str) {
         let dummy_file_path = self.path.join("stash.txt");
         std::fs::File::create(dummy_file_path).unwrap();
 
@@ -75,12 +75,12 @@ impl<'a> GitRepository<'a> {
         self.run(&["stash", "--include-untracked"], &datetime_str);
     }
 
-    pub(crate) fn rev_parse_head(&self) -> String {
+    pub fn rev_parse_head(&self) -> String {
         let output = self.run(&["rev-parse", "HEAD"], "");
         String::from_utf8(output.stdout).unwrap().trim().to_string()
     }
 
-    pub(crate) fn log(&self) {
+    pub fn log(&self) {
         let output = self.run(&["log", "--pretty=format:%h %s", "--graph", "--all"], "");
         println!("{}", String::from_utf8(output.stdout).unwrap())
     }
