@@ -39,7 +39,7 @@ enum StatusLine {
     None,
     Input {
         message: String,
-        cursor_position: u16,
+        cursor_byte_index: usize,
         metadata: String,
     },
     Transient(String),
@@ -302,10 +302,10 @@ impl App<'_> {
                 }
                 AppEvent::UpdateStatusInput {
                     message,
-                    cursor_position,
+                    cursor_byte_index,
                     metadata,
                 } => {
-                    self.update_status_input(message, cursor_position, metadata);
+                    self.update_status_input(message, cursor_byte_index, metadata);
                 }
                 AppEvent::UpdateStatusTransient(msg) => {
                     self.update_status_transient(msg);
@@ -461,9 +461,12 @@ impl App<'_> {
         f.render_widget(paragraph, area);
 
         if let StatusLine::Input {
-            cursor_position, ..
+            message,
+            cursor_byte_index,
+            ..
         } = &self.app_status.status_line
         {
+            let cursor_position = Line::raw(&message[..*cursor_byte_index]).width() as u16;
             let (x, y) = (area.x + cursor_position + 1, area.y + 1);
             match &self.ctx.ui_config.common.cursor_type {
                 CursorType::Native => {
@@ -751,10 +754,10 @@ impl App<'_> {
         self.app_status.status_line = StatusLine::None;
     }
 
-    fn update_status_input(&mut self, message: String, cursor_position: u16, metadata: String) {
+    fn update_status_input(&mut self, message: String, cursor_byte_index: usize, metadata: String) {
         self.app_status.status_line = StatusLine::Input {
             message,
-            cursor_position,
+            cursor_byte_index,
             metadata,
         };
     }
