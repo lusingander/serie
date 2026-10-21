@@ -655,8 +655,13 @@ impl<'a> CommitListState<'a> {
         }
     }
 
-    pub fn search_query_cursor_position(&self) -> u16 {
-        self.search_input.visual_cursor() as u16 + 1 // add 1 for "/"
+    pub fn search_query_cursor_byte_index(&self) -> usize {
+        let query = self.search_input.value();
+        query
+            .char_indices()
+            .nth(self.search_input.cursor())
+            .map_or(query.len(), |(index, _)| index)
+            + 1 // add 1 for "/"
     }
 
     fn update_search_matches(&mut self) {
@@ -1720,7 +1725,7 @@ mod tests {
             state.start_search();
 
             assert_eq!(state.search_query_string(), Some("/fx".into()));
-            assert_eq!(state.search_query_cursor_position(), 3);
+            assert_eq!(state.search_query_cursor_byte_index(), 3);
             assert_eq!(state.search_options(), options);
             assert_eq!(state.current_list_status(), position);
             assert_eq!(
@@ -1853,6 +1858,23 @@ mod tests {
     }
 
     #[test]
+    fn test_search_query_cursor_byte_index_tracks_unicode_input() {
+        let query = "a界e\u{301}👩‍💻";
+        with_commit_list_state(&[query], |state| {
+            input_search_query(state, query);
+            state.handle_search_input(KeyEvent::from(KeyCode::Home));
+
+            for before in ["", "a", "a界", "a界e\u{301}", query] {
+                let message = state.search_query_string().unwrap();
+                let index = state.search_query_cursor_byte_index();
+                assert_eq!(&message[..index], format!("/{before}"));
+                assert_eq!(message, format!("/{query}"));
+                state.handle_search_input(KeyEvent::from(KeyCode::Right));
+            }
+        });
+    }
+
+    #[test]
     fn test_resume_search_moves_cursor_to_end_of_long_unicode_query() {
         let query = "検索".repeat(40);
         with_commit_list_state(&[query.as_str()], |state| {
@@ -1862,7 +1884,7 @@ mod tests {
 
             state.start_search();
             assert_eq!(state.search_query_string(), Some(format!("/{query}")));
-            assert_eq!(state.search_query_cursor_position(), 161);
+            assert_eq!(state.search_query_cursor_byte_index(), query.len() + 1);
             state.handle_search_input(KeyEvent::from(KeyCode::Char('追')));
             assert_eq!(state.search_query_string(), Some(format!("/{query}追")));
         });

@@ -39,7 +39,7 @@ pub enum AppEvent {
     ClearStatusLine,
     UpdateStatusInput {
         message: String,
-        cursor_position: u16,
+        cursor_byte_index: usize,
         metadata: String,
     },
     UpdateStatusTransient(String),
