@@ -402,11 +402,18 @@ impl App<'_> {
                 }
             }
             StatusLine::Input {
-                message, metadata, ..
-            } => status_line_with_metadata(
                 message,
+                cursor_byte_index,
                 metadata,
-                Style::default().fg(self.ctx.color_theme.status_input_fg),
+            } => status_line_with_metadata(
+                status_input_line(
+                    message,
+                    *cursor_byte_index,
+                    &self.ctx.ui_config.common.cursor_type,
+                    Style::default().fg(self.ctx.color_theme.status_input_fg),
+                    Style::default().fg(self.ctx.color_theme.virtual_cursor_fg),
+                ),
+                metadata,
                 Style::default().fg(self.ctx.color_theme.status_input_transient_fg),
                 area.width,
             ),
@@ -432,9 +439,8 @@ impl App<'_> {
                         .add_modifier(Modifier::BOLD)
                 };
                 status_line_with_metadata(
-                    message,
+                    Line::from(Span::styled(message.as_str(), message_style)),
                     options,
-                    message_style,
                     Style::default().fg(self.ctx.color_theme.status_input_transient_fg),
                     area.width,
                 )
@@ -460,23 +466,20 @@ impl App<'_> {
         );
         f.render_widget(paragraph, area);
 
-        if let StatusLine::Input {
-            message,
-            cursor_byte_index,
-            ..
-        } = &self.app_status.status_line
-        {
+        if let (
+            StatusLine::Input {
+                message,
+                cursor_byte_index,
+                ..
+            },
+            CursorType::Native,
+        ) = (
+            &self.app_status.status_line,
+            &self.ctx.ui_config.common.cursor_type,
+        ) {
             let cursor_position = Line::raw(&message[..*cursor_byte_index]).width() as u16;
             let (x, y) = (area.x + cursor_position + 1, area.y + 1);
-            match &self.ctx.ui_config.common.cursor_type {
-                CursorType::Native => {
-                    f.set_cursor_position((x, y));
-                }
-                CursorType::Virtual(cursor) => {
-                    let style = Style::default().fg(self.ctx.color_theme.virtual_cursor_fg);
-                    f.buffer_mut().set_string(x, y, cursor, style);
-                }
-            }
+            f.set_cursor_position((x, y));
         }
     }
 }
@@ -803,28 +806,47 @@ impl App<'_> {
     }
 }
 
-fn status_line_with_metadata(
-    message: &str,
-    metadata: &str,
-    message_style: Style,
+fn status_input_line<'a>(
+    message: &'a str,
+    cursor_byte_index: usize,
+    cursor_type: &'a CursorType,
+    input_style: Style,
+    cursor_style: Style,
+) -> Line<'a> {
+    match cursor_type {
+        CursorType::Native => Line::from(Span::styled(message, input_style)),
+        CursorType::Virtual(cursor) => {
+            let (before, after) = message.split_at(cursor_byte_index);
+            Line::from(vec![
+                Span::styled(before, input_style),
+                Span::styled(cursor.as_str(), cursor_style),
+                Span::styled(after, input_style),
+            ])
+        }
+    }
+}
+
+fn status_line_with_metadata<'a>(
+    mut message: Line<'a>,
+    metadata: &'a str,
     metadata_style: Style,
     area_width: u16,
-) -> Line<'static> {
+) -> Line<'a> {
     let content_width = area_width.saturating_sub(2) as usize;
-    let message_width = console::measure_text_width(message);
-    let metadata_width = console::measure_text_width(metadata);
+    let message_width = message.width();
+    let metadata_width = Span::raw(metadata).width();
     let min_gap_width = 2;
 
     if message_width + min_gap_width + metadata_width > content_width {
-        return Line::from(Span::styled(message.to_owned(), message_style));
+        return message;
     }
 
     let pad_width = content_width - message_width - metadata_width;
-    Line::from(vec![
-        Span::styled(message.to_owned(), message_style),
+    message.spans.extend([
         Span::raw(" ".repeat(pad_width)),
-        Span::styled(metadata.to_owned(), metadata_style),
-    ])
+        Span::styled(metadata, metadata_style),
+    ]);
+    message
 }
 
 fn selected_commit_details(
@@ -945,7 +967,7 @@ fn build_external_command_parameters<'a>(
 
 #[cfg(test)]
 mod tests {
-    use ratatui::{backend::TestBackend, buffer::Buffer};
+    use ratatui::{backend::TestBackend, buffer::Buffer, style::Color};
     use rstest::rstest;
 
     use super::*;
@@ -992,10 +1014,96 @@ mod tests {
         assert_eq!(actual, expected);
     }
 
+    #[rstest]
+    #[case("/", 1, "|", "/|")]
+    #[case("/abc", 1, "|", "/|abc")]
+    #[case("/abc", 2, "|", "/a|bc")]
+    #[case("/abc", 4, "|", "/abc|")]
+    #[case("/a界b", 2, "|", "/a|界b")]
+    #[case("/a界b", 5, "|", "/a界|b")]
+    #[case("/ae\u{301}b", 5, "|", "/ae\u{301}|b")]
+    #[case("/a👩‍💻b", 13, "|", "/a👩‍💻|b")]
+    #[case("/abc", 2, "||", "/a||bc")]
+    #[case("/abc", 2, "界", "/a界bc")]
+    #[case("/abc", 2, "", "/abc")]
+    fn test_status_input_line_inserts_virtual_cursor_without_hiding_text(
+        #[case] message: &str,
+        #[case] cursor_byte_index: usize,
+        #[case] cursor: &str,
+        #[case] expected: &str,
+    ) {
+        let cursor_type = CursorType::Virtual(cursor.into());
+        let mut terminal = Terminal::new(TestBackend::new(20, 1)).unwrap();
+        terminal
+            .draw(|frame| {
+                let line = status_input_line(
+                    message,
+                    cursor_byte_index,
+                    &cursor_type,
+                    Style::default(),
+                    Style::default(),
+                );
+                frame.render_widget(Paragraph::new(line), frame.area());
+            })
+            .unwrap();
+
+        let mut expected_buffer = Buffer::with_lines([expected]);
+        expected_buffer.resize(Rect::new(0, 0, 20, 1));
+        assert_eq!(terminal.backend().buffer(), &expected_buffer);
+    }
+
+    #[rstest]
+    #[case(16, "/a||bc  [meta]")]
+    #[case(15, "/a||bc")]
+    #[case(5, "/a||bc")]
+    fn test_status_input_metadata_uses_cursor_width_and_preserves_styles(
+        #[case] width: u16,
+        #[case] expected: &str,
+    ) {
+        let cursor_type = CursorType::Virtual("||".into());
+        let line = status_input_line(
+            "/abc",
+            2,
+            &cursor_type,
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
+            Style::default().fg(Color::Red),
+        );
+        let line =
+            status_line_with_metadata(line, "[meta]", Style::default().fg(Color::Blue), width);
+        assert_eq!(line.to_string(), expected);
+
+        let mut terminal = Terminal::new(TestBackend::new(width, 2)).unwrap();
+        terminal
+            .draw(|frame| {
+                frame.render_widget(
+                    Paragraph::new(line).block(
+                        Block::default()
+                            .borders(Borders::TOP)
+                            .padding(Padding::horizontal(1)),
+                    ),
+                    frame.area(),
+                );
+            })
+            .unwrap();
+        let buffer = terminal.backend().buffer();
+        assert_eq!(buffer[(1, 1)].fg, Color::Green);
+        assert!(buffer[(1, 1)].modifier.contains(Modifier::BOLD));
+        assert_eq!(buffer[(3, 1)].fg, Color::Red);
+        assert!(!buffer[(3, 1)].modifier.contains(Modifier::BOLD));
+        assert_eq!(buffer[(width - 1, 1)].symbol(), " ");
+        if width == 16 {
+            assert_eq!(buffer[(5, 1)].fg, Color::Green);
+            assert_eq!(buffer[(9, 1)].symbol(), "[");
+            assert_eq!(buffer[(9, 1)].fg, Color::Blue);
+            assert!(!buffer[(9, 1)].modifier.contains(Modifier::BOLD));
+        }
+    }
+
     #[test]
     fn test_status_line_with_metadata_right_aligns_metadata() {
-        let line =
-            status_line_with_metadata("left", "[meta]", Style::default(), Style::default(), 14);
+        let line = status_line_with_metadata(Line::raw("left"), "[meta]", Style::default(), 14);
 
         assert_eq!(line.spans.len(), 3);
         assert_eq!(line.spans[0].content.as_ref(), "left");
@@ -1005,8 +1113,7 @@ mod tests {
 
     #[test]
     fn test_status_line_with_metadata_hides_metadata_when_area_is_too_narrow() {
-        let line =
-            status_line_with_metadata("left", "[meta]", Style::default(), Style::default(), 13);
+        let line = status_line_with_metadata(Line::raw("left"), "[meta]", Style::default(), 13);
 
         assert_eq!(line.spans.len(), 1);
         assert_eq!(line.spans[0].content.as_ref(), "left");
