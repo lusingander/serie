@@ -4,8 +4,8 @@ use rustc_hash::FxHashMap;
 use crate::graph::{
     geometry::Point,
     image::{
-        bezier_point, curved_connection_points, diagonal_connection, ConnectionKey, DrawingPixels,
-        GraphStyle, ImageParams, Pixels,
+        bezier_point, curved_connection_points, diagonal_connection, edge_connections,
+        ConnectionKey, DrawingPixels, GraphStyle, ImageParams, Pixels,
     },
     Edge, EdgeType,
 };
@@ -156,53 +156,43 @@ pub fn render(
     if params.circle_edge_color[3] != 0 {
         image.paint(&masks.circle_edge, offset, params.circle_edge_color);
     }
-    let mut ordered_edges: Vec<_> = edges.iter().collect();
-    ordered_edges.sort_by_key(|e| (e.associated_line_pos_x, e.pos_x, e.edge_type));
-    for edge in &ordered_edges {
-        if style != GraphStyle::Rounded && !edge.edge_type.is_vertically_related() {
-            continue;
-        }
-        let offset = (edge.pos_x * params.width as usize) as i32;
-        let color = params.edge_color(edge.associated_line_pos_x);
-        match edge.edge_type {
-            EdgeType::RightTop => image.paint(&masks.corners[0], offset, color),
-            EdgeType::LeftTop => image.paint(&masks.corners[1], offset, color),
-            EdgeType::RightBottom => image.paint(&masks.corners[2], offset, color),
-            EdgeType::LeftBottom => image.paint(&masks.corners[3], offset, color),
-            t => image.paint_pixels(
-                match t {
-                    EdgeType::Vertical => &pixels.vertical_edge,
-                    EdgeType::Horizontal => &pixels.horizontal_edge,
-                    EdgeType::Up => &pixels.up_edge,
-                    EdgeType::Down => &pixels.down_edge,
-                    EdgeType::Left => &pixels.left_edge,
-                    EdgeType::Right => &pixels.right_edge,
-                    _ => unreachable!(),
-                },
-                offset,
-                color,
-            ),
-        }
-    }
-    if style != GraphStyle::Rounded {
-        for corner in ordered_edges {
-            let side_type = match corner.edge_type {
-                EdgeType::RightTop | EdgeType::RightBottom => EdgeType::Right,
-                EdgeType::LeftTop | EdgeType::LeftBottom => EdgeType::Left,
-                _ => continue,
-            };
-            let Some(side) = edges.iter().find(|e| {
-                e.edge_type == side_type && e.associated_line_pos_x == corner.associated_line_pos_x
-            }) else {
+    for lane_edges in edges.chunk_by(|a, b| a.associated_line_pos_x == b.associated_line_pos_x) {
+        for edge in lane_edges {
+            if style != GraphStyle::Rounded && !edge.edge_type.is_vertically_related() {
                 continue;
-            };
-            let offset = (side.pos_x.min(corner.pos_x) * params.width as usize) as i32;
-            let coverage = masks.connection_coverage(side, corner, params, style);
-            image.paint(
-                coverage,
-                offset,
-                params.edge_color(corner.associated_line_pos_x),
-            );
+            }
+            let offset = (edge.pos_x * params.width as usize) as i32;
+            let color = params.edge_color(edge.associated_line_pos_x);
+            match edge.edge_type {
+                EdgeType::RightTop => image.paint(&masks.corners[0], offset, color),
+                EdgeType::LeftTop => image.paint(&masks.corners[1], offset, color),
+                EdgeType::RightBottom => image.paint(&masks.corners[2], offset, color),
+                EdgeType::LeftBottom => image.paint(&masks.corners[3], offset, color),
+                t => image.paint_pixels(
+                    match t {
+                        EdgeType::Vertical => &pixels.vertical_edge,
+                        EdgeType::Horizontal => &pixels.horizontal_edge,
+                        EdgeType::Up => &pixels.up_edge,
+                        EdgeType::Down => &pixels.down_edge,
+                        EdgeType::Left => &pixels.left_edge,
+                        EdgeType::Right => &pixels.right_edge,
+                        _ => unreachable!(),
+                    },
+                    offset,
+                    color,
+                ),
+            }
+        }
+        if style != GraphStyle::Rounded {
+            for (side, corner) in edge_connections(lane_edges) {
+                let offset = (side.pos_x.min(corner.pos_x) * params.width as usize) as i32;
+                let coverage = masks.connection_coverage(side, corner, params, style);
+                image.paint(
+                    coverage,
+                    offset,
+                    params.edge_color(corner.associated_line_pos_x),
+                );
+            }
         }
     }
     image.resolve()

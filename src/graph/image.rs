@@ -1294,9 +1294,10 @@ mod tests {
     fn test_lane_paint_order(
         #[values(GraphStyle::Rounded, GraphStyle::Angular, GraphStyle::Curved)] style: GraphStyle,
         #[values(CellWidthType::Double, CellWidthType::Single)] cell_width_type: CellWidthType,
+        #[values(false, true)] antialias: bool,
     ) {
         let colors = GraphColorSet::new(&GraphColorConfig::default());
-        let params = ImageParams::new(&colors, cell_width_type, false);
+        let params = ImageParams::new(&colors, cell_width_type, antialias);
         let mut pixels = DrawingPixels::new(&params);
         let render = |edges: &[Edge], pixels: &mut DrawingPixels| {
             calc_graph_row_image(5, 6, edges, &params, pixels, style)
@@ -1495,7 +1496,7 @@ mod tests {
         let aa_params = ImageParams::new(&colors, cell_width_type, true);
         let mut aa_pixels = DrawingPixels::new(&aa_params);
         for (pos, edges) in simple_test_params() {
-            let mut edges: Vec<_> = edges
+            let edges: Vec<_> = edges
                 .into_iter()
                 .map(|(t, x, line)| Edge::new(t, x, line))
                 .collect();
@@ -1515,9 +1516,6 @@ mod tests {
                     );
                 }
             }
-            edges.reverse();
-            let reordered = calc_graph_row_image(pos, 4, &edges, &aa_params, &mut aa_pixels, style);
-            assert_eq!(aa.bytes, reordered.bytes);
         }
     }
 
