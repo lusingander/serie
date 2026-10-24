@@ -694,6 +694,11 @@ pub fn calc_graph_row_image(
     let image_width = (image_params.width as usize * cell_count) as u32;
     let image_height = image_params.height as u32;
 
+    // Paint whole lanes from left to right, so higher lane indices cover lower ones.
+    let mut ordered_edges = edges.to_vec();
+    ordered_edges.sort_unstable_by_key(|e| (e.associated_line_pos_x, e.pos_x, e.edge_type));
+    let edges = ordered_edges.as_slice();
+
     if image_params.antialias {
         let image = antialias::render(
             commit_pos_x,
@@ -714,35 +719,20 @@ pub fn calc_graph_row_image(
     draw_background(&mut img_buf, image_params);
     draw_commit_circle(&mut img_buf, commit_pos_x, image_params, drawing_pixels);
 
-    match graph_style {
-        GraphStyle::Curved => {
-            for edge in edges.iter().filter(|e| e.edge_type.is_vertically_related()) {
+    for lane_edges in edges.chunk_by(|a, b| a.associated_line_pos_x == b.associated_line_pos_x) {
+        for edge in lane_edges {
+            if graph_style == GraphStyle::Rounded || edge.edge_type.is_vertically_related() {
                 draw_edge(&mut img_buf, edge, image_params, drawing_pixels);
             }
-            draw_curved_connected_edge(&mut img_buf, edges, image_params, drawing_pixels);
         }
-        GraphStyle::Rounded => {
-            for edge in edges {
-                draw_edge(&mut img_buf, edge, image_params, drawing_pixels)
-            }
-        }
-        GraphStyle::Angular => {
-            let (vertial_edges, horizontal_edges): (Vec<&Edge>, Vec<&Edge>) = edges
-                .iter()
-                .partition(|e| e.edge_type.is_vertically_related());
-            for edge in vertial_edges {
-                draw_edge(&mut img_buf, edge, image_params, drawing_pixels)
-            }
-            let mut horizontal_edges_map: FxHashMap<usize, Vec<&Edge>> = FxHashMap::default();
-            for edge in horizontal_edges {
-                horizontal_edges_map
-                    .entry(edge.associated_line_pos_x)
-                    .or_default()
-                    .push(edge);
-            }
-            for edges in horizontal_edges_map.values() {
-                draw_diagonal_connected_edge(&mut img_buf, edges, image_params, drawing_pixels);
-            }
+        if graph_style != GraphStyle::Rounded {
+            draw_connected_edges(
+                &mut img_buf,
+                lane_edges,
+                image_params,
+                drawing_pixels,
+                graph_style,
+            );
         }
     }
 
@@ -826,27 +816,39 @@ fn draw_edge(
     }
 }
 
-fn draw_diagonal_connected_edge(
-    img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-    edges: &[&Edge],
-    image_params: &ImageParams,
-    drawing_pixels: &mut DrawingPixels,
-) {
-    for corner in edges
-        .iter()
-        .filter(|e| !e.edge_type.is_vertically_related())
-    {
+fn edge_connections(edges: &[Edge]) -> impl Iterator<Item = (&Edge, &Edge)> {
+    edges.iter().filter_map(|corner| {
         let side_type = match corner.edge_type {
             EdgeType::RightBottom | EdgeType::RightTop => EdgeType::Right,
             EdgeType::LeftBottom | EdgeType::LeftTop => EdgeType::Left,
-            _ => continue,
+            _ => return None,
         };
-        let Some(side) = edges.iter().find(|e| e.edge_type == side_type) else {
-            continue;
-        };
+        let side = edges.iter().find(|e| {
+            e.edge_type == side_type && e.associated_line_pos_x == corner.associated_line_pos_x
+        })?;
+        Some((side, corner))
+    })
+}
+
+fn draw_connected_edges(
+    img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+    edges: &[Edge],
+    image_params: &ImageParams,
+    drawing_pixels: &mut DrawingPixels,
+    graph_style: GraphStyle,
+) {
+    for (side, corner) in edge_connections(edges) {
         let color = image_params.edge_color(side.associated_line_pos_x);
         let x_offset = (side.pos_x.min(corner.pos_x) * image_params.width as usize) as i32;
-        let pixels = drawing_pixels.diagonal_connection_pixels(side, corner, image_params);
+        let pixels = match graph_style {
+            GraphStyle::Angular => {
+                drawing_pixels.diagonal_connection_pixels(side, corner, image_params)
+            }
+            GraphStyle::Curved => {
+                drawing_pixels.curved_connection_pixels(side, corner, image_params)
+            }
+            GraphStyle::Rounded => unreachable!(),
+        };
         draw_connection_pixels(img_buf, pixels, x_offset, color);
     }
 }
@@ -941,37 +943,6 @@ fn diagonal_connection(
         ys,
         x_start,
     )
-}
-
-fn draw_curved_connected_edge(
-    img_buf: &mut image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-    edges: &[Edge],
-    image_params: &ImageParams,
-    drawing_pixels: &mut DrawingPixels,
-) {
-    let corner_edges = edges.iter().filter(|e| {
-        matches!(
-            e.edge_type,
-            EdgeType::RightBottom | EdgeType::LeftBottom | EdgeType::RightTop | EdgeType::LeftTop
-        )
-    });
-
-    for corner in corner_edges {
-        let side_type = match corner.edge_type {
-            EdgeType::RightBottom | EdgeType::RightTop => EdgeType::Right,
-            _ => EdgeType::Left,
-        };
-        let Some(side) = edges.iter().find(|e| {
-            e.associated_line_pos_x == corner.associated_line_pos_x && e.edge_type == side_type
-        }) else {
-            continue;
-        };
-
-        let color = image_params.edge_color(corner.associated_line_pos_x);
-        let x_offset = (side.pos_x.min(corner.pos_x) * image_params.width as usize) as i32;
-        let pixels = drawing_pixels.curved_connection_pixels(side, corner, image_params);
-        draw_connection_pixels(img_buf, pixels, x_offset, color);
-    }
 }
 
 fn curved_connection_points(side: &Edge, corner: &Edge, image_params: &ImageParams) -> [Point; 4] {
@@ -1317,6 +1288,76 @@ mod tests {
             graph_style,
             file_name,
         );
+    }
+
+    #[rstest]
+    fn test_lane_paint_order(
+        #[values(GraphStyle::Rounded, GraphStyle::Angular, GraphStyle::Curved)] style: GraphStyle,
+        #[values(CellWidthType::Double, CellWidthType::Single)] cell_width_type: CellWidthType,
+    ) {
+        let colors = GraphColorSet::new(&GraphColorConfig::default());
+        let params = ImageParams::new(&colors, cell_width_type, false);
+        let mut pixels = DrawingPixels::new(&params);
+        let render = |edges: &[Edge], pixels: &mut DrawingPixels| {
+            calc_graph_row_image(5, 6, edges, &params, pixels, style)
+        };
+        let left_connection = vec![
+            Edge::new(LeftTop, 0, 0),
+            Edge::new(Horizontal, 1, 0),
+            Edge::new(Horizontal, 2, 0),
+            Edge::new(Horizontal, 3, 0),
+            Edge::new(Left, 4, 0),
+        ];
+        let vertical = vec![Edge::new(Vertical, 1, 1)];
+        let right_connection = vec![
+            Edge::new(Right, 0, 4),
+            Edge::new(Horizontal, 1, 4),
+            Edge::new(Horizontal, 2, 4),
+            Edge::new(Horizontal, 3, 4),
+            Edge::new(RightTop, 4, 4),
+        ];
+        let short_connection = vec![
+            Edge::new(Right, 0, 3),
+            Edge::new(Horizontal, 1, 3),
+            Edge::new(Horizontal, 2, 3),
+            Edge::new(RightTop, 3, 3),
+        ];
+
+        for (lower, higher) in [
+            (left_connection, vertical.clone()),
+            (vertical, right_connection.clone()),
+            (short_connection, right_connection),
+        ] {
+            let lower_image = image::load_from_memory(&render(&lower, &mut pixels).bytes)
+                .unwrap()
+                .to_rgba8();
+            let higher_image = image::load_from_memory(&render(&higher, &mut pixels).bytes)
+                .unwrap()
+                .to_rgba8();
+            let lower_color = params.edge_color(lower[0].associated_line_pos_x);
+            let higher_color = params.edge_color(higher[0].associated_line_pos_x);
+            let mut edges = lower;
+            edges.extend(higher);
+            let combined = render(&edges, &mut pixels);
+            let combined_image = image::load_from_memory(&combined.bytes).unwrap().to_rgba8();
+            let mut overlap_count = 0;
+            for (x, y, pixel) in lower_image.enumerate_pixels() {
+                if *pixel == lower_color && *higher_image.get_pixel(x, y) == higher_color {
+                    assert_eq!(
+                        *combined_image.get_pixel(x, y),
+                        higher_color,
+                        "higher lane must cover lower lane at ({x}, {y})"
+                    );
+                    overlap_count += 1;
+                }
+            }
+            assert!(overlap_count > 0, "test lanes must overlap");
+
+            edges.reverse();
+            assert_eq!(combined.bytes, render(&edges, &mut pixels).bytes);
+            edges.rotate_left(1);
+            assert_eq!(combined.bytes, render(&edges, &mut pixels).bytes);
+        }
     }
 
     #[rstest]
