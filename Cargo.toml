@@ -16,7 +16,7 @@ exclude = ["/.github", "/img"]
 
 [dependencies]
 ansi-to-tui = "8.0.1"
-arboard = { version = "3.6.1", features = ["wayland-data-control"] }
+arboard = { version = "3.7.0", features = ["wayland-data-control"] }
 base64 = { version = "0.23.1", default-features = false, features = ["std"] }
 chrono = "0.4.45"
 clap = { version = "4.6.7", features = ["derive"] }
@@ -33,11 +33,11 @@ serde = { version = "1.0.229", features = ["derive"] }
 smart-default = "0.7.1"
 toml = "1.1.8"
 tui-input = "0.15.5"
-umbra = "0.5.0"
+umbra = "0.6.0"
 
 [dev-dependencies]
 font8x8 = "0.3.1"
-rstest = "0.27.0"
+rstest = "0.28.0"
 tempfile = "3.27.0"
 
 [profile.release]
