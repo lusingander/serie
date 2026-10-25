@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
     io::Cursor,
@@ -695,9 +696,15 @@ pub fn calc_graph_row_image(
     let image_height = image_params.height as u32;
 
     // Paint whole lanes from left to right, so higher lane indices cover lower ones.
-    let mut ordered_edges = edges.to_vec();
-    ordered_edges.sort_unstable_by_key(|e| (e.associated_line_pos_x, e.pos_x, e.edge_type));
-    let edges = ordered_edges.as_slice();
+    let draw_order_key = |e: &Edge| (e.associated_line_pos_x, e.pos_x, e.edge_type);
+    let ordered_edges = if edges.is_sorted_by_key(draw_order_key) {
+        Cow::Borrowed(edges)
+    } else {
+        let mut ordered_edges = edges.to_vec();
+        ordered_edges.sort_unstable_by_key(draw_order_key);
+        Cow::Owned(ordered_edges)
+    };
+    let edges = ordered_edges.as_ref();
 
     if image_params.antialias {
         let image = antialias::render(
