@@ -16,22 +16,21 @@ impl Point {
             return false;
         }
 
-        let signs = vertices
+        let mut signs = vertices
             .iter()
             .zip(vertices.iter().cycle().skip(1))
             .map(|(&a, &b)| {
                 let edge_vector = b - a;
                 let point_vector = *self - a;
                 edge_vector.cross(point_vector).signum()
-            })
-            .collect::<Vec<_>>();
+            });
 
-        let first_sign = signs[0];
+        let first_sign = signs.next().unwrap();
         if first_sign == 0.0 {
             return true;
         }
 
-        signs.iter().all(|&s| s == 0.0 || s == first_sign)
+        signs.all(|s| s == 0.0 || s == first_sign)
     }
 }
 
