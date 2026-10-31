@@ -26,10 +26,13 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - name: Install mdbook
+        env:
+          MDBOOK_SHA256: 3f28de05dafca9d0f2eab99c662116b0e37b89b1d96a08f8f430b9eeae958cd7
         run: |
           curl --fail --location --silent --show-error \
             https://github.com/rust-lang/mdBook/releases/download/v0.5.4/mdbook-v0.5.4-x86_64-unknown-linux-gnu.tar.gz \
             --output "${RUNNER_TEMP}/mdbook.tar.gz"
+          echo "${MDBOOK_SHA256}  ${RUNNER_TEMP}/mdbook.tar.gz" | sha256sum -c -
           tar -xzf "${RUNNER_TEMP}/mdbook.tar.gz" -C "${RUNNER_TEMP}"
           echo "${RUNNER_TEMP}" >> "${GITHUB_PATH}"
       - name: Build with mdbook
