@@ -41,8 +41,6 @@ If not specified or `auto` is specified, `double` will be used automatically if 
 
 <img src="https://raw.githubusercontent.com/lusingander/serie/master/img/graph-width-single.png" width=300>
 
-</details>
-
 ## -s, --graph-style \<TYPE\>
 
 The commit graph image edge style.

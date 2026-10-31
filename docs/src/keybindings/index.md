@@ -92,8 +92,6 @@ The default key bindings can be overridden.
 | <kbd>Ctrl-d/u</kbd>                                            | Scroll half page down/up | `half_page_down` `half_page_up` |
 | <kbd>g/G</kbd>                                                 | Go to top/bottom         | `go_to_top` `go_to_bottom`      |
 
-</details>
-
 ----
 
 - [Custom Keybindings](./custom-keybindings.md)

@@ -9,3 +9,5 @@ description = "Serie Documentation"
 git-repository-url = "https://github.com/lusingander/serie"
 site-url = "/serie/"
 default-theme = "rust"
+sidebar-header-nav = false
+smart-punctuation = false
