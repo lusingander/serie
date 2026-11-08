@@ -297,6 +297,9 @@ impl App<'_> {
                     let request = RefreshRequest { context };
                     return Ok(Ret::Refresh(request));
                 }
+                AppEvent::RepositoryChanged => {
+                    self.view.refresh();
+                }
                 AppEvent::ClearStatusLine => {
                     self.clear_status_line();
                 }

@@ -10,6 +10,7 @@ mod keybind;
 mod protocol;
 mod search;
 mod view;
+mod watch;
 mod widget;
 
 #[cfg(test)]
@@ -68,6 +69,10 @@ struct Args {
     /// Primary branch to keep on the leftmost column
     #[arg(short = 'b', long, value_name = "BRANCH")]
     primary_branch: Option<String>,
+
+    /// Automatically refresh the graph when the repository changes
+    #[arg(short = 'w', long)]
+    watch: bool,
 }
 
 impl Args {
@@ -184,6 +189,7 @@ fn main() -> Result<()> {
         .initial_selection
         .or(core_config.option.initial_selection)
         .into();
+    let watch = args.watch || core_config.option.watch.unwrap_or(false);
     let mailmap = core_config.git.mailmap;
     let primary_branch = args.primary_branch.filter(|s| !s.is_empty());
 
@@ -198,6 +204,9 @@ fn main() -> Result<()> {
     });
 
     let ec = event::EventController::init();
+    if watch {
+        watch::start(Path::new("."), ec.sender());
+    }
     let mut refresh_view_context = None;
     let mut terminal = None;
 
