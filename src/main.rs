@@ -201,7 +201,7 @@ fn main() -> Result<()> {
     let mut refresh_view_context = None;
     let mut terminal = None;
 
-    let ret = loop {
+    let ret: Result<()> = (|| loop {
         let repository = git::Repository::load(Path::new("."), order, max_count, mailmap)?;
 
         let graph = graph::calc_graph(&repository, primary_branch.as_deref());
@@ -232,20 +232,18 @@ fn main() -> Result<()> {
             refresh_view_context,
         );
 
-        match app.run(terminal.as_mut().unwrap()) {
-            Ok(Ret::Quit) => {
+        match app.run(terminal.as_mut().unwrap())? {
+            Ret::Quit => {
                 break Ok(());
             }
-            Ok(Ret::Refresh(request)) => {
+            Ret::Refresh(request) => {
                 refresh_view_context = Some(request.context);
-                continue;
-            }
-            Err(e) => {
-                break Err(e);
             }
         }
-    };
+    })();
 
-    ratatui::restore();
-    ret.map_err(Into::into)
+    if terminal.is_some() {
+        ratatui::restore();
+    }
+    ret
 }
