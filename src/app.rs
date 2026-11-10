@@ -111,7 +111,6 @@ impl<'a> App<'a> {
         initial_selection: InitialSelection,
         ctx: Rc<AppContext>,
         ec: &'a EventController,
-        refresh_view_context: Option<RefreshViewContext>,
     ) -> Self {
         let graph = graph_image_manager.graph();
         let mut ref_name_to_commit_index_map = FxHashMap::default();
@@ -165,16 +164,22 @@ impl<'a> App<'a> {
             app.warn_notification(warning.clone());
         }
 
-        if let Some(context) = refresh_view_context {
-            app.init_with_context(context);
-        }
-
         app
     }
 }
 
 impl App<'_> {
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<Ret, std::io::Error> {
+    pub fn run(
+        &mut self,
+        terminal: &mut DefaultTerminal,
+        refresh_view_context: Option<RefreshViewContext>,
+    ) -> Result<Ret, std::io::Error> {
+        if let Some(context) = refresh_view_context {
+            let [view_area, _] = split_app_areas(terminal.size()?.into());
+            self.update_state(view_area);
+            self.init_with_context(context);
+        }
+
         self.app_status.pending_clear = PendingClear::Screen;
 
         loop {

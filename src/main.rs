@@ -229,10 +229,9 @@ fn main() -> Result<()> {
             initial_selection,
             ctx.clone(),
             &ec,
-            refresh_view_context,
         );
 
-        match app.run(terminal.as_mut().unwrap())? {
+        match app.run(terminal.as_mut().unwrap(), refresh_view_context)? {
             Ret::Quit => {
                 break Ok(());
             }
