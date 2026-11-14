@@ -174,6 +174,15 @@ Whether to antialias commit graph images.
 
 The value specified in the command line argument takes precedence.
 
+### `core.option.watch`
+
+Whether to automatically refresh the graph when the repository changes (e.g. `HEAD`, `refs/` or `packed-refs` is updated by a branch switch, commit, fetch, etc.).
+
+- type: `boolean`
+- default: `false`
+
+The `--watch` command line argument enables this regardless of the config value.
+
 ### `core.option.initial_selection`
 
 The initial selection of commit when starting the application.

@@ -36,6 +36,7 @@ pub enum AppEvent {
         value: String,
     },
     Refresh(RefreshViewContext),
+    RepositoryChanged,
     ClearStatusLine,
     UpdateStatusInput {
         message: String,

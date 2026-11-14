@@ -86,3 +86,9 @@ _Possible values:_ `latest`, `head`
 The primary branch to keep on the leftmost column.
 
 When specified, Serie preserves the first-parent commit spine of the specified branch along the leftmost column, displaying other branches in subsequent columns even if they contain newer commits.
+
+## -w, --watch
+
+Automatically refresh the graph when the repository changes (e.g. `HEAD`, `refs/` or `packed-refs` is updated by a branch switch, commit, fetch, etc.).
+
+The current selection is kept where possible, as with a manual refresh.
