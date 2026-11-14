@@ -7,4 +7,5 @@ $ cd <your git repository>
 $ serie
 ```
 
-If you want to specify it using command line options, see [Command Line Options](./command-line-options.md).
+Use `serie -C <path>` to open a repository from another directory.
+See [Command Line Options](./command-line-options.md) for more options.

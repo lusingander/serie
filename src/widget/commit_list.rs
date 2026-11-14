@@ -1335,6 +1335,7 @@ mod tests {
             with_commit_list_state_and_protocol(&["first", "second"], image_protocol, |state| {
                 state.ensure_visible_graph_uploaded();
                 let ctx = Rc::new(AppContext {
+                    repository_path: PathBuf::from("."),
                     keybind: KeyBind::new(None),
                     core_config: CoreConfig::default(),
                     ui_config: UiConfig::default(),
@@ -1430,6 +1431,7 @@ mod tests {
                 UserListColumnType::Date,
             ];
             let ctx = Rc::new(AppContext {
+                repository_path: PathBuf::from("."),
                 keybind: KeyBind::new(None),
                 core_config: CoreConfig::default(),
                 ui_config,

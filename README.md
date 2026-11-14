@@ -61,6 +61,8 @@ $ cd <your git repository>
 $ serie
 ```
 
+Use `serie -C <path>` to open a repository from another directory.
+
 ### Options
 
 ```
@@ -69,6 +71,7 @@ Serie - A rich git commit graph in your terminal, like magic 📚
 Usage: serie [OPTIONS]
 
 Options:
+  -C, --repo <PATH>               Directory to open [default: .]
   -n, --max-count <NUMBER>        Maximum number of commits to render
   -p, --protocol <TYPE>           Image protocol to render graph [default: auto] [possible values: auto, iterm, kitty, kitty-unicode]
   -o, --order <TYPE>              Commit ordering algorithm [default: chrono] [possible values: chrono, topo]

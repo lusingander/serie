@@ -225,31 +225,29 @@ impl Repository {
 }
 
 fn check_git_repository(path: &Path) -> Result<()> {
-    if !is_inside_work_tree(path) && !is_bare_repository(path) {
-        let msg = "not a git repository (or any of the parent directories)";
-        return Err(msg.into());
+    let output = Command::new("git")
+        .args(["rev-parse", "--is-inside-work-tree", "--is-bare-repository"])
+        .current_dir(path)
+        .output()
+        .map_err(|err| format!("failed to run git in {}: {err}", path.display()))?;
+
+    // On success, rev-parse prints one `true` or `false` line per flag.
+    // Either `true` is enough since we accept work tree and bare repository paths.
+    // https://github.com/git/git/blob/v2.54.0/builtin/rev-parse.c#L1070-L1079
+    if output.status.success()
+        && output
+            .stdout
+            .split(|&byte| byte == b'\n')
+            .any(|line| line == b"true")
+    {
+        Ok(())
+    } else {
+        Err(format!(
+            "not a git repository (or any of the parent directories): {}",
+            path.display()
+        )
+        .into())
     }
-    Ok(())
-}
-
-fn is_inside_work_tree(path: &Path) -> bool {
-    let output = Command::new("git")
-        .arg("rev-parse")
-        .arg("--is-inside-work-tree")
-        .current_dir(path)
-        .output()
-        .unwrap();
-    output.status.success() && output.stdout == b"true\n"
-}
-
-fn is_bare_repository(path: &Path) -> bool {
-    let output = Command::new("git")
-        .arg("rev-parse")
-        .arg("--is-bare-repository")
-        .current_dir(path)
-        .output()
-        .unwrap();
-    output.status.success() && output.stdout == b"true\n"
 }
 
 fn load_all_commits(

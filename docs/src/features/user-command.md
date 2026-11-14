@@ -1,6 +1,7 @@
 # User Command
 
 The User command feature allows you to execute custom external commands.
+Commands run in the directory specified with `-C`, or in the current directory by default.
 There are three types of user commands: `inline`, `silent` and `suspend`.
 
 - `inline` (default)

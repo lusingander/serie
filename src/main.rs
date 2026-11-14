@@ -19,7 +19,7 @@ mod mailmap_tests;
 #[cfg(test)]
 mod test_support;
 
-use std::{path::Path, rc::Rc};
+use std::{path::PathBuf, rc::Rc};
 
 use clap::{Parser, ValueEnum};
 use serde::Deserialize;
@@ -33,6 +33,10 @@ use crate::{
 #[derive(Parser)]
 #[command(version)]
 struct Args {
+    /// Directory to open
+    #[arg(short = 'C', long, value_name = "PATH", default_value = ".")]
+    repo: PathBuf,
+
     /// Maximum number of commits to render
     #[arg(short = 'n', long, value_name = "NUMBER")]
     max_count: Option<usize>,
@@ -190,6 +194,7 @@ fn main() -> Result<()> {
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 
     let ctx = Rc::new(app::AppContext {
+        repository_path: args.repo,
         keybind,
         core_config,
         ui_config,
@@ -202,7 +207,7 @@ fn main() -> Result<()> {
     let mut terminal = None;
 
     let ret: Result<()> = (|| loop {
-        let repository = git::Repository::load(Path::new("."), order, max_count, mailmap)?;
+        let repository = git::Repository::load(&ctx.repository_path, order, max_count, mailmap)?;
 
         let graph = graph::calc_graph(&repository, primary_branch.as_deref());
 

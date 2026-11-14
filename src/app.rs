@@ -1,5 +1,6 @@
 use std::{
     io::{self, Write},
+    path::PathBuf,
     rc::Rc,
 };
 
@@ -71,6 +72,7 @@ pub struct RefreshRequest {
 
 #[derive(Debug)]
 pub struct AppContext {
+    pub repository_path: PathBuf,
     pub keybind: KeyBind,
     pub core_config: CoreConfig,
     pub ui_config: UiConfig,
@@ -957,6 +959,7 @@ fn build_external_command_parameters<'a>(
         .saturating_sub(1); // minus the top border
     Ok(ExternalCommandParameters {
         command,
+        working_dir: &ctx.repository_path,
         target_hash,
         marked_hash: marked_commit_hash.map(CommitHash::as_str),
         parent_hashes,

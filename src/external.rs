@@ -1,4 +1,4 @@
-use std::{cell::RefCell, process::Command};
+use std::{cell::RefCell, path::Path, process::Command};
 
 use arboard::Clipboard;
 
@@ -74,6 +74,7 @@ fn copy_to_clipboard_auto(value: String) -> Result<(), String> {
 
 pub struct ExternalCommandParameters<'a> {
     pub command: &'a [String],
+    pub working_dir: &'a Path,
     pub target_hash: &'a str,
     pub marked_hash: Option<&'a str>,
     pub parent_hashes: Vec<&'a str>,
@@ -91,6 +92,7 @@ pub fn exec_user_command(params: ExternalCommandParameters) -> Result<String, St
 
     let output = Command::new(&command[0])
         .args(&command[1..])
+        .current_dir(params.working_dir)
         .output()
         .map_err(|e| format!("Failed to execute command: {e:?}"))?;
 
@@ -111,6 +113,7 @@ pub fn exec_user_command_suspend(params: ExternalCommandParameters) -> Result<()
 
     let output = Command::new(&command[0])
         .args(&command[1..])
+        .current_dir(params.working_dir)
         .status()
         .map_err(|e| format!("Failed to execute command: {e:?}"))?;
 
