@@ -75,10 +75,11 @@ We welcome pull requests, but please note that they are not guaranteed to be acc
 
 We use [GitHub Actions](https://github.com/lusingander/serie/blob/master/.github/workflows/build.yml) to build and test with both stable Rust and the minimum supported Rust version specified by `rust-version` in `Cargo.toml`.
 
-CI also checks `derive` ordering with [cargo-sort-derives](https://github.com/lusingander/cargo-sort-derives), using the order defined in [sort-derives.toml](./sort-derives.toml). Install the same version used in CI:
+CI also checks `derive` ordering with [cargo-sort-derives](https://github.com/lusingander/cargo-sort-derives), using the order defined in [sort-derives.toml](./sort-derives.toml). It checks `mod` and `use` declarations with [cargo-modfmt](https://github.com/lusingander/cargo-modfmt). Install the tools used in CI:
 
 ```sh
 cargo install --locked cargo-sort-derives
+cargo install --locked cargo-modfmt
 ```
 
 Before submitting a pull request, run the following checks locally:
@@ -86,6 +87,7 @@ Before submitting a pull request, run the following checks locally:
 ```sh
 cargo fmt --all -- --check
 cargo sort-derives --check
+cargo modfmt check .
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 ```

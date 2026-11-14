@@ -1,3 +1,5 @@
+mod antialias;
+
 use std::{
     borrow::Cow,
     fmt::{self, Debug, Formatter},
@@ -18,8 +20,6 @@ use crate::{
     },
     protocol::{ImageProtocol, PreparedImage},
 };
-
-mod antialias;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GraphStyle {
@@ -1083,11 +1083,10 @@ mod tests {
 
     use image::GenericImage;
     use rstest::rstest;
-
-    use crate::{config::GraphColorConfig, test_support::image_snapshot::compare_image_snapshot};
+    use EdgeType::*;
 
     use super::*;
-    use EdgeType::*;
+    use crate::{config::GraphColorConfig, test_support::image_snapshot::compare_image_snapshot};
 
     const OUTPUT_DIR: &str = "./out/ut/graph/image";
     const SNAPSHOT_DIR: &str = "./tests/graph/image";
