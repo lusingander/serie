@@ -231,6 +231,9 @@ fn check_git_repository(path: &Path) -> Result<()> {
         .output()
         .map_err(|err| format!("failed to run git in {}: {err}", path.display()))?;
 
+    // On success, rev-parse prints one `true` or `false` line per flag.
+    // Either `true` is enough since we accept work tree and bare repository paths.
+    // https://github.com/git/git/blob/v2.54.0/builtin/rev-parse.c#L1070-L1079
     if output.status.success()
         && output
             .stdout
