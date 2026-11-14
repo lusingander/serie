@@ -1239,6 +1239,7 @@ mod tests {
 
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
+    use super::*;
     use crate::{
         color::GraphColorSet,
         config::{CoreConfig, GraphColorConfig, UiConfig},
@@ -1248,8 +1249,6 @@ mod tests {
         protocol::ImageProtocol,
         view::ListRefreshViewContext,
     };
-
-    use super::*;
 
     fn with_commit_list_state<R>(
         subjects: &[&str],
