@@ -1,5 +1,9 @@
 # Command Line Options
 
+## -C, --repo \<PATH\>
+
+Open a repository from the specified directory. Defaults to the current directory.
+
 ## -n, --max-count \<NUMBER\>
 
 Maximum number of commits to render.
