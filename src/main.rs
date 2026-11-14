@@ -194,6 +194,7 @@ fn main() -> Result<()> {
     let graph_color_set = color::GraphColorSet::new(&graph_config.color);
 
     let ctx = Rc::new(app::AppContext {
+        repository_path: args.repo,
         keybind,
         core_config,
         ui_config,
@@ -206,7 +207,7 @@ fn main() -> Result<()> {
     let mut terminal = None;
 
     let ret: Result<()> = (|| loop {
-        let repository = git::Repository::load(&args.repo, order, max_count, mailmap)?;
+        let repository = git::Repository::load(&ctx.repository_path, order, max_count, mailmap)?;
 
         let graph = graph::calc_graph(&repository, primary_branch.as_deref());
 
