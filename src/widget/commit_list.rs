@@ -18,7 +18,7 @@ use crate::{
     app::AppContext,
     color::ColorTheme,
     config::UserListColumnType,
-    git::{Commit, CommitHash, Head, Ref},
+    git::{Commit, CommitHash, Head, Ref, RefKind},
     graph::GraphImageManager,
     protocol::PreparedImage,
     search::{SearchOptions, SearchTarget},
@@ -191,7 +191,7 @@ pub struct CommitListState<'a> {
     graph_cell_width: u16,
     head: &'a Head,
 
-    ref_name_to_commit_index_map: FxHashMap<&'a str, usize>,
+    ref_commit_indices: FxHashMap<(RefKind, &'a str), usize>,
 
     search_state: SearchState,
     search_options: SearchOptions,
@@ -212,19 +212,24 @@ impl<'a> CommitListState<'a> {
         graph_image_manager: GraphImageManager<'a>,
         graph_cell_width: u16,
         head: &'a Head,
-        ref_name_to_commit_index_map: FxHashMap<&'a str, usize>,
         search_options: SearchOptions,
         scrolloff: usize,
     ) -> CommitListState<'a> {
         let total = commits.len();
         let commit_hash_set = commits.iter().map(|c| &c.commit.commit_hash).collect();
+        let mut ref_commit_indices = FxHashMap::default();
+        for (index, commit) in commits.iter().enumerate() {
+            for r in &commit.refs {
+                ref_commit_indices.insert((r.kind(), r.name()), index);
+            }
+        }
         CommitListState {
             commits,
             commit_hash_set,
             graph_image_manager,
             graph_cell_width,
             head,
-            ref_name_to_commit_index_map,
+            ref_commit_indices,
             search_state: SearchState::Inactive,
             search_options,
             search_input: Input::default(),
@@ -501,8 +506,8 @@ impl<'a> CommitListState<'a> {
         self.selected = index - self.offset;
     }
 
-    pub fn select_ref(&mut self, ref_name: &str) {
-        if let Some(&index) = self.ref_name_to_commit_index_map.get(ref_name) {
+    pub fn select_ref(&mut self, kind: RefKind, name: &str) {
+        if let Some(&index) = self.ref_commit_indices.get(&(kind, name)) {
             self.select_index(index);
         }
     }
@@ -1248,17 +1253,19 @@ mod tests {
         keybind::KeyBind,
         protocol::ImageProtocol,
         view::ListRefreshViewContext,
+        widget::ref_list::RefListState,
     };
 
     fn with_commit_list_state<R>(
         subjects: &[&str],
         f: impl FnOnce(&mut CommitListState<'_>) -> R,
     ) -> R {
-        with_commit_list_state_and_protocol(subjects, ImageProtocol::Iterm2, f)
+        with_commit_list_state_and_protocol(subjects, &[], ImageProtocol::Iterm2, f)
     }
 
     fn with_commit_list_state_and_protocol<R>(
         subjects: &[&str],
+        refs: &[&Ref],
         image_protocol: ImageProtocol,
         f: impl FnOnce(&mut CommitListState<'_>) -> R,
     ) -> R {
@@ -1300,7 +1307,12 @@ mod tests {
             .commits
             .iter()
             .map(|commit| {
-                CommitInfo::new(commit, repository.refs(&commit.commit_hash), Color::Reset)
+                let refs = refs
+                    .iter()
+                    .copied()
+                    .filter(|r| r.target() == &commit.commit_hash)
+                    .collect();
+                CommitInfo::new(commit, refs, Color::Reset)
             })
             .collect();
         let mut state = CommitListState::new(
@@ -1308,7 +1320,6 @@ mod tests {
             graph_image_manager,
             0,
             repository.head(),
-            FxHashMap::default(),
             SearchOptions::default(),
             0,
         );
@@ -1324,14 +1335,50 @@ mod tests {
     }
 
     #[test]
+    fn test_select_branch_and_tag_with_the_same_name() {
+        let branch = Ref::Branch {
+            name: "dev".into(),
+            target: CommitHash::from("0000000000000000000000000000000000000001"),
+        };
+        let tag = Ref::Tag {
+            name: "dev".into(),
+            target: CommitHash::from("0000000000000000000000000000000000000002"),
+        };
+        let refs = [&branch, &tag];
+        let mut tree = RefListState::new(&refs);
+
+        with_commit_list_state_and_protocol(
+            &["branch", "tag"],
+            &refs,
+            ImageProtocol::Iterm2,
+            |state| {
+                state.select_commit_hash(tag.target());
+                tree.select_next(); // Branches -> dev
+                let (kind, name) = tree.selected_ref_key().unwrap();
+                state.select_ref(kind, name);
+                assert_eq!(state.selected_commit_hash(), branch.target());
+
+                tree.select_next(); // Remotes
+                tree.select_next(); // Tags
+                tree.open_node();
+                tree.select_next(); // Tags -> dev
+                let (kind, name) = tree.selected_ref_key().unwrap();
+                state.select_ref(kind, name);
+                assert_eq!(state.selected_commit_hash(), tag.target());
+            },
+        );
+    }
+
+    #[test]
     fn test_graph_diff_preserves_neighboring_cells_and_skips_unchanged_images() {
+        let subjects = ["first", "second"];
         for image_protocol in [
             ImageProtocol::Iterm2,
             ImageProtocol::Kitty,
             ImageProtocol::KittyUnicode { tmux: false },
             ImageProtocol::KittyUnicode { tmux: true },
         ] {
-            with_commit_list_state_and_protocol(&["first", "second"], image_protocol, |state| {
+            with_commit_list_state_and_protocol(&subjects, &[], image_protocol, |state| {
                 state.ensure_visible_graph_uploaded();
                 let ctx = Rc::new(AppContext {
                     repository_path: PathBuf::from("."),

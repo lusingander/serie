@@ -8,7 +8,10 @@ use ratatui::{
 };
 use semver::Version;
 
-use crate::{app::AppContext, git::Ref};
+use crate::{
+    app::AppContext,
+    git::{Ref, RefKind},
+};
 
 const TREE_BRANCH_ROOT_IDENT: &str = "__branches__";
 const TREE_REMOTE_ROOT_IDENT: &str = "__remotes__";
@@ -93,8 +96,18 @@ impl RefListState {
         self.scroll_to_selection = true;
     }
 
-    pub fn selected_ref_name(&self) -> Option<String> {
-        self.selected.last().cloned()
+    pub fn selected_ref_key(&self) -> Option<(RefKind, &str)> {
+        let [root, .., name] = self.selected.as_slice() else {
+            return None;
+        };
+        let kind = match root.as_str() {
+            TREE_BRANCH_ROOT_IDENT => RefKind::Branch,
+            TREE_REMOTE_ROOT_IDENT => RefKind::RemoteBranch,
+            TREE_TAG_ROOT_IDENT => RefKind::Tag,
+            TREE_STASH_ROOT_IDENT => RefKind::Stash,
+            _ => return None,
+        };
+        Some((kind, name))
     }
 
     pub fn selected_branch(&self) -> Option<String> {
