@@ -10,7 +10,7 @@ use semver::Version;
 
 use crate::{
     app::AppContext,
-    git::{Ref, RefKind},
+    git::{Ref, RefKey, RefKind},
 };
 
 const TREE_BRANCH_ROOT_IDENT: &str = "__branches__";
@@ -96,7 +96,7 @@ impl RefListState {
         self.scroll_to_selection = true;
     }
 
-    pub fn selected_ref_key(&self) -> Option<(RefKind, &str)> {
+    pub fn selected_ref_key(&self) -> Option<RefKey<'_>> {
         let [root, .., name] = self.selected.as_slice() else {
             return None;
         };

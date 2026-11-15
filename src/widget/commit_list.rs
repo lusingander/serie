@@ -18,7 +18,7 @@ use crate::{
     app::AppContext,
     color::ColorTheme,
     config::UserListColumnType,
-    git::{Commit, CommitHash, Head, Ref, RefKind},
+    git::{Commit, CommitHash, Head, Ref, RefKey},
     graph::GraphImageManager,
     protocol::PreparedImage,
     search::{SearchOptions, SearchTarget},
@@ -191,7 +191,7 @@ pub struct CommitListState<'a> {
     graph_cell_width: u16,
     head: &'a Head,
 
-    ref_commit_indices: FxHashMap<(RefKind, &'a str), usize>,
+    ref_commit_indices: FxHashMap<RefKey<'a>, usize>,
 
     search_state: SearchState,
     search_options: SearchOptions,
@@ -506,8 +506,8 @@ impl<'a> CommitListState<'a> {
         self.selected = index - self.offset;
     }
 
-    pub fn select_ref(&mut self, kind: RefKind, name: &str) {
-        if let Some(&index) = self.ref_commit_indices.get(&(kind, name)) {
+    pub fn select_ref(&mut self, key: RefKey<'_>) {
+        if let Some(&index) = self.ref_commit_indices.get(&key) {
             self.select_index(index);
         }
     }
@@ -1354,16 +1354,14 @@ mod tests {
             |state| {
                 state.select_commit_hash(tag.target());
                 tree.select_next(); // Branches -> dev
-                let (kind, name) = tree.selected_ref_key().unwrap();
-                state.select_ref(kind, name);
+                state.select_ref(tree.selected_ref_key().unwrap());
                 assert_eq!(state.selected_commit_hash(), branch.target());
 
                 tree.select_next(); // Remotes
                 tree.select_next(); // Tags
                 tree.open_node();
                 tree.select_next(); // Tags -> dev
-                let (kind, name) = tree.selected_ref_key().unwrap();
-                state.select_ref(kind, name);
+                state.select_ref(tree.selected_ref_key().unwrap());
                 assert_eq!(state.selected_commit_hash(), tag.target());
             },
         );

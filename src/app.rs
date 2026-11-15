@@ -140,7 +140,7 @@ impl<'a> App<'a> {
         );
         if let InitialSelection::Head = initial_selection {
             match repository.head() {
-                Head::Branch { name } => commit_list_state.select_ref(RefKind::Branch, name),
+                Head::Branch { name } => commit_list_state.select_ref((RefKind::Branch, name)),
                 Head::Detached { target } => commit_list_state.select_commit_hash(target),
                 Head::None => {}
             }

@@ -72,6 +72,8 @@ pub enum RefKind {
     Stash,
 }
 
+pub type RefKey<'a> = (RefKind, &'a str);
+
 impl Ref {
     pub fn kind(&self) -> RefKind {
         match self {

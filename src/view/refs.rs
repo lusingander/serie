@@ -143,11 +143,8 @@ impl<'a> RefsView<'a> {
     }
 
     fn update_commit_list_selected(&mut self) {
-        if let Some((kind, name)) = self.ref_list_state.selected_ref_key() {
-            self.commit_list_state
-                .as_mut()
-                .unwrap()
-                .select_ref(kind, name);
+        if let Some(key) = self.ref_list_state.selected_ref_key() {
+            self.commit_list_state.as_mut().unwrap().select_ref(key);
         }
     }
 
