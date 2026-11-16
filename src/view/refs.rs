@@ -178,5 +178,9 @@ impl<'a> RefsView<'a> {
     pub fn reset_refs_with(&mut self, refs_context: RefsRefreshViewContext) {
         self.ref_list_state
             .reset_tree_status(refs_context.selected, refs_context.opened);
+
+        let (selected_row, _, _) = self.as_list_state().current_list_status();
+        self.update_commit_list_selected();
+        self.as_mut_list_state().restore_selected_row(selected_row);
     }
 }
