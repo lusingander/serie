@@ -49,9 +49,13 @@ fn copy_to_clipboard_custom(value: String, commands: &[String]) -> Result<(), St
         .write_all(value.as_bytes())
         .map_err(|e| format!("Failed to write to {}: {e}", commands[0]))?;
 
-    child
+    let status = child
         .wait()
         .map_err(|e| format!("{} failed: {e}", commands[0]))?;
+
+    if !status.success() {
+        return Err(format!("{} failed: {status}", commands[0]));
+    }
 
     Ok(())
 }
