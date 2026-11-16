@@ -64,7 +64,26 @@ pub enum Ref {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RefKind {
+    Branch,
+    RemoteBranch,
+    Tag,
+    Stash,
+}
+
+pub type RefKey<'a> = (RefKind, &'a str);
+
 impl Ref {
+    pub fn kind(&self) -> RefKind {
+        match self {
+            Ref::Branch { .. } => RefKind::Branch,
+            Ref::RemoteBranch { .. } => RefKind::RemoteBranch,
+            Ref::Tag { .. } => RefKind::Tag,
+            Ref::Stash { .. } => RefKind::Stash,
+        }
+    }
+
     pub fn name(&self) -> &str {
         match self {
             Ref::Tag { name, .. } => name,

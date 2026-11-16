@@ -16,7 +16,6 @@ use ratatui::{
     widgets::{Block, Borders, Padding, Paragraph},
     DefaultTerminal, Frame, Terminal,
 };
-use rustc_hash::FxHashMap;
 
 use crate::{
     color::{ColorTheme, GraphColorSet},
@@ -25,7 +24,7 @@ use crate::{
     external::{
         copy_to_clipboard, exec_user_command, exec_user_command_suspend, ExternalCommandParameters,
     },
-    git::{Commit, CommitHash, FileChange, Head, Ref, Repository},
+    git::{Commit, CommitHash, FileChange, Head, Ref, RefKind, Repository},
     graph::GraphImageManager,
     keybind::KeyBind,
     protocol::ImageProtocol,
@@ -115,16 +114,11 @@ impl<'a> App<'a> {
         ec: &'a EventController,
     ) -> Self {
         let graph = graph_image_manager.graph();
-        let mut ref_name_to_commit_index_map = FxHashMap::default();
         let commits = graph
             .commits
             .iter()
-            .enumerate()
-            .map(|(i, commit)| {
+            .map(|commit| {
                 let refs = repository.refs(&commit.commit_hash);
-                for r in &refs {
-                    ref_name_to_commit_index_map.insert(r.name(), i);
-                }
                 let (pos_x, _) = graph.commit_pos_map[&commit.commit_hash];
                 let graph_color = graph_color_set.get(pos_x).to_ratatui_color();
                 CommitInfo::new(commit, refs, graph_color)
@@ -137,7 +131,6 @@ impl<'a> App<'a> {
             graph_image_manager,
             graph_cell_width,
             head,
-            ref_name_to_commit_index_map,
             SearchOptions {
                 target: ctx.core_config.search.target,
                 ignore_case: ctx.core_config.search.ignore_case,
@@ -147,7 +140,7 @@ impl<'a> App<'a> {
         );
         if let InitialSelection::Head = initial_selection {
             match repository.head() {
-                Head::Branch { name } => commit_list_state.select_ref(name),
+                Head::Branch { name } => commit_list_state.select_ref((RefKind::Branch, name)),
                 Head::Detached { target } => commit_list_state.select_commit_hash(target),
                 Head::None => {}
             }
