@@ -2,3 +2,7 @@
 allow = ["MIT", "Apache-2.0", "BSL-1.0", "Unicode-3.0", "Zlib"]
 confidence-threshold = 0.8
 exceptions = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
