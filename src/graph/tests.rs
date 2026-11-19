@@ -1,6 +1,6 @@
 mod snapshot;
 
-use chrono::{Days, TimeZone, Utc};
+use jiff::{civil::date, ToSpan};
 use rustc_hash::{FxHashMap, FxHashSet};
 use snapshot::{assert_graph_snapshots, copy_git_dir, GenerateGraphOption};
 
@@ -17,12 +17,12 @@ fn straight_001() -> TestResult {
 
     git.init();
 
-    let mut base_date = Utc.with_ymd_and_hms(2024, 1, 1, 1, 2, 3).unwrap();
+    let mut base_date = date(2024, 1, 1);
     for i in 1..=100 {
         let msg = &format!("{i:03}");
-        let date = &base_date.format("%Y-%m-%d").to_string();
+        let date = &base_date.to_string();
         git.commit(msg, date);
-        base_date = base_date.checked_add_days(Days::new(1)).unwrap();
+        base_date = base_date.checked_add(1.day()).unwrap();
     }
 
     git.log();
@@ -1611,10 +1611,10 @@ fn complex_002() -> TestResult {
     let git = &GitRepository::new(repo_path);
     git.init();
 
-    let mut date = Utc.with_ymd_and_hms(2024, 1, 1, 1, 2, 3).unwrap();
+    let mut date = date(2024, 1, 1);
     let mut next_date = || {
-        let result = date.format("%Y-%m-%d").to_string();
-        date = date.checked_add_days(Days::new(1)).unwrap();
+        let result = date.to_string();
+        date = date.checked_add(1.day()).unwrap();
         result
     };
     git.commit("Root", &next_date());

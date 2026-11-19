@@ -5,7 +5,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use chrono::{DateTime, FixedOffset};
+use jiff::{fmt::temporal::Pieces, tz::TimeZone, ZonedDateTime};
 use rustc_hash::FxHashMap;
 
 use crate::Result;
@@ -34,10 +34,10 @@ pub struct Commit {
     pub commit_hash: CommitHash,
     pub author_name: String,
     pub author_email: String,
-    pub author_date: DateTime<FixedOffset>,
+    pub author_date: ZonedDateTime,
     pub committer_name: String,
     pub committer_email: String,
-    pub committer_date: DateTime<FixedOffset>,
+    pub committer_date: ZonedDateTime,
     pub subject: String,
     pub body: String,
     pub parent_commit_hashes: Vec<CommitHash>,
@@ -409,8 +409,14 @@ fn load_commits_format(mailmap: bool) -> String {
     format.join("%x1f") // use Unit Separator as a delimiter
 }
 
-fn parse_iso_date(s: &str) -> DateTime<FixedOffset> {
-    DateTime::parse_from_rfc3339(s).unwrap()
+fn parse_iso_date(s: &str) -> ZonedDateTime {
+    let pieces = Pieces::parse(s).unwrap();
+    let offset = pieces.to_numeric_offset().unwrap();
+    pieces
+        .date()
+        .to_datetime(pieces.time().unwrap())
+        .to_zoned_datetime(TimeZone::fixed(offset))
+        .unwrap()
 }
 
 fn parse_parent_commit_hashes(s: &str) -> Vec<CommitHash> {
@@ -713,4 +719,45 @@ pub fn get_initial_commit_additions(path: &Path, commit_hash: &CommitHash) -> Ve
     cmd.wait().unwrap();
 
     changes
+}
+
+#[cfg(test)]
+mod tests {
+    use jiff::tz::TimeZone;
+    use rstest::rstest;
+
+    use super::parse_iso_date;
+
+    #[rstest]
+    #[case("2024-01-01T01:02:03Z", "2024-01-01T01:02:03Z", "+0000")]
+    #[case("2024-01-01T01:02:03+00:00", "2024-01-01T01:02:03Z", "+0000")]
+    #[case("2024-01-01T01:02:03+09:30", "2023-12-31T15:32:03Z", "+0930")]
+    #[case("2024-01-01T01:02:03-03:30", "2024-01-01T04:32:03Z", "-0330")]
+    fn test_parse_iso_date_preserves_offset(
+        #[case] input: &str,
+        #[case] timestamp: &str,
+        #[case] offset: &str,
+    ) {
+        let date = parse_iso_date(input);
+
+        assert_eq!(date.timestamp().to_string(), timestamp);
+        assert_eq!(date.strftime("%Y-%m-%d").to_string(), "2024-01-01");
+        assert_eq!(
+            date.strftime("%Y-%m-%d %H:%M:%S %z").to_string(),
+            format!("2024-01-01 01:02:03 {offset}")
+        );
+    }
+
+    #[rstest]
+    #[case("2024-03-10T06:59:59+00:00", "2024-03-10 01:59:59 -0500")]
+    #[case("2024-03-10T07:00:00+00:00", "2024-03-10 03:00:00 -0400")]
+    fn test_commit_date_conversion_respects_daylight_saving_time(
+        #[case] input: &str,
+        #[case] expected: &str,
+    ) {
+        let time_zone = TimeZone::posix("EST5EDT,M3.2.0,M11.1.0").unwrap();
+        let date = parse_iso_date(input).with_time_zone(time_zone);
+
+        assert_eq!(date.strftime("%Y-%m-%d %H:%M:%S %z").to_string(), expected);
+    }
 }

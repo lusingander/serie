@@ -326,8 +326,7 @@ The date format of a author date in the commit list.
 - type: `string`
 - default: `"%Y-%m-%d"`
 
-The format must be specified in strftime format.
-https://docs.rs/chrono/latest/chrono/format/strftime/index.html
+The format string is passed directly to [Jiff's `strftime` formatter](https://docs.rs/jiff/latest/jiff/fmt/strtime/index.html).
 
 ### `ui.list.date_width`
 
@@ -364,8 +363,7 @@ The date format of a author/committer date in the commit detail.
 - type: `string`
 - default: `"%Y-%m-%d %H:%M:%S %z"`
 
-The format must be specified in strftime format.
-https://docs.rs/chrono/latest/chrono/format/strftime/index.html
+The format string is passed directly to [Jiff's `strftime` formatter](https://docs.rs/jiff/latest/jiff/fmt/strtime/index.html).
 
 ### `ui.detail.date_local`
 

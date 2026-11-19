@@ -1,6 +1,6 @@
 use std::{path::Path, process::Command};
 
-use chrono::{DateTime, NaiveDate, TimeZone, Utc};
+use jiff::{civil::Date, tz::TimeZone, Timestamp};
 
 pub struct GitRepository<'a> {
     path: &'a Path,
@@ -40,7 +40,7 @@ impl<'a> GitRepository<'a> {
     }
 
     pub fn commit(&self, message: &str, date: &str) {
-        let datetime_str = parse_date(date).to_rfc3339();
+        let datetime_str = parse_date(date).to_string();
         self.run(&["commit", "--allow-empty", "-m", message], &datetime_str);
     }
 
@@ -57,7 +57,7 @@ impl<'a> GitRepository<'a> {
     }
 
     pub fn merge(&self, branch_names: &[&str], date: &str) {
-        let datetime_str = parse_date(date).to_rfc3339();
+        let datetime_str = parse_date(date).to_string();
         let mut args = vec!["merge", "--no-ff", "--no-log"];
         args.extend_from_slice(branch_names);
         self.run(&args, &datetime_str);
@@ -71,7 +71,7 @@ impl<'a> GitRepository<'a> {
         let dummy_file_path = self.path.join("stash.txt");
         std::fs::File::create(dummy_file_path).unwrap();
 
-        let datetime_str = parse_date(date).to_rfc3339();
+        let datetime_str = parse_date(date).to_string();
         self.run(&["stash", "--include-untracked"], &datetime_str);
     }
 
@@ -113,10 +113,11 @@ impl<'a> GitRepository<'a> {
     }
 }
 
-fn parse_date(date: &str) -> DateTime<Utc> {
-    let dt = NaiveDate::parse_from_str(date, "%Y-%m-%d")
+fn parse_date(date: &str) -> Timestamp {
+    date.parse::<Date>()
         .unwrap()
-        .and_hms_opt(1, 2, 3)
-        .unwrap();
-    Utc.from_utc_datetime(&dt)
+        .at(1, 2, 3, 0)
+        .to_zoned_datetime(TimeZone::UTC)
+        .unwrap()
+        .timestamp()
 }

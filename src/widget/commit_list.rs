@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use jiff::tz::TimeZone;
 use laurier::highlight::highlight_matched_text;
 use once_cell::sync::Lazy;
 use ratatui::{
@@ -990,12 +991,12 @@ impl CommitList<'_> {
             .map(|(i, commit)| {
                 let date = &commit.author_date;
                 let date_str = if self.ctx.ui_config.list.date_local {
-                    let local = date.with_timezone(&chrono::Local);
+                    let local = date.with_time_zone(TimeZone::system());
                     local
-                        .format(&self.ctx.ui_config.list.date_format)
+                        .strftime(&self.ctx.ui_config.list.date_format)
                         .to_string()
                 } else {
-                    date.format(&self.ctx.ui_config.list.date_format)
+                    date.strftime(&self.ctx.ui_config.list.date_format)
                         .to_string()
                 };
                 self.to_commit_list_item(

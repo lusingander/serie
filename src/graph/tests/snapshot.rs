@@ -2,6 +2,7 @@ use std::path::Path;
 
 use font8x8::{UnicodeFonts, BASIC_FONTS};
 use image::GenericImage;
+use jiff::tz::TimeZone;
 
 use crate::{color, config, git, graph, test_support::image_snapshot::compare_image_snapshot};
 
@@ -123,7 +124,10 @@ fn render_graph_image(path: &Path, option: &GenerateGraphOption) -> image::RgbaI
         let text = format!(
             "{} / {}",
             commit.commit_hash.as_short_hash(),
-            commit.committer_date.naive_utc().format("%Y-%m-%d")
+            commit
+                .committer_date
+                .with_time_zone(TimeZone::UTC)
+                .strftime("%Y-%m-%d")
         );
         draw_text(&mut img_buf, &text, graph_width, y + (height / 4));
 
