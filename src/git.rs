@@ -755,7 +755,8 @@ mod tests {
         #[case] input: &str,
         #[case] expected: &str,
     ) {
-        let date = parse_iso_date(input).with_time_zone(TimeZone::get("America/New_York").unwrap());
+        let time_zone = TimeZone::posix("EST5EDT,M3.2.0,M11.1.0").unwrap();
+        let date = parse_iso_date(input).with_time_zone(time_zone);
 
         assert_eq!(date.strftime("%Y-%m-%d %H:%M:%S %z").to_string(), expected);
     }
