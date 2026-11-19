@@ -4,6 +4,7 @@ use std::{
 };
 
 use garde::Validate;
+use jiff::{fmt::strtime, ZonedDateTime};
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use smart_default::SmartDefault;
@@ -54,7 +55,7 @@ pub fn load() -> Result<(
         }
     }?;
 
-    config.validate()?;
+    config.validate().map_err(|error| error.to_string())?;
 
     Ok((
         config.core,
@@ -351,7 +352,7 @@ pub struct UiListConfig {
     #[garde(range(min = 1))]
     #[default = 20]
     pub subject_min_width: u16,
-    #[garde(length(min = 1))]
+    #[garde(length(min = 1), custom(validate_date_format))]
     #[default = "%Y-%m-%d"]
     pub date_format: String,
     #[garde(range(min = 0))]
@@ -382,12 +383,18 @@ pub struct UiDetailConfig {
     #[garde(range(min = 1))]
     #[default = 20]
     pub height: u16,
-    #[garde(length(min = 1))]
+    #[garde(length(min = 1), custom(validate_date_format))]
     #[default = "%Y-%m-%d %H:%M:%S %z"]
     pub date_format: String,
     #[garde(skip)]
     #[default = true]
     pub date_local: bool,
+}
+
+fn validate_date_format(format: &str, _: &()) -> garde::Result {
+    strtime::format(format, &ZonedDateTime::UNIX_EPOCH)
+        .map(|_| ())
+        .map_err(|error| garde::Error::new(format!("invalid date format: {error}")))
 }
 
 #[optional(derives = [Deserialize])]
@@ -445,6 +452,7 @@ mod tests {
     #[test]
     fn test_config_default() {
         let actual = Config::default();
+        actual.validate().unwrap();
         let expected = Config {
             core: CoreConfig {
                 option: CoreOptionConfig {
@@ -782,6 +790,30 @@ mod tests {
             keybind: None,
         };
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_config_date_formats_accept_jiff_specifiers() {
+        for format in ["%Q", "%Y-%m-%d %H:%M:%S %:z", "%%", "date"] {
+            let mut config = Config::default();
+            config.ui.list.date_format = format.into();
+            config.ui.detail.date_format = format.into();
+
+            config.validate().unwrap();
+        }
+    }
+
+    #[test]
+    fn test_config_invalid_date_formats_report_both_keys() {
+        for format in ["", "%J", "%"] {
+            let mut config = Config::default();
+            config.ui.list.date_format = format.into();
+            config.ui.detail.date_format = format.into();
+
+            let error = config.validate().unwrap_err().to_string();
+            assert!(error.contains("ui.list.date_format:"), "{error}");
+            assert!(error.contains("ui.detail.date_format:"), "{error}");
+        }
     }
 
     #[test]
