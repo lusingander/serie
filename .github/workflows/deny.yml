@@ -5,6 +5,7 @@ on:
     branches:
       - '*'
     paths:
+      - '.github/workflows/deny.yml'
       - '**/Cargo.lock'
       - '**/Cargo.toml'
       - '**/deny.toml'
@@ -12,6 +13,7 @@ on:
     branches:
       - master
     paths:
+      - '.github/workflows/deny.yml'
       - '**/Cargo.lock'
       - '**/Cargo.toml'
       - '**/deny.toml'
@@ -25,7 +27,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
-      - name: Check licenses
+      - name: Check advisories, licenses, and sources
         uses: EmbarkStudios/cargo-deny-action@v2.1.1
         with:
-          command: check licenses
+          command: check advisories licenses sources
