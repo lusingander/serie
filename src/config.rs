@@ -4,6 +4,7 @@ use std::{
 };
 
 use garde::Validate;
+use jiff::{fmt::strtime, ZonedDateTime};
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use smart_default::SmartDefault;
@@ -351,7 +352,7 @@ pub struct UiListConfig {
     #[garde(range(min = 1))]
     #[default = 20]
     pub subject_min_width: u16,
-    #[garde(length(min = 1))]
+    #[garde(length(min = 1), custom(validate_date_format))]
     #[default = "%Y-%m-%d"]
     pub date_format: String,
     #[garde(range(min = 0))]
@@ -382,12 +383,18 @@ pub struct UiDetailConfig {
     #[garde(range(min = 1))]
     #[default = 20]
     pub height: u16,
-    #[garde(length(min = 1))]
+    #[garde(length(min = 1), custom(validate_date_format))]
     #[default = "%Y-%m-%d %H:%M:%S %z"]
     pub date_format: String,
     #[garde(skip)]
     #[default = true]
     pub date_local: bool,
+}
+
+fn validate_date_format(format: &str, _: &()) -> garde::Result {
+    strtime::format(format, &ZonedDateTime::UNIX_EPOCH)
+        .map(|_| ())
+        .map_err(|error| garde::Error::new(format!("invalid date format: {error}")))
 }
 
 #[optional(derives = [Deserialize])]
