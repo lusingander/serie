@@ -281,7 +281,7 @@
             },
             "date_format": {
               "type": "string",
-              "description": "The date format for the author date in strftime format.",
+              "description": "The date format for the author date, using Jiff's strftime format specifiers.",
               "minLength": 1,
               "default": "%Y-%m-%d"
             },
@@ -320,7 +320,7 @@
             },
             "date_format": {
               "type": "string",
-              "description": "The date format for author/committer dates in strftime format.",
+              "description": "The date format for author/committer dates, using Jiff's strftime format specifiers.",
               "minLength": 1,
               "default": "%Y-%m-%d %H:%M:%S %z"
             },
