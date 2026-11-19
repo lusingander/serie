@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use chrono::{DateTime, FixedOffset};
+use jiff::{tz::TimeZone, ZonedDateTime};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -178,15 +178,15 @@ impl CommitDetail<'_> {
         &'a self,
         name: &'a str,
         email: &'a str,
-        date: &'a DateTime<FixedOffset>,
+        date: &'a ZonedDateTime,
     ) -> Vec<Line<'a>> {
         let date_str = if self.ctx.ui_config.detail.date_local {
-            let local = date.with_timezone(&chrono::Local);
+            let local = date.with_time_zone(TimeZone::system());
             local
-                .format(&self.ctx.ui_config.detail.date_format)
+                .strftime(&self.ctx.ui_config.detail.date_format)
                 .to_string()
         } else {
-            date.format(&self.ctx.ui_config.detail.date_format)
+            date.strftime(&self.ctx.ui_config.detail.date_format)
                 .to_string()
         };
         vec![
@@ -333,4 +333,27 @@ fn has_refs(refs: &[Ref]) -> bool {
             Ref::Branch { .. } | Ref::RemoteBranch { .. } | Ref::Tag { .. }
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case("2024-01-01 01:02:03 +0000", false)]
+    #[case("2024-01-01 01:02:04 +0000", true)]
+    fn test_author_committer_date_comparison_uses_instant(
+        #[case] committer_date: &str,
+        #[case] expected: bool,
+    ) {
+        let commit = Commit {
+            author_date: ZonedDateTime::strptime("%F %T %z", "2024-01-01 10:32:03 +0930").unwrap(),
+            committer_date: ZonedDateTime::strptime("%F %T %z", committer_date).unwrap(),
+            ..Commit::default()
+        };
+
+        assert_eq!(is_author_committer_different(&commit), expected);
+    }
 }
