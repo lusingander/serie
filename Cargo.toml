@@ -18,7 +18,7 @@ exclude = ["/.github", "/img"]
 ansi-to-tui = "8.0.1"
 arboard = { version = "3.7.0", features = ["wayland-data-control"] }
 base64 = { version = "0.23.1", default-features = false, features = ["std"] }
-clap = { version = "4.6.7", features = ["derive"] }
+clap = { version = "4.6.8", features = ["derive"] }
 console = "0.16.6"
 fuzzy-matcher = "0.3.7"
 garde = { version = "0.23.0", features = ["derive", "regex"] }
@@ -31,7 +31,7 @@ rustc-hash = "2.1.3"
 semver = "1.0.28"
 serde = { version = "1.0.229", features = ["derive"] }
 smart-default = "0.7.1"
-toml = "1.1.8"
+toml = "1.2.1"
 tui-input = "0.15.5"
 umbra = "0.6.0"
 
