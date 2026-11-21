@@ -37,7 +37,7 @@ umbra = "0.6.0"
 
 [dev-dependencies]
 font8x8 = "0.3.1"
-rstest = "0.28.0"
+rstest = { version = "0.28.0", default-features = false }
 tempfile = "3.27.0"
 
 [profile.release]
