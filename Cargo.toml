@@ -32,7 +32,7 @@ semver = "1.0.28"
 serde = { version = "1.0.229", features = ["derive"] }
 smart-default = "0.7.1"
 toml = "1.2.1"
-tui-input = "0.15.5"
+tui-input = { version = "0.15.5", default-features = false, features = ["crossterm"] }
 umbra = "0.6.0"
 
 [dev-dependencies]
