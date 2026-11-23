@@ -464,6 +464,14 @@ fn calc_edges(
 
                     if overlap {
                         // detour
+                        // Earlier rows may contain a commit in the final detour column.
+                        while commits[(child_pos_y + 1)..pos_y]
+                            .iter()
+                            .any(|commit| commit_pos_map[&commit.commit_hash].0 == new_pos_x)
+                        {
+                            new_pos_x += 1;
+                        }
+
                         edges[pos_y].push(WrappedEdge::new(EdgeType::Right, pos_x, pos_x, hash));
                         for x in (pos_x + 1)..new_pos_x {
                             edges[pos_y].push(WrappedEdge::new(

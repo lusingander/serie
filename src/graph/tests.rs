@@ -1083,7 +1083,7 @@ fn merge_006() -> TestResult {
 
 #[test]
 fn merge_007() -> TestResult {
-    // The merge detour currently crosses an unrelated commit in chronological order.
+    // A merge detour must avoid unrelated commits in chronological order.
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
 
