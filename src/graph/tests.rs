@@ -1857,6 +1857,105 @@ fn complex_002() -> TestResult {
 }
 
 #[test]
+fn complex_003() -> TestResult {
+    // Multiple sync merges have free columns inside a long-lived support branch.
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+
+    let git = &GitRepository::new(repo_path);
+    let date = |day| format!("2024-01-{day:02}");
+
+    git.init();
+
+    git.commit("Initial commit", &date(1));
+
+    for feature in 1..=4 {
+        git.checkout("master");
+        git.checkout_b(&format!("feature-{feature}"));
+        git.commit(&format!("Start feature {feature}"), &date(12 - feature));
+    }
+
+    git.checkout("master");
+    git.checkout_b("support");
+    git.commit("Add support change", &date(7));
+
+    git.checkout("master");
+    for base in 1..=4 {
+        git.commit(&format!("Update base {base}"), &date(base + 1));
+        git.checkout_b(&format!("base-{base}"));
+        git.checkout("master");
+    }
+
+    git.checkout_b("topic");
+    git.commit("Start topic", &date(6));
+    git.commit("Continue topic", &date(16));
+
+    for review in 1..=4 {
+        git.checkout("topic");
+        git.checkout_b(&format!("review-{review}"));
+        git.commit(&format!("Review topic {review}"), &date(21 - review));
+    }
+
+    for feature in 1..=4 {
+        git.checkout(&format!("feature-{feature}"));
+        git.merge(&[&format!("base-{}", 5 - feature)], &date(16 - feature));
+        git.commit(&format!("Continue feature {feature}"), &date(25 - feature));
+    }
+
+    git.checkout("topic");
+    git.merge(&["support"], &date(25));
+
+    git.log();
+
+    let options = &[
+        GenerateGraphOption::new(
+            "complex_003_chrono",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        ),
+        GenerateGraphOption::new(
+            "complex_003_topo",
+            git::SortCommit::Topological,
+            graph::GraphStyle::Rounded,
+        ),
+        GenerateGraphOption::new(
+            "complex_003_angular",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        ),
+        GenerateGraphOption::new(
+            "complex_003_curved",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        ),
+        GenerateGraphOption::new(
+            "complex_003_rounded_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "complex_003_angular_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        )
+        .with_antialias(),
+        GenerateGraphOption::new(
+            "complex_003_curved_antialias",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Curved,
+        )
+        .with_antialias(),
+    ];
+
+    copy_git_dir(repo_path, "complex_003");
+
+    assert_graph_snapshots(repo_path, options);
+
+    Ok(())
+}
+
+#[test]
 fn primary_branch_001() -> TestResult {
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
