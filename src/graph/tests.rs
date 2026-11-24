@@ -1140,6 +1140,69 @@ fn merge_007() -> TestResult {
 }
 
 #[test]
+fn merge_008() -> TestResult {
+    // A merge detour skips a free column before an unrelated branch line.
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+
+    git.commit("Initial commit", "2024-01-01");
+
+    git.checkout_b("feature");
+    git.commit("Start feature", "2024-01-05");
+
+    git.checkout("master");
+    git.checkout_b("support");
+    git.commit("Add support change", "2024-01-04");
+
+    git.checkout("master");
+    git.commit("Update base", "2024-01-02");
+
+    git.checkout_b("topic");
+    git.commit("Start topic", "2024-01-03");
+    git.commit("Continue topic", "2024-01-07");
+
+    git.checkout_b("review");
+    git.commit("Review topic", "2024-01-08");
+
+    git.checkout("feature");
+    git.merge(&["master"], "2024-01-06");
+    git.commit("Continue feature", "2024-01-09");
+
+    git.checkout("topic");
+    git.merge(&["support"], "2024-01-10");
+
+    git.log();
+
+    let options = &[
+        GenerateGraphOption::new(
+            "merge_008_chrono",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        ),
+        GenerateGraphOption::new(
+            "merge_008_topo",
+            git::SortCommit::Topological,
+            graph::GraphStyle::Rounded,
+        ),
+        GenerateGraphOption::new(
+            "merge_008_angular",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        ),
+    ];
+
+    copy_git_dir(repo_path, "merge_008");
+
+    assert_graph_snapshots(repo_path, options);
+
+    Ok(())
+}
+
+#[test]
 fn stash_001() -> TestResult {
     // Test case for multiple stashes, the most recent commit is normal commit
     let dir = tempfile::tempdir()?;
@@ -1890,6 +1953,65 @@ fn primary_branch_001() -> TestResult {
             );
         }
     }
+
+    Ok(())
+}
+
+#[test]
+fn primary_branch_002() -> TestResult {
+    // A merge detour skips a free inner column beside the primary branch.
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+
+    git.commit("Initial commit", "2024-01-01");
+
+    git.checkout_b("base");
+    git.commit("Update base", "2024-01-02");
+
+    git.checkout_b("topic");
+    git.commit("Add topic change", "2024-01-03");
+
+    git.checkout("master");
+    git.checkout_b("work");
+    git.commit("Start feature", "2024-01-04");
+    git.merge(&["base"], "2024-01-05");
+
+    git.checkout("master");
+    git.commit("Update primary", "2024-01-06");
+
+    git.checkout_b("join");
+    git.merge(&["work", "topic"], "2024-01-07");
+
+    git.log();
+
+    let options = &[
+        GenerateGraphOption::new(
+            "primary_branch_002_chrono",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        )
+        .with_primary_branch("master"),
+        GenerateGraphOption::new(
+            "primary_branch_002_topo",
+            git::SortCommit::Topological,
+            graph::GraphStyle::Rounded,
+        )
+        .with_primary_branch("master"),
+        GenerateGraphOption::new(
+            "primary_branch_002_angular",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        )
+        .with_primary_branch("master"),
+    ];
+
+    copy_git_dir(repo_path, "primary_branch_002");
+
+    assert_graph_snapshots(repo_path, options);
 
     Ok(())
 }
