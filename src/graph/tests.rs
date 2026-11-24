@@ -1082,6 +1082,64 @@ fn merge_006() -> TestResult {
 }
 
 #[test]
+fn merge_007() -> TestResult {
+    // A merge detour must avoid unrelated commits in chronological order.
+    let dir = tempfile::tempdir()?;
+    let repo_path = dir.path();
+
+    let git = &GitRepository::new(repo_path);
+
+    git.init();
+
+    git.commit("Initial commit", "2024-01-01");
+
+    git.checkout_b("feature");
+    git.commit("Start feature", "2024-01-04");
+
+    git.checkout("master");
+    git.commit("Update base", "2024-01-02");
+
+    git.checkout_b("integration");
+    git.commit("Start integration", "2024-01-03");
+
+    git.checkout("master");
+    git.checkout_b("topic");
+    git.commit("Add topic change", "2024-01-05");
+
+    git.checkout("feature");
+    git.merge(&["master"], "2024-01-06");
+
+    git.checkout("integration");
+    git.merge(&["topic"], "2024-01-07");
+
+    git.log();
+
+    let options = &[
+        GenerateGraphOption::new(
+            "merge_007_chrono",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Rounded,
+        ),
+        GenerateGraphOption::new(
+            "merge_007_topo",
+            git::SortCommit::Topological,
+            graph::GraphStyle::Rounded,
+        ),
+        GenerateGraphOption::new(
+            "merge_007_angular",
+            git::SortCommit::Chronological,
+            graph::GraphStyle::Angular,
+        ),
+    ];
+
+    copy_git_dir(repo_path, "merge_007");
+
+    assert_graph_snapshots(repo_path, options);
+
+    Ok(())
+}
+
+#[test]
 fn stash_001() -> TestResult {
     // Test case for multiple stashes, the most recent commit is normal commit
     let dir = tempfile::tempdir()?;
