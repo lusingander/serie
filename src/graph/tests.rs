@@ -1141,7 +1141,7 @@ fn merge_007() -> TestResult {
 
 #[test]
 fn merge_008() -> TestResult {
-    // A merge detour skips a free column before an unrelated branch line.
+    // A merge detour uses a free column before an unrelated branch line.
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
 
@@ -2058,7 +2058,7 @@ fn primary_branch_001() -> TestResult {
 
 #[test]
 fn primary_branch_002() -> TestResult {
-    // A merge detour skips a free inner column beside the primary branch.
+    // A merge detour uses a free inner column beside the primary branch.
     let dir = tempfile::tempdir()?;
     let repo_path = dir.path();
 

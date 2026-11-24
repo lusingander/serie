@@ -416,158 +416,86 @@ fn calc_edges(
                     // skip
                 } else {
                     // merge
-                    let mut overlap = false;
-                    let mut new_pos_x = pos_x;
-
-                    let mut skip_judge_overlap = true;
+                    let mut occupied_columns = vec![false; max_pos_x + 2];
                     for y in (child_pos_y + 1)..pos_y {
-                        let processing_commit_pos_x =
-                            commit_pos_map.get(&commits[y].commit_hash).unwrap().0;
-                        if processing_commit_pos_x == new_pos_x {
-                            skip_judge_overlap = false;
-                            break;
-                        }
-                        if edges[y]
-                            .iter()
-                            .filter(|e| e.edge.pos_x == pos_x)
-                            .filter(|e| matches!(e.edge.edge_type, EdgeType::Vertical))
-                            .any(|e| e.edge_parent_hash != hash)
-                        {
-                            skip_judge_overlap = false;
-                            break;
-                        }
+                        occupied_columns[commit_pos_map[&commits[y].commit_hash].0] = true;
                     }
-
-                    if !skip_judge_overlap {
-                        for y in (child_pos_y + 1)..pos_y {
-                            let processing_commit_pos_x =
-                                commit_pos_map.get(&commits[y].commit_hash).unwrap().0;
-                            if processing_commit_pos_x == new_pos_x {
-                                overlap = true;
-                                if new_pos_x < processing_commit_pos_x + 1 {
-                                    new_pos_x = processing_commit_pos_x + 1;
+                    // At the endpoints, only vertical segments facing the interval overlap.
+                    for (y, row_edges) in (child_pos_y..=pos_y).zip(&edges[child_pos_y..=pos_y]) {
+                        for edge in row_edges {
+                            let overlaps = match edge.edge.edge_type {
+                                EdgeType::Vertical => true,
+                                EdgeType::Up | EdgeType::LeftBottom | EdgeType::RightBottom => {
+                                    y > child_pos_y
                                 }
-                            }
-                            for edge in &edges[y] {
-                                if edge.edge.pos_x >= new_pos_x
-                                    && edge.edge_parent_hash != hash
-                                    && matches!(edge.edge.edge_type, EdgeType::Vertical)
-                                {
-                                    overlap = true;
-                                    if new_pos_x < edge.edge.pos_x + 1 {
-                                        new_pos_x = edge.edge.pos_x + 1;
-                                    }
+                                EdgeType::Down | EdgeType::LeftTop | EdgeType::RightTop => {
+                                    y < pos_y
                                 }
+                                _ => false,
+                            };
+                            if edge.edge_parent_hash != hash && overlaps {
+                                occupied_columns[edge.edge.pos_x] = true;
                             }
                         }
                     }
 
-                    if overlap {
-                        // detour
-                        // Earlier rows may contain a commit in the final detour column.
-                        while commits[(child_pos_y + 1)..pos_y]
-                            .iter()
-                            .any(|commit| commit_pos_map[&commit.commit_hash].0 == new_pos_x)
-                        {
-                            new_pos_x += 1;
-                        }
-
-                        edges[pos_y].push(WrappedEdge::new(EdgeType::Right, pos_x, pos_x, hash));
-                        for x in (pos_x + 1)..new_pos_x {
-                            edges[pos_y].push(WrappedEdge::new(
-                                EdgeType::Horizontal,
-                                x,
-                                pos_x,
-                                hash,
-                            ));
-                        }
-                        edges[pos_y].push(WrappedEdge::new(
-                            EdgeType::RightBottom,
-                            new_pos_x,
-                            pos_x,
-                            hash,
-                        ));
-                        for y in ((child_pos_y + 1)..pos_y).rev() {
-                            edges[y].push(WrappedEdge::new(
-                                EdgeType::Vertical,
-                                new_pos_x,
-                                pos_x,
-                                hash,
-                            ));
-                        }
-                        edges[child_pos_y].push(WrappedEdge::new(
-                            EdgeType::RightTop,
-                            new_pos_x,
-                            pos_x,
-                            hash,
-                        ));
-                        for x in (child_pos_x + 1)..new_pos_x {
-                            edges[child_pos_y].push(WrappedEdge::new(
-                                EdgeType::Horizontal,
-                                x,
-                                pos_x,
-                                hash,
-                            ));
-                        }
-                        edges[child_pos_y].push(WrappedEdge::new(
-                            EdgeType::Right,
-                            child_pos_x,
-                            pos_x,
-                            hash,
-                        ));
-
-                        if max_pos_x < new_pos_x {
-                            max_pos_x = new_pos_x;
-                        }
+                    let line_pos_x = if occupied_columns[pos_x] {
+                        // Prefer an existing column, then the shortest connection on either side.
+                        (0..occupied_columns.len())
+                            .filter(|&x| !occupied_columns[x])
+                            .min_by_key(|&x| {
+                                (
+                                    x > max_pos_x,
+                                    x.abs_diff(pos_x) + x.abs_diff(child_pos_x),
+                                    x,
+                                )
+                            })
+                            .unwrap()
                     } else {
-                        edges[pos_y].push(WrappedEdge::new(EdgeType::Up, pos_x, pos_x, hash));
-                        for y in ((child_pos_y + 1)..pos_y).rev() {
-                            edges[y].push(WrappedEdge::new(EdgeType::Vertical, pos_x, pos_x, hash));
+                        pos_x
+                    };
+
+                    for (y, x, straight, left_corner, right_corner) in [
+                        (
+                            pos_y,
+                            pos_x,
+                            EdgeType::Up,
+                            EdgeType::LeftBottom,
+                            EdgeType::RightBottom,
+                        ),
+                        (
+                            child_pos_y,
+                            child_pos_x,
+                            EdgeType::Down,
+                            EdgeType::LeftTop,
+                            EdgeType::RightTop,
+                        ),
+                    ] {
+                        if line_pos_x == x {
+                            edges[y].push(WrappedEdge::new(straight, x, pos_x, hash));
+                            continue;
                         }
-                        if pos_x < child_pos_x {
-                            edges[child_pos_y].push(WrappedEdge::new(
-                                EdgeType::LeftTop,
-                                pos_x,
-                                pos_x,
-                                hash,
-                            ));
-                            for x in (pos_x + 1)..child_pos_x {
-                                edges[child_pos_y].push(WrappedEdge::new(
-                                    EdgeType::Horizontal,
-                                    x,
-                                    pos_x,
-                                    hash,
-                                ));
-                            }
-                            edges[child_pos_y].push(WrappedEdge::new(
-                                EdgeType::Left,
-                                child_pos_x,
-                                pos_x,
-                                hash,
-                            ));
+                        let (side, corner) = if line_pos_x < x {
+                            (EdgeType::Left, left_corner)
                         } else {
-                            edges[child_pos_y].push(WrappedEdge::new(
-                                EdgeType::RightTop,
-                                pos_x,
-                                pos_x,
-                                hash,
-                            ));
-                            for x in (child_pos_x + 1)..pos_x {
-                                edges[child_pos_y].push(WrappedEdge::new(
-                                    EdgeType::Horizontal,
-                                    x,
-                                    pos_x,
-                                    hash,
-                                ));
-                            }
-                            edges[child_pos_y].push(WrappedEdge::new(
-                                EdgeType::Right,
-                                child_pos_x,
-                                pos_x,
-                                hash,
-                            ));
+                            (EdgeType::Right, right_corner)
+                        };
+                        edges[y].push(WrappedEdge::new(side, x, pos_x, hash));
+                        for x in (x.min(line_pos_x) + 1)..x.max(line_pos_x) {
+                            edges[y].push(WrappedEdge::new(EdgeType::Horizontal, x, pos_x, hash));
                         }
+                        edges[y].push(WrappedEdge::new(corner, line_pos_x, pos_x, hash));
                     }
+
+                    for row_edges in &mut edges[(child_pos_y + 1)..pos_y] {
+                        row_edges.push(WrappedEdge::new(
+                            EdgeType::Vertical,
+                            line_pos_x,
+                            pos_x,
+                            hash,
+                        ));
+                    }
+                    max_pos_x = max_pos_x.max(line_pos_x);
                 }
             }
         }
