@@ -133,6 +133,7 @@ pub struct CoreOptionConfig {
     pub graph_style: Option<GraphStyle>,
     pub graph_antialias: Option<bool>,
     pub initial_selection: Option<InitialSelection>,
+    pub watch: Option<bool>,
 }
 
 #[optional(derives = [Deserialize])]
@@ -462,6 +463,7 @@ mod tests {
                     graph_style: None,
                     graph_antialias: None,
                     initial_selection: None,
+                    watch: None,
                 },
                 git: CoreGitConfig { mailmap: false },
                 search: CoreSearchConfig {
@@ -598,6 +600,7 @@ mod tests {
                     graph_style: Some(GraphStyle::Angular),
                     graph_antialias: Some(true),
                     initial_selection: Some(InitialSelection::Head),
+                    watch: None,
                 },
                 git: CoreGitConfig { mailmap: true },
                 search: CoreSearchConfig {
@@ -713,6 +716,7 @@ mod tests {
                     graph_style: None,
                     graph_antialias: None,
                     initial_selection: None,
+                    watch: None,
                 },
                 git: CoreGitConfig { mailmap: false },
                 search: CoreSearchConfig {
